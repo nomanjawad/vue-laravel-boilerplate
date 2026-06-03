@@ -12,7 +12,7 @@ Route::get('/about', [AboutController::class, 'index'])->name('about');
 
 if (config('template.features.contact_form')) {
     Route::get('/contact', [ContactController::class, 'index'])->name('contact');
-    Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
+    Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:5,1')->name('contact.store');
 }
 
 Route::middleware('auth')->group(function () {

@@ -11,7 +11,9 @@
       "Bash(rm -rf ~/Library/Caches/ms-playwright)",
       "Read(//Users/nomanjawad/Library/Caches/ms-playwright/**)",
       "WebFetch(domain:github.com)",
-      "Bash(php -r \"echo PHP_VERSION;\")"
+      "Bash(php -r \"echo PHP_VERSION;\")",
+      "Bash(rm -f /tmp/home.html /tmp/serve8124.log)",
+      "Bash(pkill -f \"artisan serve --port=8124\")"
     ]
   }
 }

@@ -18,6 +18,7 @@ const form = useForm({
     phone: '',
     subject: '',
     message: '',
+    website: '', // honeypot — must stay empty (hidden from real users)
 })
 
 const submit = () => {
@@ -45,6 +46,10 @@ const submit = () => {
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900 mb-6">Send us a message</h2>
                     <form @submit.prevent="submit" class="space-y-4">
+                        <!-- Honeypot: hidden from users, bots tend to fill it -->
+                        <div class="hidden" aria-hidden="true">
+                            <label>Website<input v-model="form.website" type="text" tabindex="-1" autocomplete="off" /></label>
+                        </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Full Name</label>

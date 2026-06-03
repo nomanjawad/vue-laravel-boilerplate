@@ -8,9 +8,31 @@ const headerMenus = computed(() => page.props.menus?.header || [])
 const footerMenus = computed(() => page.props.menus?.footer || [])
 const settings = computed(() => page.props.settings || {})
 const appName = computed(() => settings.value.site_name || 'WebTemplate')
+
+const seo = computed(() => page.props.seo || {})
+const ogTitle = computed(() => seo.value.title || seo.value.site_name || appName.value)
 </script>
 
 <template>
+    <Head>
+        <meta v-if="seo.description" head-key="description" name="description" :content="seo.description" />
+        <link v-if="seo.canonical" head-key="canonical" rel="canonical" :href="seo.canonical" />
+
+        <!-- Open Graph -->
+        <meta head-key="og:type" property="og:type" content="website" />
+        <meta head-key="og:site_name" property="og:site_name" :content="seo.site_name || appName" />
+        <meta head-key="og:title" property="og:title" :content="ogTitle" />
+        <meta v-if="seo.description" head-key="og:description" property="og:description" :content="seo.description" />
+        <meta v-if="seo.canonical" head-key="og:url" property="og:url" :content="seo.canonical" />
+        <meta v-if="seo.og_image" head-key="og:image" property="og:image" :content="seo.og_image" />
+
+        <!-- Twitter -->
+        <meta head-key="twitter:card" name="twitter:card" :content="seo.og_image ? 'summary_large_image' : 'summary'" />
+        <meta head-key="twitter:title" name="twitter:title" :content="ogTitle" />
+        <meta v-if="seo.description" head-key="twitter:description" name="twitter:description" :content="seo.description" />
+        <meta v-if="seo.og_image" head-key="twitter:image" name="twitter:image" :content="seo.og_image" />
+    </Head>
+
     <div class="min-h-screen flex flex-col bg-white">
         <!-- Header -->
         <header class="bg-white border-b border-gray-200">
