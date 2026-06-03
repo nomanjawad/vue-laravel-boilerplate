@@ -1,0 +1,15 @@
+{
+    "hero": {
+        "title": "Contact Us",
+        "subtitle": "We'd love to hear from you. Get in touch and let's start a conversation."
+    },
+    "form_fields": [
+        { "name": "name", "label": "Full Name", "type": "text", "required": true },
+        { "name": "email", "label": "Email Address", "type": "email", "required": true },
+        { "name": "phone", "label": "Phone Number", "type": "tel", "required": false },
+        { "name": "subject", "label": "Subject", "type": "text", "required": true },
+        { "name": "message", "label": "Message", "type": "textarea", "required": true }
+    ],
+    "map_embed": "",
+    "office_hours": "Monday - Friday: 9:00 AM - 6:00 PM"
+}

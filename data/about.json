@@ -1,0 +1,36 @@
+{
+    "hero": {
+        "title": "About Us",
+        "subtitle": "We are a team of passionate developers building modern web solutions."
+    },
+    "mission": {
+        "title": "Our Mission",
+        "description": "To deliver high-quality, scalable web solutions that help businesses grow and succeed in the digital world."
+    },
+    "values": [
+        {
+            "title": "Quality First",
+            "description": "We never compromise on quality. Every line of code is crafted with care."
+        },
+        {
+            "title": "Innovation",
+            "description": "We stay ahead of the curve by adopting the latest technologies and best practices."
+        },
+        {
+            "title": "Client Focus",
+            "description": "Your success is our success. We work closely with you to understand and meet your needs."
+        },
+        {
+            "title": "Transparency",
+            "description": "Open communication and honest feedback are at the core of how we work."
+        }
+    ],
+    "story": {
+        "title": "Our Story",
+        "paragraphs": [
+            "Founded with a vision to make professional web development accessible to businesses of all sizes.",
+            "We specialize in building custom websites that are not only beautiful but also performant and easy to manage.",
+            "Our team brings together years of experience in web development, design, and digital strategy."
+        ]
+    }
+}

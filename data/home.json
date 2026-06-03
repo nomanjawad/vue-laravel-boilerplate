@@ -1,0 +1,39 @@
+{
+    "hero": {
+        "title": "Build Something Amazing",
+        "subtitle": "A modern web template powered by Laravel, Vue, and Inertia.js",
+        "cta_text": "Get Started",
+        "cta_url": "/contact",
+        "secondary_cta_text": "Learn More",
+        "secondary_cta_url": "/about"
+    },
+    "features": [
+        {
+            "title": "Modern Stack",
+            "description": "Built with Laravel 11, Vue 3, and Inertia.js for a seamless development experience.",
+            "icon": "code"
+        },
+        {
+            "title": "Shared Hosting Ready",
+            "description": "Deploy to any cPanel, SiteGround, or Hostinger server with a single script.",
+            "icon": "server"
+        },
+        {
+            "title": "Modular Features",
+            "description": "Enable or disable blog, shop, careers, and more with simple config flags.",
+            "icon": "puzzle"
+        }
+    ],
+    "stats": [
+        { "value": "99%", "label": "Uptime" },
+        { "value": "50+", "label": "Projects" },
+        { "value": "24/7", "label": "Support" },
+        { "value": "100%", "label": "Satisfaction" }
+    ],
+    "cta_section": {
+        "title": "Ready to get started?",
+        "description": "Contact us today and let's build something great together.",
+        "button_text": "Contact Us",
+        "button_url": "/contact"
+    }
+}

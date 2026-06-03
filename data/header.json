@@ -1,0 +1,7 @@
+{
+    "logo": "/images/logo.svg",
+    "logo_alt": "WebTemplate",
+    "show_cta_button": true,
+    "cta_text": "Get Quote",
+    "cta_url": "/contact"
+}

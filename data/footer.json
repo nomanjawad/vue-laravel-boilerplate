@@ -1,0 +1,18 @@
+{
+    "columns": [
+        {
+            "title": "Company",
+            "type": "menu"
+        },
+        {
+            "title": "Contact",
+            "type": "contact_info"
+        },
+        {
+            "title": "Follow Us",
+            "type": "social"
+        }
+    ],
+    "copyright": "\u00a9 {year} {site_name}. All rights reserved.",
+    "show_social_icons": true
+}
