@@ -13,7 +13,11 @@
       "WebFetch(domain:github.com)",
       "Bash(php -r \"echo PHP_VERSION;\")",
       "Bash(rm -f /tmp/home.html /tmp/serve8124.log)",
-      "Bash(pkill -f \"artisan serve --port=8124\")"
+      "Bash(pkill -f \"artisan serve --port=8124\")",
+      "Read(//Applications/MAMP/Library/bin/mysql80/bin/**)",
+      "Bash(/Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot -h 127.0.0.1 -P 8889 -e \"SELECT VERSION\\(\\);\")",
+      "Bash(/Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot -h 127.0.0.1 -P 8889 -e \"CREATE DATABASE IF NOT EXISTS webtemplate CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; SHOW DATABASES LIKE 'webtemplate';\")",
+      "Bash(/Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot -h 127.0.0.1 -P 8889 webtemplate -e ' *)"
     ]
   }
 }
