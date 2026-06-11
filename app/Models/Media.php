@@ -11,7 +11,7 @@ class Media extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'filename', 'path', 'mime_type', 'size', 'alt_text', 'disk'];
+    protected $fillable = ['user_id', 'filename', 'path', 'mime_type', 'size', 'alt_text', 'disk', 'variants'];
 
     public function user(): BelongsTo
     {
@@ -27,6 +27,7 @@ class Media extends Model
     {
         return [
             'size' => 'integer',
+            'variants' => 'array',
         ];
     }
 }

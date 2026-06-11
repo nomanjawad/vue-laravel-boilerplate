@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ClearsResponseCache;
+use App\Models\Concerns\LogsContentActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,14 +11,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Category extends Model
 {
+    use ClearsResponseCache;
     use HasFactory;
+    use LogsContentActivity;
 
     protected $fillable = ['name', 'slug', 'description', 'parent_id', 'sort_order'];
-
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
 
     public function parent(): BelongsTo
     {

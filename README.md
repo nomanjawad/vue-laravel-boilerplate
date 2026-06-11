@@ -7,7 +7,7 @@ A Laravel + Vue 3 + Inertia.js boilerplate for building small-to-medium websites
 - **Backend:** Laravel 13 (PHP 8.1+)
 - **Frontend:** Vue 3 (Composition API) + Tailwind CSS
 - **Bridge:** Inertia.js
-- **Database:** SQLite (dev) / MySQL (production)
+- **Database:** MySQL (local via MAMP/XAMPP, production via cPanel) — no SQLite
 - **Bundler:** Vite
 
 ## Quick Start
@@ -20,18 +20,27 @@ composer install
 pnpm install
 
 # Configure
-cp .env.example .env
+cp .env.example .env          # set MySQL credentials (MAMP: port 8889, root/root)
 php artisan key:generate
 
-# Database
-php artisan migrate --seed
+# Interactive setup: site name, feature flags, admin user, migrate + seed
+php artisan template:init
 
 # Run
 php artisan serve
 pnpm run dev
 ```
 
-Visit `http://localhost:8000`. Admin panel at `/admin` (login: `admin@example.com` / `password`).
+Visit `http://localhost:8000`. Admin panel at `/admin` with the credentials you chose.
+
+### Post-clone checklist
+
+1. `cp .env.example .env` and set MySQL credentials (**MySQL only — no SQLite**)
+2. `php artisan key:generate`
+3. `php artisan template:init` — sets site name, writes `FEATURE_*` flags (so flags always match shipped routes), creates the admin user, runs migrate + seed (+ optional demo content)
+4. `composer ide` — generates IDE helper stubs (kills Intelephense false positives)
+5. `php artisan optimize` — must pass cleanly before any deploy (CI also checks this)
+6. Edit `data/*.json` for static page content
 
 ## Features
 
@@ -43,6 +52,12 @@ Visit `http://localhost:8000`. Admin panel at `/admin` (login: `admin@example.co
 | Contact Form | On | `FEATURE_CONTACT_FORM` |
 | Careers | Off | `FEATURE_CAREERS` |
 | Case Studies | Off | `FEATURE_CASE_STUDIES` |
+
+Built-in on every project: redirect manager + 404 monitoring, newsletter capture,
+cookie-consent-gated analytics, XML sitemap, JSON-LD structured data, full-page
+response cache, image optimization (WebP + sizes on upload), activity log,
+nightly DB backups, branded error pages, WordPress importer
+(`php artisan import:wordpress export.xml`).
 
 Toggle features in `.env`:
 ```
@@ -70,12 +85,22 @@ app/
 └── Services/           # Business logic (Cart, Order, Payment, SEO, JSON data)
 
 resources/js/
-├── Layouts/            # PublicLayout, AdminLayout, AuthLayout
+├── Layouts/            # Full layout shells ONLY (PublicLayout, AdminLayout, AuthLayout)
 ├── Pages/
 │   ├── Admin/          # Admin panel pages
 │   ├── Auth/           # Login, Register, etc.
-│   └── Public/         # Public pages (Home, Blog, Shop, etc.)
-└── Composables/        # Vue composables
+│   └── Public/         # One folder per page: Home/Index.vue + Home/components/
+│                       #   Pages compose section components; markup lives in sections.
+│                       #   (See Pages/Public/Home for the reference example.)
+├── Components/
+│   ├── Atoms/          # Smallest reusable pieces (AppButton, Badge, SectionHeading)
+│   └── Shared/         # Cross-page components (CookieConsent, NewsletterSignup, BrandLogo)
+└── Composables/        # useImageUrl, useConsentScripts, ...
+
+resources/css/
+├── app.css             # Design tokens (@theme): brand colors, fonts, spacing, radii
+├── admin.css           # Admin dark-theme design system (glass / btn-grad / field)
+└── pages/*.css         # One file per public page — may be empty, must exist
 
 data/                   # JSON content files for static pages
 routes/                 # Feature-split route files
@@ -116,6 +141,11 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step shared hosting deployment gu
 Quick deploy with SSH:
 ```bash
 bash deploy.sh production
+```
+
+After uploading code changes on subsequent deploys:
+```bash
+composer deploy   # storage:link + migrate + optimize + responsecache:clear
 ```
 
 ## Admin Panel

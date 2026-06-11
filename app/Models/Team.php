@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ClearsResponseCache;
+use App\Models\Concerns\LogsContentActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Team extends Model
 {
+    use ClearsResponseCache;
     use HasFactory;
+    use LogsContentActivity;
 
     protected $fillable = [
         'name', 'position', 'bio', 'photo', 'email',

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ClearsResponseCache;
+use App\Models\Concerns\LogsContentActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Post extends Model
 {
+    use ClearsResponseCache;
     use HasFactory;
+    use LogsContentActivity;
 
     protected $fillable = [
         'user_id', 'category_id', 'title', 'slug', 'excerpt', 'body',
@@ -22,11 +26,6 @@ class Post extends Model
         return [
             'published_at' => 'datetime',
         ];
-    }
-
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
     }
 
     public function user(): BelongsTo

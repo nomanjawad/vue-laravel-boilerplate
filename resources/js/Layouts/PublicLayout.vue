@@ -1,6 +1,8 @@
 <script setup>
 import { usePage, Link, Head } from '@inertiajs/vue3'
 import { computed } from 'vue'
+import CookieConsent from '@/Components/Shared/CookieConsent.vue'
+import NewsletterSignup from '@/Components/Shared/NewsletterSignup.vue'
 
 const page = usePage()
 
@@ -11,6 +13,17 @@ const appName = computed(() => settings.value.site_name || 'WebTemplate')
 
 const seo = computed(() => page.props.seo || {})
 const ogTitle = computed(() => seo.value.title || seo.value.site_name || appName.value)
+
+// JSON-LD structured data: Organization on every page (shared prop) plus any
+// page-specific schemas passed by controllers as a `jsonLd` prop.
+const jsonLdBlocks = computed(() => {
+    const blocks = []
+    if (page.props.organizationJsonLd) blocks.push(page.props.organizationJsonLd)
+    const pageSchemas = page.props.jsonLd
+    if (Array.isArray(pageSchemas)) blocks.push(...pageSchemas)
+    else if (pageSchemas) blocks.push(pageSchemas)
+    return blocks
+})
 </script>
 
 <template>
@@ -31,6 +44,16 @@ const ogTitle = computed(() => seo.value.title || seo.value.site_name || appName
         <meta head-key="twitter:title" name="twitter:title" :content="ogTitle" />
         <meta v-if="seo.description" head-key="twitter:description" name="twitter:description" :content="seo.description" />
         <meta v-if="seo.og_image" head-key="twitter:image" name="twitter:image" :content="seo.og_image" />
+
+        <!-- JSON-LD structured data -->
+        <component
+            :is="'script'"
+            v-for="(block, i) in jsonLdBlocks"
+            :key="i"
+            :head-key="`json-ld-${i}`"
+            type="application/ld+json"
+            v-text="JSON.stringify(block)"
+        />
     </Head>
 
     <div class="min-h-screen flex flex-col bg-white">
@@ -98,7 +121,7 @@ const ogTitle = computed(() => seo.value.title || seo.value.site_name || appName
         <!-- Footer -->
         <footer class="bg-gray-900 text-white">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                     <div>
                         <h3 class="text-lg font-semibold mb-4">{{ appName }}</h3>
                         <p class="text-gray-400 text-sm">{{ settings.site_description || 'Building amazing websites.' }}</p>
@@ -121,11 +144,14 @@ const ogTitle = computed(() => seo.value.title || seo.value.site_name || appName
                             <li v-if="settings.address">{{ settings.address }}</li>
                         </ul>
                     </div>
+                    <NewsletterSignup />
                 </div>
                 <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
                     &copy; {{ new Date().getFullYear() }} {{ appName }}. All rights reserved.
                 </div>
             </div>
         </footer>
+
+        <CookieConsent />
     </div>
 </template>

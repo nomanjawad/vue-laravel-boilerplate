@@ -6,7 +6,51 @@
 @source '../**/*.js';
 @source '../**/*.vue';
 
+/* Admin design system (dark shell) — see comments in the file. */
+@import './admin.css';
+
+/* Per-page styles: one file per public page folder. Most stay empty because
+   styling is Tailwind-first, but the file must exist so page-specific CSS has
+   an obvious home when it's needed. */
+@import './pages/home.css';
+@import './pages/about.css';
+@import './pages/contact.css';
+@import './pages/blog.css';
+@import './pages/shop.css';
+@import './pages/careers.css';
+@import './pages/case-studies.css';
+
+/*
+|--------------------------------------------------------------------------
+| Design tokens
+|--------------------------------------------------------------------------
+| Single place to re-brand a project: colors, fonts, spacing, radii.
+| Tailwind v4 exposes each token as utilities, e.g. --color-brand-500
+| -> bg-brand-500 / text-brand-500.
+*/
 @theme {
+    /* Typography */
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+
+    /* Brand palette — change these per project */
+    --color-brand-50: #eef2ff;
+    --color-brand-100: #e0e7ff;
+    --color-brand-300: #a5b4fc;
+    --color-brand-500: #6366f1;
+    --color-brand-600: #4f46e5;
+    --color-brand-700: #4338ca;
+    --color-brand-900: #312e81;
+
+    /* Surfaces */
+    --color-surface-light: #f9fafb;
+    --color-surface-dark: #0f172a;
+
+    /* Layout rhythm */
+    --spacing-section: 5rem;
+
+    /* Corner radii */
+    --radius-card: 0.75rem;
+    --radius-button: 0.5rem;
 }

@@ -11,11 +11,38 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    /**
+     * !! WARNING — every key listed here is exposed to EVERY visitor's browser. !!
+     *
+     * The site_settings table may hold secrets (SMTP passwords, API/recaptcha
+     * secret keys, payment credentials). Never share the whole table; only add
+     * a key to this whitelist if it is safe to print on a public web page.
+     */
+    private const PUBLIC_SETTINGS = [
+        'site_name',
+        'site_description',
+        'og_image',
+        'contact_email',
+        'contact_phone',
+        'address',
+        'whatsapp',
+        'facebook',
+        'twitter',
+        'instagram',
+        'linkedin',
+        'youtube',
+        'shop_currency',
+        'shop_currency_symbol',
+        // Analytics ids are public by nature (visible in page source).
+        'ga_measurement_id',
+        'gtm_container_id',
+        // Cookie-consent banner copy.
+        'cookie_consent_text',
+    ];
+
     protected $rootView = 'app';
 
-    public function __construct(private SeoService $seo)
-    {
-    }
+    public function __construct(private SeoService $seo) {}
 
     public function version(Request $request): ?string
     {
@@ -57,7 +84,7 @@ class HandleInertiaRequests extends Middleware
             ] : ['header' => [], 'footer' => []],
 
             'settings' => $tablesExist
-                ? Setting::pluck('value', 'key')->toArray()
+                ? Setting::whereIn('key', self::PUBLIC_SETTINGS)->pluck('value', 'key')->toArray()
                 : [],
 
             'enabledFeatures' => config('template.features'),
@@ -65,6 +92,10 @@ class HandleInertiaRequests extends Middleware
             'cartCount' => fn () => count($request->session()->get('cart', [])),
 
             'seo' => fn () => $this->resolveSeo($request, $tablesExist),
+
+            // Organization JSON-LD on every page; pages add their own schemas
+            // (Article, JobPosting, breadcrumbs) via a `jsonLd` prop.
+            'organizationJsonLd' => fn () => $tablesExist ? $this->seo->organization() : null,
         ];
     }
 
@@ -74,7 +105,9 @@ class HandleInertiaRequests extends Middleware
      */
     protected function resolveSeo(Request $request, bool $settingsExist): array
     {
-        $settings = $settingsExist ? Setting::pluck('value', 'key') : collect();
+        $settings = $settingsExist
+            ? Setting::whereIn('key', ['site_name', 'site_description', 'og_image'])->pluck('value', 'key')
+            : collect();
         $siteName = $settings->get('site_name') ?: config('app.name', 'WebTemplate');
         $defaultDescription = $settings->get('site_description') ?: '';
         $defaultImage = $settings->get('og_image');
@@ -85,11 +118,11 @@ class HandleInertiaRequests extends Middleware
             : [];
 
         return [
-            'site_name'   => $siteName,
-            'title'       => $meta['title'] ?? null,
+            'site_name' => $siteName,
+            'title' => $meta['title'] ?? null,
             'description' => $meta['description'] ?? $defaultDescription,
-            'og_image'    => $meta['og_image'] ?? $defaultImage,
-            'canonical'   => $request->url(),
+            'og_image' => $meta['og_image'] ?? $defaultImage,
+            'canonical' => $request->url(),
         ];
     }
 }

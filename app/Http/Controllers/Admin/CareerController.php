@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Career;
+use App\Services\SlugService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class CareerController extends Controller
 {
+    public function __construct(private SlugService $slugs) {}
+
     public function index(Request $request)
     {
         return Inertia::render('Admin/Careers/Index', [
@@ -40,7 +42,7 @@ class CareerController extends Controller
             'sort_order' => ['integer', 'min:0'],
         ]);
 
-        $validated['slug'] = $validated['slug'] ?: Str::slug($validated['title']);
+        $validated['slug'] = $this->slugs->generate(new Career, $validated['slug'] ?: $validated['title']);
 
         Career::create($validated);
 
@@ -58,7 +60,7 @@ class CareerController extends Controller
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'slug' => ['nullable', 'string', 'max:255', 'unique:careers,slug,' . $career->id],
+            'slug' => ['nullable', 'string', 'max:255', 'unique:careers,slug,'.$career->id],
             'department' => ['nullable', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'],
             'type' => ['required', 'in:full-time,part-time,contract,remote'],
@@ -68,7 +70,15 @@ class CareerController extends Controller
             'sort_order' => ['integer', 'min:0'],
         ]);
 
+        // Changing a slug breaks published links — auto-create a 301 from the old URL.
+        $oldSlug = $career->slug;
+        $validated['slug'] = ($validated['slug'] ?? null) ?: $oldSlug;
+
         $career->update($validated);
+
+        if ($career->is_active) {
+            $this->slugs->redirectOldSlug('careers', $oldSlug, $career->slug);
+        }
 
         return redirect()->route('admin.careers.index')->with('success', 'Career updated successfully.');
     }
@@ -76,6 +86,7 @@ class CareerController extends Controller
     public function destroy(Career $career)
     {
         $career->delete();
+
         return redirect()->route('admin.careers.index')->with('success', 'Career deleted successfully.');
     }
 }

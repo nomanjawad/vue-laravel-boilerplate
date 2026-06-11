@@ -135,9 +135,19 @@ If your host provides SSH access:
    ```bash
    cd ~/webTemplate
    composer install --no-dev --optimize-autoloader
-   php artisan migrate --force
-   php artisan optimize
+   composer deploy   # storage:link + migrate + optimize + responsecache:clear
    ```
+
+## Scheduler (backups)
+
+Nightly database backups run through Laravel's scheduler. Add ONE cron entry
+in cPanel (replace USER):
+
+```
+* * * * * php /home/USER/webTemplate/artisan schedule:run >> /dev/null 2>&1
+```
+
+Backups are written to `storage/app/` (see `config/backup.php`).
 
 ## Troubleshooting
 

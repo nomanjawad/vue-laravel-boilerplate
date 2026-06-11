@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ClearsResponseCache;
+use App\Models\Concerns\LogsContentActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Page extends Model
 {
+    use ClearsResponseCache;
     use HasFactory;
+    use LogsContentActivity;
 
     protected $fillable = [
         'title', 'slug', 'body', 'template', 'is_published',
@@ -19,11 +23,6 @@ class Page extends Model
         return [
             'is_published' => 'boolean',
         ];
-    }
-
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
     }
 
     public function scopePublished($query)

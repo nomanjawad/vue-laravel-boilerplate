@@ -8,7 +8,11 @@ class JsonDataService
 {
     public function get(string $filename): array
     {
-        $cacheKey = 'json_data_' . $filename;
+        $cacheKey = 'json_data_'.$filename;
+
+        // IMPORTANT: only cache plain arrays here — Laravel Collections/models do not
+
+        // round-trip reliably through the file cache driver used on shared hosting.
 
         return Cache::remember($cacheKey, 3600, function () use ($filename) {
             $path = base_path("data/{$filename}.json");
@@ -18,13 +22,14 @@ class JsonDataService
             }
 
             $content = file_get_contents($path);
+
             return json_decode($content, true) ?? [];
         });
     }
 
     public function clearCache(string $filename): void
     {
-        Cache::forget('json_data_' . $filename);
+        Cache::forget('json_data_'.$filename);
     }
 
     public function clearAllCache(): void
@@ -32,7 +37,7 @@ class JsonDataService
         $files = glob(base_path('data/*.json'));
         foreach ($files as $file) {
             $name = pathinfo($file, PATHINFO_FILENAME);
-            Cache::forget('json_data_' . $name);
+            Cache::forget('json_data_'.$name);
         }
     }
 }

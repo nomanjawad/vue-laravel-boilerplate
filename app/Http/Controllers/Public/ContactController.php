@@ -4,21 +4,19 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ContactMessage;
+use App\Models\Setting;
 use App\Services\JsonDataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use App\Models\Setting;
 use Inertia\Inertia;
 
 class ContactController extends Controller
 {
-    public function __construct(private JsonDataService $jsonData)
-    {
-    }
+    public function __construct(private JsonDataService $jsonData) {}
 
     public function index()
     {
-        return Inertia::render('Public/Contact', [
+        return Inertia::render('Public/Contact/Index', [
             'data' => $this->jsonData->get('contact'),
         ]);
     }

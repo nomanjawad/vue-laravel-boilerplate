@@ -1,0 +1,23 @@
+{
+    // Run `composer ide` once after cloning — generates _ide_helper.php so
+    // Intelephense stops flagging Laravel facades/macros (P1005/P1013 noise).
+    "intelephense.diagnostics.undefinedMethods": false,
+    "intelephense.files.exclude": [
+        "**/node_modules/**",
+        "**/public/build/**",
+        "**/storage/framework/views/*.php"
+    ],
+
+    // Tailwind v4: the CSS file uses @theme/@source at-rules.
+    "css.lint.unknownAtRules": "ignore",
+    "tailwindCSS.experimental.classRegex": [],
+
+    "editor.formatOnSave": false,
+    "[php]": {
+        "editor.defaultFormatter": null
+    },
+    "files.associations": {
+        "*.blade.php": "blade",
+        ".env.example": "dotenv"
+    }
+}

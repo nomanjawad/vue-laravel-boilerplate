@@ -8,6 +8,7 @@ const props = defineProps({
     post: Object,
     categories: Array,
     tags: Array,
+    previewUrl: String,
 })
 
 const form = useForm({
@@ -33,6 +34,15 @@ const submit = () => {
     <div class="flex items-center mb-6">
         <Link href="/admin/posts" class="text-gray-500 hover:text-gray-700 mr-2">&larr;</Link>
         <h1 class="text-2xl font-bold text-gray-900">Edit Post</h1>
+        <!-- Signed link: shareable with clients to review drafts before publishing -->
+        <a
+            v-if="previewUrl"
+            :href="previewUrl"
+            target="_blank"
+            class="ml-auto text-sm text-indigo-600 hover:text-indigo-800"
+        >
+            Preview {{ post.status !== 'published' ? 'draft' : '' }} ↗
+        </a>
     </div>
 
     <form @submit.prevent="submit" class="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -29,16 +29,11 @@ class Order extends Model
         ];
     }
 
-    public function getRouteKeyName(): string
-    {
-        return 'order_number';
-    }
-
     protected static function booted(): void
     {
         static::creating(function (Order $order) {
             if (empty($order->order_number)) {
-                $order->order_number = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
+                $order->order_number = 'ORD-'.date('Ymd').'-'.strtoupper(substr(uniqid(), -5));
             }
         });
     }

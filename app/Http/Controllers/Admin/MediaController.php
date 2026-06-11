@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Media;
+use App\Services\MediaService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class MediaController extends Controller
 {
+    public function __construct(private MediaService $mediaService) {}
+
     public function index(Request $request)
     {
         return Inertia::render('Admin/Media/Index', [
@@ -36,25 +38,15 @@ class MediaController extends Controller
             'alt_text' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $file = $request->file('file');
-        $path = $file->store('media', 'public');
-
-        Media::create([
-            'user_id' => auth()->id(),
-            'filename' => $file->getClientOriginalName(),
-            'path' => $path,
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize(),
-            'alt_text' => $request->alt_text,
-        ]);
+        // Images are WebP-converted, resized, and EXIF-stripped by the service.
+        $this->mediaService->upload($request->file('file'), $request->alt_text, auth()->id());
 
         return back()->with('success', 'File uploaded successfully.');
     }
 
     public function destroy(Media $media)
     {
-        Storage::disk($media->disk)->delete($media->path);
-        $media->delete();
+        $this->mediaService->delete($media);
 
         return back()->with('success', 'File deleted successfully.');
     }

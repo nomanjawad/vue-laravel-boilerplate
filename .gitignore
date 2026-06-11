@@ -10,7 +10,8 @@
 /.idea
 /.nova
 /.phpunit.cache
-/.vscode
+/.vscode/*
+!/.vscode/settings.json
 /.zed
 /.claude
 /auth.json
@@ -23,6 +24,8 @@
 /storage/pail
 /vendor
 _ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
 Homestead.json
 Homestead.yaml
 Thumbs.db

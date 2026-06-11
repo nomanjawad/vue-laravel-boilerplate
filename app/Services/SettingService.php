@@ -9,6 +9,8 @@ class SettingService
 {
     public function all(): array
     {
+        // IMPORTANT: only cache plain arrays here — Laravel Collections/models do not
+        // round-trip reliably through the file cache driver used on shared hosting.
         return Cache::remember('site_settings', 3600, function () {
             return Setting::pluck('value', 'key')->toArray();
         });

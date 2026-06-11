@@ -11,13 +11,11 @@ use Inertia\Inertia;
 
 class HomeController extends Controller
 {
-    public function __construct(private JsonDataService $jsonData)
-    {
-    }
+    public function __construct(private JsonDataService $jsonData) {}
 
     public function index()
     {
-        return Inertia::render('Public/Home', [
+        return Inertia::render('Public/Home/Index', [
             'data' => $this->jsonData->get('home'),
             'featuredPosts' => Schema::hasTable('posts')
                 ? Post::published()->latest('published_at')->take(3)->get(['id', 'title', 'slug', 'excerpt', 'featured_image', 'published_at'])

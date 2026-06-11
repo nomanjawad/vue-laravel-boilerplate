@@ -23,6 +23,11 @@ class SettingSeeder extends Seeder
             ['key' => 'youtube', 'value' => '', 'type' => 'string', 'group' => 'social'],
             ['key' => 'shop_currency', 'value' => 'USD', 'type' => 'string', 'group' => 'shop'],
             ['key' => 'shop_currency_symbol', 'value' => '$', 'type' => 'string', 'group' => 'shop'],
+            ['key' => 'og_image', 'value' => '', 'type' => 'string', 'group' => 'general'],
+            // Analytics scripts load only after cookie-consent acceptance.
+            ['key' => 'ga_measurement_id', 'value' => '', 'type' => 'string', 'group' => 'analytics'],
+            ['key' => 'gtm_container_id', 'value' => '', 'type' => 'string', 'group' => 'analytics'],
+            ['key' => 'cookie_consent_text', 'value' => '', 'type' => 'text', 'group' => 'analytics'],
         ];
 
         foreach ($settings as $setting) {

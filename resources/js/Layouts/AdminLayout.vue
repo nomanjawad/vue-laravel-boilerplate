@@ -42,8 +42,10 @@ const menuItems = computed(() => {
     }
 
     items.push(
+        { title: 'Subscribers', href: '/admin/subscribers', icon: 'team' },
         { title: 'Media', href: '/admin/media', icon: 'media' },
         { title: 'Menus', href: '/admin/menus', icon: 'menus' },
+        { title: 'Redirects', href: '/admin/redirects', icon: 'seo' },
         { title: 'Pages SEO', href: '/admin/page-metas', icon: 'seo' },
         { title: 'Settings', href: '/admin/settings', icon: 'settings' },
     )
@@ -62,7 +64,7 @@ const logout = () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-100">
+    <div class="admin-dark min-h-screen">
         <!-- Mobile sidebar backdrop -->
         <div
             v-if="sidebarOpen"

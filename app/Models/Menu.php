@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ClearsResponseCache;
+use App\Models\Concerns\LogsContentActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Menu extends Model
 {
+    use ClearsResponseCache;
+    use LogsContentActivity;
+
     protected $fillable = ['location', 'title', 'url', 'parent_id', 'sort_order', 'is_active'];
 
     protected function casts(): array
