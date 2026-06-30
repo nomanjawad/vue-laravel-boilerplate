@@ -1,0 +1,34 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "skipLibCheck": true,
+        "isolatedModules": true,
+        "verbatimModuleSyntax": true,
+        "allowImportingTsExtensions": true,
+        "allowJs": true,
+        "checkJs": false,
+        "noEmit": true,
+        "jsx": "preserve",
+        "lib": ["DOM", "DOM.Iterable", "ES2022"],
+        "types": ["node"],
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["resources/js/*"],
+            "@modules/*": ["app/Modules/*/Resources/js/*"]
+        }
+    },
+    "include": [
+        "resources/js/**/*.ts",
+        "resources/js/**/*.tsx",
+        "resources/js/**/*.vue",
+        "resources/js/**/*.d.ts",
+        "app/Modules/**/Resources/js/**/*.ts",
+        "app/Modules/**/Resources/js/**/*.vue"
+    ],
+    "exclude": ["node_modules", "vendor", "public/build"]
+}

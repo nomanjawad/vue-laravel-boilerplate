@@ -1,0 +1,30 @@
+<?php
+
+namespace App\Modules\{{module}}\Http\Controllers\Public;
+
+use App\Http\Controllers\Controller;
+use App\Modules\{{module}}\Models\{{model}};
+use Inertia\Inertia;
+use Inertia\Response;
+
+class {{model}}Controller extends Controller
+{
+    public function index(): Response
+    {
+        return Inertia::render('{{module}}/Public/{{models}}/Index', [
+            '{{plural}}' => {{model}}::query()
+                ->where('is_active', true)
+                ->latest('published_at')
+                ->paginate(12),
+        ]);
+    }
+
+    public function show({{model}} ${{var}}): Response
+    {
+        abort_unless(${{var}}->is_active, 404);
+
+        return Inertia::render('{{module}}/Public/{{models}}/Show', [
+            '{{var}}' => ${{var}},
+        ]);
+    }
+}

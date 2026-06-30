@@ -1,0 +1,379 @@
+<?php
+
+namespace App\Modules\Core;
+
+use App\Modules\Core\Exceptions\ModuleDependencyException;
+use App\Modules\Core\Exceptions\ModuleException;
+use App\Modules\Core\Exceptions\ModuleNotFoundException;
+use App\Modules\Core\Models\Module;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
+
+/**
+ * Central registry for modules.
+ *
+ * Reads the `modules` table (cached as a plain array — file-cache safe per v2
+ * conventions). Falls back to config('template.features.{key}') when the DB or
+ * table isn't reachable yet (fresh install, migrating during install) so the
+ * panel can boot in any state.
+ */
+class ModuleManager
+{
+    private const CACHE_KEY = 'modules.registry';
+
+    /** @var array<string, array> Manifests keyed by module key. */
+    protected array $manifests = [];
+
+    /** @var array<string, \App\Modules\Core\Contracts\ModuleProvider> Boot providers keyed by key. */
+    protected array $providers = [];
+
+    public function registerManifest(string $key, array $manifest): void
+    {
+        $this->manifests[$key] = array_merge([
+            'key' => $key,
+            'name' => ucfirst($key),
+            'description' => '',
+            'version' => '1.0.0',
+            'dependencies' => [],
+            'permissions' => [],
+            'nav' => [],
+            'core' => false,
+            'searchable' => [],
+            'feature_flag_fallback' => $key,
+        ], $manifest);
+    }
+
+    public function registerProvider(string $key, \App\Modules\Core\Contracts\ModuleProvider $provider): void
+    {
+        $this->providers[$key] = $provider;
+    }
+
+    public function provider(string $key): ?\App\Modules\Core\Contracts\ModuleProvider
+    {
+        return $this->providers[$key] ?? null;
+    }
+
+    /** @return array<string, array> */
+    public function manifests(): array
+    {
+        return $this->manifests;
+    }
+
+    public function manifest(string $key): array
+    {
+        if (! isset($this->manifests[$key])) {
+            throw new ModuleNotFoundException("Module [{$key}] is not registered.");
+        }
+
+        return $this->manifests[$key];
+    }
+
+    public function has(string $key): bool
+    {
+        return isset($this->manifests[$key]);
+    }
+
+    /**
+     * Is the module enabled? Reads cached registry from DB; on any failure
+     * (DB down, table missing, migration mid-flight) falls back to the
+     * config('template.features.*') flag so the boot path never throws.
+     */
+    public function enabled(string $key): bool
+    {
+        $manifest = $this->manifests[$key] ?? null;
+
+        if (($manifest['core'] ?? false) === true) {
+            return true;
+        }
+
+        $registry = $this->registry();
+
+        if (isset($registry[$key])) {
+            return ! empty($registry[$key]['enabled']) && empty($registry[$key]['unhealthy']);
+        }
+
+        return (bool) config(
+            'template.features.'.($manifest['feature_flag_fallback'] ?? $key),
+            false
+        );
+    }
+
+    public function unhealthy(string $key): bool
+    {
+        $registry = $this->registry();
+
+        return ! empty($registry[$key]['unhealthy'] ?? false);
+    }
+
+    /** @return array<string, array{enabled:bool, unhealthy:bool, last_error:?string, last_error_at:?string, installed_version:?string}> */
+    public function registry(): array
+    {
+        if (! $this->tablesReady()) {
+            return [];
+        }
+
+        return Cache::rememberForever(self::CACHE_KEY, function (): array {
+            // Plain array — Cache::remember must round-trip through file driver
+            // per v2 conventions (Cache::remember stores arrays, never Collections).
+            return Module::query()
+                ->get(['key', 'enabled', 'unhealthy', 'last_error', 'last_error_at', 'installed_version'])
+                ->keyBy('key')
+                ->map(fn ($m) => [
+                    'enabled' => (bool) $m->enabled,
+                    'unhealthy' => (bool) $m->unhealthy,
+                    'last_error' => $m->last_error,
+                    'last_error_at' => optional($m->last_error_at)->toIso8601String(),
+                    'installed_version' => $m->installed_version,
+                ])
+                ->toArray();
+        });
+    }
+
+    public function forgetCache(): void
+    {
+        Cache::forget(self::CACHE_KEY);
+    }
+
+    /**
+     * Enable a module: verify dependencies, run its migrations + seeders,
+     * sync permissions, clear caches. Idempotent.
+     */
+    public function enable(string $key): void
+    {
+        $manifest = $this->manifest($key);
+
+        foreach ($manifest['dependencies'] as $dep) {
+            if (! $this->enabled($dep)) {
+                throw new ModuleDependencyException(
+                    "Module [{$key}] requires [{$dep}], which is disabled. Enable [{$dep}] first."
+                );
+            }
+        }
+
+        $existing = Module::where('key', $key)->first();
+
+        Module::updateOrCreate(
+            ['key' => $key],
+            [
+                'type' => isset($this->providers[$key]) ? 'physical' : 'virtual',
+                'enabled' => true,
+                'unhealthy' => false,
+                'last_error' => null,
+                'last_error_at' => null,
+                'installed_version' => $manifest['version'] ?? '1.0.0',
+                'installed_at' => $existing?->installed_at ?? now(),
+                'disabled_at' => null,
+            ],
+        );
+
+        $this->forgetCache();
+
+        $this->runMigrations($key);
+
+        foreach ($manifest['seeders'] ?? [] as $seederClass) {
+            Artisan::call('db:seed', ['--class' => $seederClass, '--force' => true]);
+        }
+
+        if (app()->bound(PermissionSyncer::class)) {
+            app(PermissionSyncer::class)->sync();
+        }
+
+        rescue(fn () => Artisan::call('responsecache:clear'), report: false);
+    }
+
+    public function disable(string $key): void
+    {
+        $manifest = $this->manifest($key);
+
+        if (! empty($manifest['core'])) {
+            throw new ModuleException("Module [{$key}] is core and cannot be disabled.");
+        }
+
+        // Block disabling a module that other enabled modules depend on.
+        foreach ($this->manifests as $otherKey => $other) {
+            if ($otherKey === $key) {
+                continue;
+            }
+            if ($this->enabled($otherKey) && in_array($key, $other['dependencies'] ?? [], true)) {
+                throw new ModuleDependencyException(
+                    "Cannot disable [{$key}]: module [{$otherKey}] depends on it. Disable [{$otherKey}] first."
+                );
+            }
+        }
+
+        Module::updateOrCreate(
+            ['key' => $key],
+            ['enabled' => false, 'disabled_at' => now()],
+        );
+
+        $this->forgetCache();
+        rescue(fn () => Artisan::call('responsecache:clear'), report: false);
+    }
+
+    public function markUnhealthy(string $key, Throwable $e): void
+    {
+        if (! $this->tablesReady()) {
+            return;
+        }
+
+        rescue(function () use ($key, $e) {
+            Module::updateOrCreate(
+                ['key' => $key],
+                [
+                    'unhealthy' => true,
+                    'last_error' => substr($e->getMessage(), 0, 1000),
+                    'last_error_at' => now(),
+                ],
+            );
+            $this->forgetCache();
+        }, report: false);
+
+        Log::warning("Module [{$key}] marked unhealthy: ".$e->getMessage());
+    }
+
+    public function clearHealth(string $key): void
+    {
+        if (! $this->tablesReady()) {
+            return;
+        }
+
+        Module::where('key', $key)->update([
+            'unhealthy' => false,
+            'last_error' => null,
+            'last_error_at' => null,
+        ]);
+        $this->forgetCache();
+    }
+
+    public function reinstall(string $key): void
+    {
+        $manifest = $this->manifest($key);
+        $this->runMigrations($key);
+        foreach ($manifest['seeders'] ?? [] as $seederClass) {
+            Artisan::call('db:seed', ['--class' => $seederClass, '--force' => true]);
+        }
+        $this->clearHealth($key);
+    }
+
+    /**
+     * Roll back the module's migrations and detach its permissions.
+     * Destructive — confirmation lives in the UI layer.
+     */
+    public function uninstall(string $key): void
+    {
+        $manifest = $this->manifest($key);
+
+        if (! empty($manifest['core'])) {
+            throw new ModuleException("Module [{$key}] is core and cannot be uninstalled.");
+        }
+
+        $path = $manifest['migrations_path'] ?? null;
+        if ($path && is_dir($path)) {
+            Artisan::call('migrate:rollback', [
+                '--path' => str_replace(base_path().'/', '', $path),
+                '--force' => true,
+            ]);
+        }
+
+        if (app()->bound(PermissionSyncer::class)) {
+            app(PermissionSyncer::class)->dropFor($manifest);
+        }
+
+        Module::where('key', $key)->update([
+            'enabled' => false,
+            'installed_version' => null,
+            'installed_at' => null,
+            'disabled_at' => now(),
+        ]);
+        $this->forgetCache();
+    }
+
+    /**
+     * @return array<int, array{key:string, name:string, description:string, version:string, installed_version:?string, dependencies:array, enabled:bool, unhealthy:bool, last_error:?string, core:bool}>
+     */
+    public function summary(): array
+    {
+        $registry = $this->registry();
+        $rows = [];
+        foreach ($this->manifests as $key => $manifest) {
+            $reg = $registry[$key] ?? [];
+            $rows[] = [
+                'key' => $key,
+                'name' => $manifest['name'],
+                'description' => $manifest['description'] ?? '',
+                'version' => $manifest['version'] ?? '1.0.0',
+                'installed_version' => $reg['installed_version'] ?? null,
+                'dependencies' => $manifest['dependencies'] ?? [],
+                'enabled' => $this->enabled($key),
+                'unhealthy' => $reg['unhealthy'] ?? false,
+                'last_error' => $reg['last_error'] ?? null,
+                'core' => (bool) ($manifest['core'] ?? false),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Sidebar nav flattened from enabled-module manifests + the user's permissions.
+     * Returns an ordered array of nav entries the frontend can render directly.
+     *
+     * @param  array<int, string>  $userPermissions
+     * @return array<int, array>
+     */
+    public function navFor(array $userPermissions, bool $isSuperAdmin = false): array
+    {
+        $nav = [];
+        foreach ($this->manifests as $key => $manifest) {
+            if (! $this->enabled($key)) {
+                continue;
+            }
+            foreach ($manifest['nav'] ?? [] as $entry) {
+                if (! is_array($entry) || empty($entry['label'])) {
+                    continue;
+                }
+                $permission = $entry['permission'] ?? null;
+                if ($permission && ! $isSuperAdmin && ! in_array($permission, $userPermissions, true)) {
+                    continue;
+                }
+                // Defensive defaults — manifests that omit icon or route
+                // shouldn't crash the layout's template render.
+                $nav[] = array_merge([
+                    'module' => $key,
+                    'label' => '',
+                    'icon' => 'cube',
+                    'route' => null,
+                    'href' => null,
+                    'permission' => null,
+                ], $entry);
+            }
+        }
+
+        return $nav;
+    }
+
+    protected function runMigrations(string $key): void
+    {
+        $manifest = $this->manifests[$key] ?? [];
+        $path = $manifest['migrations_path'] ?? null;
+        if ($path && is_dir($path)) {
+            Artisan::call('migrate', [
+                '--path' => str_replace(base_path().'/', '', $path),
+                '--force' => true,
+            ]);
+        }
+    }
+
+    protected function tablesReady(): bool
+    {
+        try {
+            return DB::connection()->getPdo() && Schema::hasTable('modules');
+        } catch (Throwable) {
+            return false;
+        }
+    }
+}

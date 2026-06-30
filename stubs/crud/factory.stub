@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Modules\{{module}}\Database\Factories;
+
+use App\Modules\{{module}}\Models\{{model}};
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
+
+class {{model}}Factory extends Factory
+{
+    protected $model = {{model}}::class;
+
+    public function definition(): array
+    {
+        $title = $this->faker->sentence(4);
+
+        return [
+            'title' => $title,
+{{slugDefinition}}
+            'body' => $this->faker->paragraphs(3, true),
+            'is_active' => true,
+            'published_at' => now(),
+        ];
+    }
+}

@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Modules\{{module}}\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class Update{{model}}Request extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()?->can('{{resource}}.update') ?? false;
+    }
+
+    public function rules(): array
+    {
+        $id = $this->route('{{routeKey}}')?->id;
+
+        return [
+            'title' => ['required', 'string', 'max:191'],
+{{slugUpdateRule}}
+            'body' => ['nullable', 'string'],
+            'is_active' => ['boolean'],
+            'published_at' => ['nullable', 'date'],
+        ];
+    }
+}

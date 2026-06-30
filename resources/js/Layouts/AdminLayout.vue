@@ -1,57 +1,50 @@
 <script setup>
 import { usePage, Link, router } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
+import FlashToaster from '@/Components/Shared/FlashToaster.vue'
+import ConfirmDialog from '@/Components/Shared/ConfirmDialog.vue'
+import NotificationBell from '@/Components/Organisms/NotificationBell.vue'
 
 const page = usePage()
 const sidebarOpen = ref(false)
 
 const user = computed(() => page.props.auth?.user)
-const features = computed(() => page.props.enabledFeatures || {})
+
+// Sidebar is fed by the module registry — each enabled module declares its
+// own nav entries in its manifest, already permission-filtered server-side.
+// Falls back to the legacy enabledFeatures map if the registry isn't shared
+// yet (e.g. mid-upgrade).
+const moduleNav = computed(() => page.props.modules?.nav ?? [])
 
 const menuItems = computed(() => {
-    const items = [
-        { title: 'Dashboard', href: '/admin', icon: 'dashboard' },
-        { title: 'Users', href: '/admin/users', icon: 'users' },
-    ]
+    const items = [{ title: 'Dashboard', href: '/admin', icon: 'dashboard' }]
 
-    if (features.value.blog) {
-        items.push(
-            { title: 'Posts', href: '/admin/posts', icon: 'posts' },
-            { title: 'Categories', href: '/admin/categories', icon: 'categories' },
-            { title: 'Tags', href: '/admin/tags', icon: 'tags' },
-        )
+    for (const entry of moduleNav.value) {
+        // Each entry has `{ label, route, icon, permission, module }`.
+        // The frontend doesn't know Laravel route names without Ziggy, so
+        // entries also accept a literal `href` from manifests (used for
+        // virtual modules during the v2-to-v3 transition).
+        const href = entry.href || routeToHref(entry.route)
+        if (!href) continue
+        items.push({ title: entry.label, href, icon: entry.icon })
     }
 
-    if (features.value.shop) {
-        items.push(
-            { title: 'Products', href: '/admin/products', icon: 'products' },
-            { title: 'Orders', href: '/admin/orders', icon: 'orders' },
-        )
+    // Modules admin — only super-admins manage modules.
+    if (user.value?.is_super_admin || user.value?.roles?.includes('admin')) {
+        items.push({ title: 'Modules', href: '/admin/modules', icon: 'modules' })
     }
-
-    if (features.value.careers) {
-        items.push({ title: 'Careers', href: '/admin/careers', icon: 'careers' })
-    }
-
-    if (features.value.case_studies) {
-        items.push({ title: 'Case Studies', href: '/admin/case-studies', icon: 'case-studies' })
-    }
-
-    if (features.value.teams) {
-        items.push({ title: 'Team', href: '/admin/teams', icon: 'team' })
-    }
-
-    items.push(
-        { title: 'Subscribers', href: '/admin/subscribers', icon: 'team' },
-        { title: 'Media', href: '/admin/media', icon: 'media' },
-        { title: 'Menus', href: '/admin/menus', icon: 'menus' },
-        { title: 'Redirects', href: '/admin/redirects', icon: 'seo' },
-        { title: 'Pages SEO', href: '/admin/page-metas', icon: 'seo' },
-        { title: 'Settings', href: '/admin/settings', icon: 'settings' },
-    )
 
     return items
 })
+
+function routeToHref(name) {
+    if (!name) return null
+    // Conservative name → URL fallback until Ziggy lands in Phase C.
+    // Pattern:  admin.<segment>.index  →  /admin/<segment with dashes>.
+    const m = name.match(/^admin\.([\w-]+(?:\.[\w-]+)*)\.index$/)
+    if (!m) return null
+    return '/admin/' + m[1].replace(/\./g, '/').replace(/_/g, '-')
+}
 
 const isActive = (href) => {
     if (href === '/admin') return page.url === '/admin'
@@ -119,6 +112,7 @@ const logout = () => {
                         <Link href="/" class="text-sm text-gray-500 hover:text-gray-700" target="_blank">
                             View Site
                         </Link>
+                        <NotificationBell />
                         <span class="text-sm text-gray-700">{{ user?.name }}</span>
                         <button
                             @click="logout"
@@ -130,22 +124,13 @@ const logout = () => {
                 </div>
             </header>
 
-            <!-- Flash Messages -->
-            <div v-if="page.props.flash?.success" class="mx-4 sm:mx-6 lg:mx-8 mt-4">
-                <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded">
-                    <p class="text-sm text-green-700">{{ page.props.flash.success }}</p>
-                </div>
-            </div>
-            <div v-if="page.props.flash?.error" class="mx-4 sm:mx-6 lg:mx-8 mt-4">
-                <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded">
-                    <p class="text-sm text-red-700">{{ page.props.flash.error }}</p>
-                </div>
-            </div>
-
             <!-- Page Content -->
             <main class="p-4 sm:p-6 lg:p-8">
                 <slot />
             </main>
         </div>
+
+        <FlashToaster />
+        <ConfirmDialog />
     </div>
 </template>

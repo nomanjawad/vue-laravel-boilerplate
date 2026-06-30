@@ -3,6 +3,7 @@ import { usePage, Link, Head } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import CookieConsent from '@/Components/Shared/CookieConsent.vue'
 import NewsletterSignup from '@/Components/Shared/NewsletterSignup.vue'
+import FlashToaster from '@/Components/Shared/FlashToaster.vue'
 
 const page = usePage()
 
@@ -101,17 +102,8 @@ const jsonLdBlocks = computed(() => {
             </div>
         </header>
 
-        <!-- Flash Messages -->
-        <div v-if="page.props.flash?.success" class="bg-green-50 border-l-4 border-green-400 p-4">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <p class="text-sm text-green-700">{{ page.props.flash.success }}</p>
-            </div>
-        </div>
-        <div v-if="page.props.flash?.error" class="bg-red-50 border-l-4 border-red-400 p-4">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <p class="text-sm text-red-700">{{ page.props.flash.error }}</p>
-            </div>
-        </div>
+        <!-- Toast notifications (replaces hand-coded flash divs) -->
+        <FlashToaster />
 
         <!-- Main Content -->
         <main class="flex-1">

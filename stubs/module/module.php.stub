@@ -1,0 +1,28 @@
+<?php
+
+/**
+ * Module manifest for {{name}}.
+ *
+ * Edit this file to declare permissions, sidebar nav, dependencies, etc.
+ * Every key here flows into:
+ *   - the admin Modules page (`/admin/modules`)
+ *   - the RBAC permission seeder
+ *   - the sidebar
+ *   - the global search index
+ */
+return [
+    'key'          => '{{key}}',
+    'name'         => '{{name}}',
+    'description'  => '{{description}}',
+    'version'      => '1.0.0',
+    'dependencies' => [],            // e.g. ['media']
+    'permissions'  => [
+        // 'thing' => ['view', 'create', 'update', 'delete'],
+    ],
+    'nav'          => [
+        // ['label' => 'Things', 'route' => 'admin.things.index', 'icon' => 'cube', 'permission' => 'thing.view'],
+    ],
+    'searchable'   => [
+        // \App\Modules\{{name}}\Models\Thing::class => ['title', 'body'],
+    ],
+];

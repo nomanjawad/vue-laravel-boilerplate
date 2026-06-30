@@ -1,0 +1,113 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  # Manual deploys: Actions → "Deploy to Production" → "Run workflow".
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target environment (production/staging)'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build frontend assets
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, json
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+      - name: Verify build artifacts
+        run: |
+          test -f vendor/autoload.php || { echo "::error::vendor/autoload.php missing — composer install failed"; exit 1; }
+          test -f public/build/manifest.json || { echo "::error::public/build/manifest.json missing — frontend build failed"; exit 1; }
+
+      - name: Write version file
+        run: |
+          echo "{\"version\":\"$(git describe --tags --abbrev=0)\",\"commit\":\"$(git rev-parse --short HEAD)\"}" > version.json
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via rsync
+        run: |
+          rsync -avz --delete \
+            --exclude='/.git/' \
+            --exclude='/.gitignore' \
+            --exclude='/.gitattributes' \
+            --exclude='/node_modules/' \
+            --exclude='/.env' \
+            --exclude='/vite.config.js' \
+            --exclude='/package.json' \
+            --exclude='/pnpm-lock.yaml' \
+            --exclude='/phpunit.xml' \
+            --exclude='/deploy.sh' \
+            --exclude='/DEPLOYMENT.md' \
+            --exclude='/README.md' \
+            --exclude='/docs/' \
+            --exclude='/references/' \
+            --exclude='/tests/' \
+            --exclude='/resources/js/' \
+            --exclude='/resources/css/' \
+            --exclude='/public/storage' \
+            --exclude='/storage/' \
+            --exclude='/bootstrap/cache/' \
+            --exclude='/data/' \
+            --exclude='*.sql' \
+            --exclude='__MACOSX/' \
+            -e "ssh -p ${{ secrets.SSH_PORT }}" \
+            ./ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
+
+      - name: Run post-deploy commands
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "set -e && cd ${{ secrets.DEPLOY_PATH }} && \
+             mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs storage/app/public bootstrap/cache && \
+             chmod -R ug+rwx storage bootstrap/cache && \
+             php artisan template:doctor --production && \
+             php artisan migrate --force && \
+             php artisan storage:link --force && \
+             php artisan optimize:clear && \
+             php artisan responsecache:clear && \
+             php artisan config:cache && \
+             php artisan route:cache && \
+             (php artisan view:cache || true) && \
+             php artisan --version && \
+             echo 'Deploy finished successfully.'"

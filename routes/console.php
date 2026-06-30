@@ -23,3 +23,14 @@ Artisan::command('inspire', function () {
 // Nightly database backup to storage/app (spatie/laravel-backup, local disk).
 Schedule::command('backup:run --only-db')->dailyAt('02:00');
 Schedule::command('backup:clean')->dailyAt('03:00');
+
+// Queue worker — drains the database queue once per minute. Pattern designed
+// for shared hosting where a long-running `queue:work` daemon isn't possible:
+// `--stop-when-empty` means each tick processes whatever's pending and exits.
+Schedule::command('queue:work --queue=default --stop-when-empty --tries=3 --max-time=55')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Prune stale failed jobs every Sunday.
+Schedule::command('queue:prune-failed --hours=336')->weekly()->sundays()->at('04:00');

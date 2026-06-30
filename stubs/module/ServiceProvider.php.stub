@@ -1,0 +1,15 @@
+<?php
+
+namespace App\Modules\{{name}};
+
+use App\Modules\Core\AbstractModuleServiceProvider;
+
+class {{name}}ModuleServiceProvider extends AbstractModuleServiceProvider
+{
+    public string $key = '{{key}}';
+    public string $name = '{{name}}';
+    public string $version = '1.0.0';
+    public array $dependencies = [];
+
+    public string $manifestPath = __DIR__ . '/module.php';
+}

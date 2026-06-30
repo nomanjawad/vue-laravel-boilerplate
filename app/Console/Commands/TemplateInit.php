@@ -97,6 +97,11 @@ class TemplateInit extends Command
             Artisan::call('ide-helper:models', ['--nowrite' => true]);
         }
 
+        // 5. Health check — fails loudly if anything's missing before first run.
+        $this->newLine();
+        $this->info('Running template:doctor — final preflight…');
+        Artisan::call('template:doctor', [], $this->output);
+
         $this->newLine();
         $this->info("Done! Log in at /admin with {$adminEmail}.");
         $this->comment('Next: edit data/*.json for static page content, then `composer run dev`.');

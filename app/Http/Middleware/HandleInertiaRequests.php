@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Menu;
 use App\Models\Setting;
+use App\Modules\Core\ModuleManager;
 use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -42,7 +43,7 @@ class HandleInertiaRequests extends Middleware
 
     protected $rootView = 'app';
 
-    public function __construct(private SeoService $seo) {}
+    public function __construct(private SeoService $seo, private ModuleManager $modules) {}
 
     public function version(Request $request): ?string
     {
@@ -62,7 +63,23 @@ class HandleInertiaRequests extends Middleware
                     'name' => $request->user()->name,
                     'email' => $request->user()->email,
                     'roles' => $request->user()->getRoleNames(),
+                    'permissions' => $request->user()->getAllPermissions()->pluck('name')->toArray(),
+                    'is_super_admin' => $request->user()->hasRole('super-admin'),
                 ] : null,
+            ],
+
+            // Module registry — sidebar uses this; pages can read it via
+            // useModule() to gracefully handle "module disabled while page open".
+            'modules' => fn () => [
+                'nav' => $this->modules->navFor(
+                    $request->user()?->getAllPermissions()->pluck('name')->toArray() ?? [],
+                    (bool) $request->user()?->hasRole('super-admin'),
+                ),
+                'enabled' => collect($this->modules->manifests())
+                    ->filter(fn ($_, $k) => $this->modules->enabled($k))
+                    ->keys()
+                    ->values()
+                    ->toArray(),
             ],
 
             'flash' => [
