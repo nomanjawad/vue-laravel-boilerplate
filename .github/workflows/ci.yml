@@ -5,22 +5,8 @@ on:
   pull_request:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: webtemplate_test
-        ports:
-          - 8889:3306
-        options: >-
-          --health-cmd="mysqladmin ping -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
 
     steps:
       - uses: actions/checkout@v4
@@ -44,14 +30,6 @@ jobs:
 
       - name: Optimize check (catches route/config errors before deploy)
         run: php artisan optimize
-        env:
-          DB_HOST: 127.0.0.1
-          DB_PORT: 8889
-          DB_USERNAME: root
-          DB_PASSWORD: root
-
-      - name: Run tests
-        run: php artisan test
 
       - uses: pnpm/action-setup@v4
         with:

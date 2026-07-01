@@ -1,161 +1,323 @@
-# WebTemplate
+# webTemplate
 
-A Laravel + Vue 3 + Inertia.js boilerplate for building small-to-medium websites. Designed to deploy on shared hosting (cPanel, SiteGround, Hostinger).
+Laravel 13 + Vue 3 + Inertia + Tailwind v4 boilerplate for small-to-medium websites.
+Ships an admin panel, a public site, and a **toggleable module system** so every
+feature (blog, shop, testimonials, events, …) lives in its own folder and can be
+turned on or off from the dashboard.
 
-## Tech Stack
+- **Backend:** Laravel 13 (PHP 8.3+)
+- **Frontend:** Vue 3 (Composition API + `<script setup lang="ts">`) + Tailwind CSS v4
+- **Bridge:** Inertia.js + Ziggy (typed routes)
+- **Database:** MySQL 5.7+ / MariaDB 10.3+ (**no SQLite**)
+- **Bundler:** Vite 8
+- **Package managers:** Composer + **pnpm** (never npm)
 
-- **Backend:** Laravel 13 (PHP 8.1+)
-- **Frontend:** Vue 3 (Composition API) + Tailwind CSS
-- **Bridge:** Inertia.js
-- **Database:** MySQL (local via MAMP/XAMPP, production via cPanel) — no SQLite
-- **Bundler:** Vite
+---
 
-## Quick Start
+## 1. Quick start
 
 ```bash
-# Clone and install
-git clone <repo-url> my-project
-cd my-project
+git clone <repo> my-project && cd my-project
 composer install
 pnpm install
 
-# Configure
-cp .env.example .env          # set MySQL credentials (MAMP: port 8889, root/root)
+cp .env.example .env               # set MySQL creds
 php artisan key:generate
 
-# Interactive setup: site name, feature flags, admin user, migrate + seed
-php artisan template:init
-
-# Run
-php artisan serve
-pnpm run dev
+php artisan template:init          # interactive: site name, admin user, migrate + seed
+php artisan serve                  # http://localhost:8000
+pnpm run dev                       # Vite HMR
 ```
 
-Visit `http://localhost:8000`. Admin panel at `/admin` with the credentials you chose.
+Admin: `/admin` with the credentials you set in `template:init`.
 
 ### Post-clone checklist
 
-1. `cp .env.example .env` and set MySQL credentials (**MySQL only — no SQLite**)
-2. `php artisan key:generate`
-3. `php artisan template:init` — sets site name, writes `FEATURE_*` flags (so flags always match shipped routes), creates the admin user, runs migrate + seed (+ optional demo content)
-4. `composer ide` — generates IDE helper stubs (kills Intelephense false positives)
-5. `php artisan optimize` — must pass cleanly before any deploy (CI also checks this)
-6. Edit `data/*.json` for static page content
+1. `.env` has MySQL creds (MAMP: `DB_PORT=8889`, `DB_USERNAME=root`, `DB_PASSWORD=root`).
+2. `composer ide` — regenerates IDE helper stubs + TypeScript DTOs + Ziggy routes.
+3. `php artisan template:doctor` — health check (extensions, DB, storage link, queue).
+4. `php artisan optimize` — must pass cleanly (CI enforces this).
 
-## Features
+---
 
-| Feature | Default | Config Flag |
-|---------|---------|-------------|
-| Blog (Posts, Categories, Tags) | On | `FEATURE_BLOG` |
-| Shop (Products, Cart, Checkout) | On | `FEATURE_SHOP` |
-| Team Members | On | `FEATURE_TEAMS` |
-| Contact Form | On | `FEATURE_CONTACT_FORM` |
-| Careers | Off | `FEATURE_CAREERS` |
-| Case Studies | Off | `FEATURE_CASE_STUDIES` |
+## 2. Architecture
 
-Built-in on every project: redirect manager + 404 monitoring, newsletter capture,
-cookie-consent-gated analytics, XML sitemap, JSON-LD structured data, full-page
-response cache, image optimization (WebP + sizes on upload), activity log,
-nightly DB backups, branded error pages, WordPress importer
-(`php artisan import:wordpress export.xml`).
+### 2.1 Modules — the load-bearing idea
 
-Toggle features in `.env`:
+Every feature is a **self-contained module** under `app/Modules/{Name}/`:
+
+```
+app/Modules/Testimonials/
+  TestimonialsModuleServiceProvider.php   # auto-discovered
+  module.php                              # manifest: permissions, nav, dependencies
+  Http/Controllers/{Admin,Public}/
+  Http/Requests/
+  Models/
+  Policies/
+  Database/{Migrations,Factories,Seeders}/
+  Routes/testimonials.php                 # module-owned routes
+  Resources/js/Pages/{Admin,Public}/      # Vue pages resolved by Inertia
+  Resources/js/Components/                # module-internal only — no cross-module imports
+  Services/
+  Tests/Feature/
+```
+
+**Toggle modules on/off from `/admin/modules`.** The `modules` DB table is
+the source of truth; enabling runs migrations + seeders + syncs permissions;
+disabling stops route registration on the next boot (data preserved);
+uninstalling rolls back migrations and drops permissions.
+
+**Fault isolation:** every module's `register()`/`bootModule()` runs inside
+`rescue()`. A broken module is marked unhealthy in the registry and skipped —
+it will never 500 the rest of the panel. Dashboard shows a red badge; the
+admin can Reinstall from `/admin/modules`.
+
+**`config/modules.php`** holds **virtual modules** — legacy v2 features
+(users, settings, media, menus, blog, shop, …) that use the classic Laravel
+layout but participate in the module registry. New features use physical
+modules.
+
+### 2.2 Component layering (strict)
+
+```
+Atoms       →  Molecules  →  Organisms  →  Pages
+```
+
+- `resources/js/Components/Atoms/` — primitives (AppButton, AppInput, AppIcon…). No API calls, no `useForm()`.
+- `resources/js/Components/Molecules/` — one concern from Atoms (AppFormField, AppCard, AppPagination).
+- `resources/js/Components/Organisms/` — full features (DataTable, FormShell, AppMediaPicker, GlobalSearch, NotificationBell).
+- `resources/js/Layouts/` — layout shells only (AdminLayout, PublicLayout, AuthLayout).
+- `app/Modules/{X}/Resources/js/Components/` — module-internal Vue. **Never imported by another module.**
+
+The `NoCrossModuleImportsTest` used to enforce that automatically — after
+removing `tests/` this contract is enforced by review only.
+
+### 2.3 Layer conventions
+
+- **Routes declare their keys per-route** (`{model:slug}` public, id-binding admin). **Never** add `getRouteKeyName()` to a model.
+- **DTOs are typed once** with `spatie/laravel-data` + `#[TypeScript]`; `composer ide` regenerates `resources/js/types/types.d.ts`.
+- **Ziggy** — use `route('admin.testimonials.index')` in Vue, never literal URLs. Types are regenerated by `composer ide`.
+- **`HandleInertiaRequests::PUBLIC_SETTINGS`** is the only path a settings key reaches the browser. Add cautiously — every entry is public on every page.
+- **`Cache::remember` stores plain arrays**; the file cache can't round-trip Eloquent collections.
+- **Old-MySQL safe migrations:** `varchar(191)` for unique indexes, no `TEXT`/`JSON` defaults.
+
+### 2.4 Directory map
+
+```
+app/
+  Console/Commands/            template:doctor, template:init, make:module, make:crud, import:wordpress
+  Data/                        Core DTOs (AuthData, MenuItemData, ModulesSharedData, …)
+  Http/Controllers/{Admin,Auth,Public}/
+  Http/Middleware/             HandleInertiaRequests, AdminMiddleware, HandleRedirects
+  Models/                      Legacy v2 models (Post, Product, Menu, User, …)
+  Modules/
+    Core/                      ModuleManager, AbstractModuleServiceProvider, PermissionSyncer, EnsureModuleEnabled
+    Testimonials|Faqs|Events   Sample physical modules
+  Providers/                   ModulesServiceProvider (orchestrates all modules)
+  Services/                    AdminSearchService, CartService, MediaService, SeoService, …
+
+config/
+  modules.php                  Virtual-module registry (legacy features)
+  template.php                 Feature flag fallback
+
+data/                          JSON content for static public pages
+resources/
+  js/
+    Layouts/                   Layout shells
+    Pages/                     Core admin + public pages (module pages live under app/Modules)
+    Components/{Atoms,Molecules,Organisms}/
+    Composables/               useImageUrl, useShortcuts, useConfirm, usePermissions
+    types/                     Generated: types.d.ts, ziggy.d.ts, inertia.d.ts
+  css/                         app.css (design tokens), admin.css (dark admin theme), pages/*.css
+  views/                       Blade root + branded email templates
+
+routes/                        Legacy v2 route files (module routes live in app/Modules/*/Routes)
+stubs/                         Generator templates (make:module, make:crud) — do not delete
+public/
+  debug.php                    Token-gated recovery tool (set DEBUG_TOKEN in .env to enable)
+```
+
+---
+
+## 3. Adding a feature
+
+New features are physical modules. Don't add to `routes/admin.php` or
+`app/Http/Controllers/Admin/`; use the generators.
+
+```bash
+# 1. Scaffold the folder + provider + manifest
+php artisan make:module Newsletter --description="Email list capture and drip."
+
+# 2. Stamp a CRUD resource inside it
+php artisan make:crud Subscriber --module=Newsletter --slug --public
+# Flags:
+#   --slug          adds a unique slug column + slug field on Create/Edit pages
+#   --soft-deletes  adds deleted_at + SoftDeletes trait
+#   --media         accepts the flag but doesn't yet add a media_id column (manual for now)
+#   --public        stamps a public controller (you wire the public route by hand)
+
+# 3. Edit app/Modules/Newsletter/module.php — set dependencies, icon, searchable models
+
+# 4. Toggle on
+#    Visit /admin/modules and flip the switch. Migrations + permission sync run automatically.
+```
+
+**Generator stubs live in `stubs/module/` and `stubs/crud/`.** Edit them
+per-project if the default shape doesn't fit — they're plain files.
+
+**Icons in sidebar nav** come from `resources/js/Components/Atoms/AppIcon.vue`.
+The built-in set is small (~16 SVG paths); if you set a manifest icon that
+isn't in the map it falls back to `cube`. Extend the `paths` map in
+`AppIcon.vue` to add more.
+
+### Regenerate types after any change
+
+```bash
+composer ide
+# = ide-helper:generate + ide-helper:models --nowrite + ide-helper:meta
+#   + typescript:transform + ziggy:generate
+```
+
+Run this after adding models, migrations, or DTOs.
+
+---
+
+## 4. Feature flags (legacy virtual modules)
+
+Virtual modules in `config/modules.php` back-compat the v2 flags:
+
 ```
 FEATURE_BLOG=true
 FEATURE_SHOP=false
 FEATURE_CAREERS=true
+FEATURE_CASE_STUDIES=true
+FEATURE_TEAMS=true
+FEATURE_CONTACT_FORM=true
 ```
 
-## Architecture
+The `modules` DB table wins over these flags. `.env` is the fallback for
+fresh installs where the DB isn't reachable yet.
 
-### Content Strategy
+---
 
-- **Static content** — Page sections (hero, features, stats) live in `data/*.json` files. Edit per project.
-- **Dynamic content** — Blogs, products, careers, teams, menus, settings managed via admin panel.
+## 5. Static content
 
-### Key Directories
+Public page sections (hero copy, feature cards, stats bands) live in
+`data/*.json` — one file per page (`home.json`, `about.json`, `contact.json`,
+`header.json`, `footer.json`). Edit per project; no admin needed for these.
+
+Dynamic content (blog posts, products, testimonials, events, FAQs, careers,
+case studies, team, menus, settings, media) is managed from `/admin`.
+
+---
+
+## 6. Deployment
+
+### 6.1 GitHub Actions (recommended)
+
+Tag a release or trigger manually:
+
+- **Automatic:** push a tag matching `v*.*.*` → `.github/workflows/deploy.yml` fires.
+- **Manual:** Actions → "Deploy to Production" → Run workflow (pick production/staging).
+
+Required repo secrets:
 
 ```
-app/
-├── Http/Controllers/
-│   ├── Admin/          # Admin panel controllers
-│   ├── Auth/           # Authentication controllers
-│   └── Public/         # Public-facing controllers
-├── Models/             # Eloquent models
-└── Services/           # Business logic (Cart, Order, Payment, SEO, JSON data)
-
-resources/js/
-├── Layouts/            # Full layout shells ONLY (PublicLayout, AdminLayout, AuthLayout)
-├── Pages/
-│   ├── Admin/          # Admin panel pages
-│   ├── Auth/           # Login, Register, etc.
-│   └── Public/         # One folder per page: Home/Index.vue + Home/components/
-│                       #   Pages compose section components; markup lives in sections.
-│                       #   (See Pages/Public/Home for the reference example.)
-├── Components/
-│   ├── Atoms/          # Smallest reusable pieces (AppButton, Badge, SectionHeading)
-│   └── Shared/         # Cross-page components (CookieConsent, NewsletterSignup, BrandLogo)
-└── Composables/        # useImageUrl, useConsentScripts, ...
-
-resources/css/
-├── app.css             # Design tokens (@theme): brand colors, fonts, spacing, radii
-├── admin.css           # Admin dark-theme design system (glass / btn-grad / field)
-└── pages/*.css         # One file per public page — may be empty, must exist
-
-data/                   # JSON content files for static pages
-routes/                 # Feature-split route files
+DEPLOY_HOST         # ssh host
+DEPLOY_USER         # ssh user
+DEPLOY_PATH         # absolute path on server
+DEPLOY_SSH_KEY      # private key contents
 ```
 
-### Route Files
+The workflow runs `composer install --no-dev`, `pnpm build`, rsyncs over
+SSH, then remotely runs `optimize:clear + migrate --force + optimize`.
 
-Routes are split by feature and loaded conditionally:
+### 6.2 Shared hosting (cPanel / SiteGround / Hostinger)
 
-- `routes/auth.php` — Login, register, password reset
-- `routes/admin.php` — Core admin (dashboard, users, settings, menus, media)
-- `routes/admin-blog.php` — Blog admin (if enabled)
-- `routes/admin-shop.php` — Shop admin (if enabled)
-- `routes/admin-optional.php` — Careers, case studies, teams (if enabled)
-- `routes/public.php` — Home, about, contact, profile
-- `routes/public-blog.php` — Blog pages (if enabled)
-- `routes/public-shop.php` — Shop, cart, checkout (if enabled)
-- `routes/public-optional.php` — Careers, case studies (if enabled)
+Requirements: PHP 8.3+, MySQL 5.7+/MariaDB 10.3+, extensions `mbstring bcmath pdo_mysql gd exif intl zip openssl curl fileinfo tokenizer xml`.
 
-### Payment System
+**One-time server setup:**
 
-The shop uses a `DummyPaymentService` that simulates payments (90% success rate) for testing. To integrate a real gateway:
+1. Upload the project (rsync or the host's Git deploy). Exclude `node_modules`, `vendor`, `.git`, `.env*`.
+2. `cd ~/webTemplate && composer install --no-dev --optimize-autoloader`
+3. `cp .env.example .env` — set `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, DB creds, `MAIL_*`.
+4. `php artisan key:generate && php artisan migrate --force && php artisan storage:link`
+5. `php artisan optimize`
+6. Point the document root at `public/` (cPanel: Domains → Manage → Document Root; SiteGround: Site Tools → Domain → Manage → Document Root; Hostinger: hPanel → Domains → Manage).
 
-1. Create a new service implementing the same `charge()` interface
-2. Bind it in `AppServiceProvider`
+**Every subsequent deploy:**
 
-## Customizing Per Project
-
-1. **Edit JSON files** in `data/` for static page content
-2. **Toggle features** via `.env` flags
-3. **Update branding** — logo, colors in Tailwind, site name in settings
-4. **Add pages** — Create new Vue pages in `resources/js/Pages/Public/`
-
-## Deployment
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step shared hosting deployment guide.
-
-Quick deploy with SSH:
 ```bash
-bash deploy.sh production
+composer deploy
+# = template:doctor --production
+#   storage:link, migrate --force, typescript:transform, ziggy:generate,
+#   optimize, responsecache:clear
 ```
 
-After uploading code changes on subsequent deploys:
+**Recovery tool:** `public/debug.php?t={DEBUG_TOKEN}` — token-gated,
+pure-PHP page that checks extensions/DB/storage/log tail without booting
+Laravel. Enable by setting `DEBUG_TOKEN` in `.env`; disable by unsetting.
+
+**cPanel-specific:** no `--strip-comments` on `mysqldump` (older versions
+choke). Set `DB_DUMP_BINARY_PATH=/usr/bin/mysqldump`. Some hosts silently
+cache config; `optimize:clear` after every deploy.
+
+**SiteGround-specific:** their PHP selector defaults to a version older
+than 8.3 — flip it in Site Tools → DevOps → PHP Manager first. Ultrafast
+PHP + Dynamic Cache should both be on.
+
+### 6.3 Queue on shared hosting
+
+No long-running worker needed. `routes/console.php` schedules
+`queue:work --stop-when-empty --tries=3` every minute. Add the standard
+cron:
+
+```
+* * * * * cd /home/user/webTemplate && php artisan schedule:run >> /dev/null 2>&1
+```
+
+---
+
+## 7. Conventions
+
+- **`pnpm` never `npm`.**
+- **MySQL only** — no SQLite in tests, config, or production.
+- **No cross-module imports** — Atoms/Molecules/Organisms are shared; anything under `app/Modules/{X}/Resources/js/Components/` is module-private.
+- **Uploads through `MediaService`** — the controller enforces a MIME whitelist (JPEG/PNG/WebP/GIF/PDF); the service double-checks. SVG excluded deliberately (script tags render inline).
+- **Route keys per route**, never `getRouteKeyName()` on models.
+- **`HandleInertiaRequests::PUBLIC_SETTINGS`** whitelists what's exposed to every visitor.
+- **Anything committed to `main` runs `php artisan optimize` + `pnpm build` clean** — CI enforces this.
+
+---
+
+## 8. Useful commands
+
 ```bash
-composer deploy   # storage:link + migrate + optimize + responsecache:clear
+composer ide                        # regenerate IDE helpers + TS + Ziggy
+composer deploy                     # production deploy steps (also run by GH Actions)
+
+php artisan template:doctor         # health check
+php artisan template:init           # first-run interactive setup
+
+php artisan make:module {Name}
+php artisan make:crud {Model} --module={Name} [--slug --soft-deletes --media --public]
+
+php artisan import:wordpress {file.xml}
 ```
 
-## Admin Panel
+---
 
-Access at `/admin` after login. Manage:
-- Users & Roles
-- Blog Posts, Categories, Tags
-- Products & Orders
-- Careers, Case Studies, Team Members
-- Media Library
-- Navigation Menus
-- Page SEO Meta
-- Site Settings (contact info, social links)
+## 9. Reference: existing modules
+
+**Physical (`app/Modules/`):**
+- Testimonials
+- FAQs
+- Events
+
+**Virtual (`config/modules.php`, legacy v2 layout):**
+- users, settings, media, menus, page_metas, redirects, subscribers, contact-form
+- blog (posts, categories, tags)
+- shop (products, orders)
+- careers, case-studies, teams
+
+All appear on `/admin/modules` with the same toggle/health/uninstall UX.

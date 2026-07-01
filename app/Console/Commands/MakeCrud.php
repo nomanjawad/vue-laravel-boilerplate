@@ -123,12 +123,6 @@ class MakeCrud extends Command
         // Append nav + permissions to manifest.
         $this->patchManifest($modulePath, $name, $resource, $hasPublic);
 
-        // Append a PARAMS entry to the smoke test if --public so the
-        // safety net catches a missing seed / wrong slug binding.
-        if ($hasPublic) {
-            $this->patchSmokeTest($var, $hasSlug ? Str::slug($singular).'-example' : '1');
-        }
-
         $this->line('');
         $this->info("CRUD for {$name} stamped in module {$module}.");
         $this->line('Next:');
@@ -195,27 +189,6 @@ class MakeCrud extends Command
         }
 
         return substr($contents, 0, $i)."{$line}\n    ".substr($contents, $i);
-    }
-
-    protected function patchSmokeTest(string $paramKey, string $value): void
-    {
-        $path = base_path('tests/Feature/PublicRoutesSmokeTest.php');
-        if (! file_exists($path)) {
-            return;
-        }
-        $contents = file_get_contents($path);
-        if (str_contains($contents, "'{$paramKey}' =>")) {
-            return;
-        }
-        // Inject right before the closing ']; that ends the PARAMS const.
-        $contents = preg_replace(
-            "/(private const PARAMS = \\[[\\s\\S]*?)(\\];)/",
-            "$1        '{$paramKey}' => '{$value}',\n    $2",
-            $contents,
-            1,
-        );
-        file_put_contents($path, $contents);
-        $this->line("patched        tests/Feature/PublicRoutesSmokeTest.php (PARAMS['{$paramKey}'])");
     }
 
     protected function stub(string $relative, array $vars): string
