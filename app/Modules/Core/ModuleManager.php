@@ -124,6 +124,14 @@ class ModuleManager
             return [];
         }
 
+        // The cache facade may not be bound yet if `enabled()` is called during
+        // the service-provider register phase (before Laravel binds the cache
+        // manager). Fall back to an empty registry — `enabled()` then falls
+        // back to config('template.features.*'), and the panel still boots.
+        if (! app()->bound('cache')) {
+            return [];
+        }
+
         return Cache::rememberForever(self::CACHE_KEY, function (): array {
             // Plain array — Cache::remember must round-trip through file driver
             // per v2 conventions (Cache::remember stores arrays, never Collections).

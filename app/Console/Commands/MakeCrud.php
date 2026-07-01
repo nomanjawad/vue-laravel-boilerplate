@@ -146,14 +146,16 @@ class MakeCrud extends Command
         }
         $contents = file_get_contents($manifestPath);
 
-        $singular = Str::singular($resource);
-        $permLine = "        '{$singular}' => ['view', 'create', 'update', 'delete'],";
-        if (! str_contains($contents, "'{$singular}' =>")) {
+        // Permissions and route names use the plural resource key ({resource}.view)
+        // — matches the routes stub's `can:{{resource}}.view` middleware and the
+        // existing v2 modules in config/modules.php.
+        $permLine = "        '{$resource}' => ['view', 'create', 'update', 'delete'],";
+        if (! str_contains($contents, "'{$resource}' =>")) {
             $contents = $this->appendToArrayBlock($contents, 'permissions', $permLine);
         }
 
         $models = Str::plural($name);
-        $navLine = "        ['label' => '{$models}', 'route' => 'admin.{$resource}.index', 'icon' => 'cube', 'permission' => '{$singular}.view'],";
+        $navLine = "        ['label' => '{$models}', 'route' => 'admin.{$resource}.index', 'icon' => 'cube', 'permission' => '{$resource}.view'],";
         if (! str_contains($contents, "'admin.{$resource}.index'")) {
             $contents = $this->appendToArrayBlock($contents, 'nav', $navLine);
         }

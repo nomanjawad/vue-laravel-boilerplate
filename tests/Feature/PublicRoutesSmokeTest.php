@@ -98,6 +98,9 @@ class PublicRoutesSmokeTest extends TestCase
         'category' => 'smoke',
         'slug' => 'smoke-page',
         'token' => 'dummy-token',
+            'testimonial' => '1',
+            'faq' => '1',
+            'event' => 'event-example',
     ];
 
     public function test_all_public_get_routes_do_not_500(): void

@@ -40,9 +40,13 @@ class ModulesServiceProvider extends ServiceProvider
             $manager->registerProvider($key, new VirtualModuleProvider($key, $manifest));
         }
 
-        // 2. Physical modules at app/Modules/{X}/Module*ServiceProvider.php.
-        // Discovery is glob-based so adding a module is a single drop-in.
-        foreach (glob(app_path('Modules/*/Module*ServiceProvider.php')) ?: [] as $file) {
+        // 2. Physical modules at app/Modules/{X}/{X}ModuleServiceProvider.php
+        // (as stamped by `make:module`). Discovery is glob-based so adding
+        // a module is a single drop-in; the abstract base is skipped.
+        foreach (glob(app_path('Modules/*/*ModuleServiceProvider.php')) ?: [] as $file) {
+            if (str_ends_with($file, '/AbstractModuleServiceProvider.php')) {
+                continue;
+            }
             $relative = str_replace([app_path(), '.php', '/'], ['App', '', '\\'], $file);
             try {
                 /** @var AbstractModuleServiceProvider $provider */

@@ -71,9 +71,8 @@ class MakeModule extends Command
         ]);
         file_put_contents("{$base}/{$name}ModuleServiceProvider.php", $provider);
 
-        // Empty route stubs.
-        file_put_contents("{$base}/Routes/admin.php", "<?php\n\n// Admin routes for {$name} module.\n");
-        file_put_contents("{$base}/Routes/public.php", "<?php\n\n// Public routes for {$name} module.\n");
+        // Empty Routes/ folder — `make:crud` stamps the real routes file per
+        // resource (e.g. Routes/testimonials.php). No placeholder files.
 
         $this->info("Module [{$name}] scaffolded at app/Modules/{$name}/");
         $this->line('');

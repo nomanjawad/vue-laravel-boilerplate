@@ -63,7 +63,7 @@ function destroy(id: number) {
                 <tr v-for="row in {{plural}}.data" :key="row.id">
                     <td class="px-4 py-2 text-sm">
                         <Link :href="route('admin.{{resource}}.edit', row.id)" class="text-indigo-600 hover:underline">
-                            {{ '{{' }} row.title {{ '}}' }}
+                            {{ row.title }}
                         </Link>
                     </td>
                     <td class="px-4 py-2 text-sm">
