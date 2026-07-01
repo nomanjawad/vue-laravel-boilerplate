@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\Admin\NotificationsController;
 use App\Http\Controllers\Admin\PageMetaController;
 use App\Http\Controllers\Admin\RedirectController;
+use App\Http\Controllers\Admin\SearchController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\SubscriberController;
 use App\Http\Controllers\Admin\UserController;
@@ -16,6 +17,9 @@ use Illuminate\Support\Facades\Route;
 // Dashboard is open to anyone who can hit the admin panel — the panel itself
 // already requires auth + admin role via the bootstrap middleware stack.
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+// Global admin search — any logged-in admin; results are permission-filtered.
+Route::get('search', [SearchController::class, 'index'])->name('search.index');
 
 // Notifications (in-app bell). Available to any logged-in admin.
 Route::get('notifications', [NotificationsController::class, 'index'])->name('notifications.index');

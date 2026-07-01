@@ -38,13 +38,31 @@ class PermissionSyncer
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $admin->syncPermissions($desired);
 
-        // Editor: view/create/update on content resources only.
+        // Editor: view/create/update on content modules only — never core/admin resources.
+        $coreResources = [];
+        foreach ($this->manager->manifests() as $manifest) {
+            if (($manifest['core'] ?? false) !== true) {
+                continue;
+            }
+            foreach ($manifest['permissions'] ?? [] as $resource => $actions) {
+                $coreResources[] = $resource;
+            }
+        }
+
         $editor = Role::firstOrCreate(['name' => 'editor', 'guard_name' => 'web']);
         $editorGrants = array_values(array_filter(
             $desired,
-            fn ($name) => str_ends_with($name, '.view')
-                || str_ends_with($name, '.create')
-                || str_ends_with($name, '.update'),
+            function ($name) use ($coreResources) {
+                $resource = explode('.', $name, 2)[0];
+
+                if (in_array($resource, $coreResources, true)) {
+                    return false;
+                }
+
+                return str_ends_with($name, '.view')
+                    || str_ends_with($name, '.create')
+                    || str_ends_with($name, '.update');
+            },
         ));
         $editor->syncPermissions($editorGrants);
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -27,7 +28,7 @@ class UserController extends Controller
     public function create()
     {
         return Inertia::render('Admin/Users/Create', [
-            'roles' => Role::all(),
+            'roles' => $this->assignableRoles(),
         ]);
     }
 
@@ -37,7 +38,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', Rules\Password::defaults()],
-            'role' => ['required', 'string', 'exists:roles,name'],
+            'role' => ['required', 'string', Rule::in($this->assignableRoles()->pluck('name')->all())],
         ]);
 
         $user = User::create([
@@ -53,19 +54,30 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
+        // A non-super-admin cannot open a super-admin's edit page — even
+        // read access would leak the account exists and let them submit
+        // update() with a crafted payload.
+        if ($user->hasRole('super-admin') && ! auth()->user()?->hasRole('super-admin')) {
+            abort(403);
+        }
+
         return Inertia::render('Admin/Users/Edit', [
             'user' => $user->load('roles'),
-            'roles' => Role::all(),
+            'roles' => $this->assignableRoles(),
         ]);
     }
 
     public function update(Request $request, User $user)
     {
+        if ($user->hasRole('super-admin') && ! auth()->user()?->hasRole('super-admin')) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
             'password' => ['nullable', Rules\Password::defaults()],
-            'role' => ['required', 'string', 'exists:roles,name'],
+            'role' => ['required', 'string', Rule::in($this->assignableRoles()->pluck('name')->all())],
         ]);
 
         $user->update([
@@ -85,8 +97,27 @@ class UserController extends Controller
             return back()->with('error', 'You cannot delete your own account.');
         }
 
+        if ($user->hasRole('super-admin') && ! auth()->user()?->hasRole('super-admin')) {
+            abort(403);
+        }
+
         $user->delete();
 
         return redirect()->route('admin.users.index')->with('success', 'User deleted successfully.');
+    }
+
+    /**
+     * Roles the acting user is allowed to assign. Non-super-admins cannot
+     * grant super-admin — that would let any user with `users.create` or
+     * `users.update` escalate themselves.
+     */
+    private function assignableRoles(): \Illuminate\Database\Eloquent\Collection
+    {
+        $query = Role::query()->orderBy('name');
+        if (! auth()->user()?->hasRole('super-admin')) {
+            $query->where('name', '!=', 'super-admin');
+        }
+
+        return $query->get();
     }
 }

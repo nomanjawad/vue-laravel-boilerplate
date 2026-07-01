@@ -1,6 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
+import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
@@ -12,7 +13,7 @@ const form = useForm({
 })
 
 function submit() {
-    form.post('/admin/{{resource}}')
+    form.post(route('admin.{{resource}}.store'))
 }
 </script>
 
@@ -47,7 +48,7 @@ function submit() {
             >
                 Create
             </button>
-            <Link href="/admin/{{resource}}" class="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700">Cancel</Link>
+            <Link :href="route('admin.{{resource}}.index')" class="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700">Cancel</Link>
         </div>
     </form>
 </template>

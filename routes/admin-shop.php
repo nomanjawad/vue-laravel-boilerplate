@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use Illuminate\Support\Facades\Route;
 
+Route::middleware('module:shop')->group(function () {
 // Products.
 Route::middleware('can:products.view')->group(function () {
     Route::get('products', [ProductController::class, 'index'])->name('products.index');
@@ -27,4 +28,5 @@ Route::middleware('can:orders.view')->group(function () {
 });
 Route::middleware('can:orders.update')->group(function () {
     Route::patch('orders/{order:id}/status', [OrderController::class, 'updateStatus'])->name('orders.update-status');
+});
 });

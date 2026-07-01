@@ -80,7 +80,7 @@ class AdminRoutesSmokeTest extends TestCase
         Team::create(['name' => 'Smoke Team', 'position' => 'Tester', 'is_active' => true]);
         Tag::create(['name' => 'Smoke Tag', 'slug' => 'smoke-tag']);
         Menu::create(['title' => 'Smoke Menu', 'url' => '/', 'location' => 'header', 'sort_order' => 0, 'is_active' => true]);
-        PageMeta::create(['route_name' => 'home', 'title' => 'Home', 'description' => 'Home']);
+        PageMeta::firstOrCreate(['route_name' => 'home'], ['title' => 'Home', 'description' => 'Home']);
         Redirect::create(['from_path' => '/old', 'to_path' => '/new', 'status_code' => 301]);
         Subscriber::create(['email' => 'a@example.com']);
     }
@@ -114,8 +114,9 @@ class AdminRoutesSmokeTest extends TestCase
             }, $uri);
 
             $response = $this->actingAs($this->superAdmin)->get($resolved);
-            if ($response->status() >= 500) {
-                $failures[] = sprintf('%s -> %d', $resolved, $response->status());
+            $status = $response->getStatusCode();
+            if ($status >= 500) {
+                $failures[] = sprintf('%s -> %d', $resolved, $status);
             }
         }
 

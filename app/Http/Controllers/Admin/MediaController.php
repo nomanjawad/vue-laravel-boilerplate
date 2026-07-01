@@ -33,8 +33,17 @@ class MediaController extends Controller
 
     public function store(Request $request)
     {
+        // Whitelist MIME types explicitly — `file` alone accepts arbitrary
+        // content, including .php/.phtml/.htaccess, which would be RCE if
+        // ever served by the webserver from public/storage. SVG is
+        // deliberately excluded (script tags render inline).
         $request->validate([
-            'file' => ['required', 'file', 'max:10240'],
+            'file' => [
+                'required',
+                'file',
+                'max:10240',
+                'mimetypes:image/jpeg,image/png,image/webp,image/gif,application/pdf',
+            ],
             'alt_text' => ['nullable', 'string', 'max:255'],
         ]);
 

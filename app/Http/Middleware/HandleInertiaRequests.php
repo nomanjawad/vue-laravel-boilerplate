@@ -2,6 +2,14 @@
 
 namespace App\Http\Middleware;
 
+use App\Data\AuthData;
+use App\Data\FlashData;
+use App\Data\MenuItemData;
+use App\Data\MenusData;
+use App\Data\ModuleNavEntry;
+use App\Data\ModulesSharedData;
+use App\Data\SeoData;
+use App\Data\SettingsData;
 use App\Models\Menu;
 use App\Models\Setting;
 use App\Modules\Core\ModuleManager;
@@ -43,6 +51,9 @@ class HandleInertiaRequests extends Middleware
 
     protected $rootView = 'app';
 
+    /** Memoized per-process so we don't hit `information_schema` on every request. */
+    private static ?bool $tablesExist = null;
+
     public function __construct(private SeoService $seo, private ModuleManager $modules) {}
 
     public function version(Request $request): ?string
@@ -52,57 +63,70 @@ class HandleInertiaRequests extends Middleware
 
     public function share(Request $request): array
     {
-        $tablesExist = Schema::hasTable('menus') && Schema::hasTable('site_settings');
+        if (self::$tablesExist === null) {
+            self::$tablesExist = Schema::hasTable('menus') && Schema::hasTable('site_settings');
+        }
+        $tablesExist = self::$tablesExist;
+
+        // Eager-load roles + permissions once per request so `auth`/`modules`
+        // shares don't each re-query Spatie's tables.
+        $user = $request->user();
+        if ($user) {
+            $user->loadMissing('roles.permissions', 'permissions');
+        }
+        $permissionNames = $user?->getAllPermissions()->pluck('name')->toArray() ?? [];
+        $isSuperAdmin = (bool) $user?->hasRole('super-admin');
 
         return [
             ...parent::share($request),
 
-            'auth' => [
-                'user' => $request->user() ? [
-                    'id' => $request->user()->id,
-                    'name' => $request->user()->name,
-                    'email' => $request->user()->email,
-                    'roles' => $request->user()->getRoleNames(),
-                    'permissions' => $request->user()->getAllPermissions()->pluck('name')->toArray(),
-                    'is_super_admin' => $request->user()->hasRole('super-admin'),
-                ] : null,
-            ],
+            'auth' => fn () => AuthData::fromUser($user, $permissionNames, $isSuperAdmin)->toArray(),
 
             // Module registry — sidebar uses this; pages can read it via
             // useModule() to gracefully handle "module disabled while page open".
-            'modules' => fn () => [
-                'nav' => $this->modules->navFor(
-                    $request->user()?->getAllPermissions()->pluck('name')->toArray() ?? [],
-                    (bool) $request->user()?->hasRole('super-admin'),
+            'modules' => fn () => ModulesSharedData::from([
+                'nav' => array_map(
+                    fn (array $entry) => ModuleNavEntry::from($entry),
+                    $this->modules->navFor($permissionNames, $isSuperAdmin),
                 ),
                 'enabled' => collect($this->modules->manifests())
                     ->filter(fn ($_, $k) => $this->modules->enabled($k))
                     ->keys()
                     ->values()
                     ->toArray(),
-            ],
+            ])->toArray(),
 
-            'flash' => [
-                'success' => fn () => $request->session()->get('success'),
-                'error' => fn () => $request->session()->get('error'),
-            ],
+            'flash' => fn () => FlashData::from([
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+            ])->toArray(),
 
-            'menus' => $tablesExist ? [
-                'header' => Menu::where('location', 'header')
-                    ->where('is_active', true)
-                    ->whereNull('parent_id')
-                    ->orderBy('sort_order')
-                    ->get(['id', 'title', 'url', 'sort_order']),
-                'footer' => Menu::where('location', 'footer')
-                    ->where('is_active', true)
-                    ->whereNull('parent_id')
-                    ->orderBy('sort_order')
-                    ->get(['id', 'title', 'url', 'sort_order']),
-            ] : ['header' => [], 'footer' => []],
+            'menus' => fn () => $tablesExist
+                ? MenusData::from([
+                    'header' => Menu::where('location', 'header')
+                        ->where('is_active', true)
+                        ->whereNull('parent_id')
+                        ->orderBy('sort_order')
+                        ->get(['id', 'title', 'url', 'sort_order'])
+                        ->map(fn (Menu $menu) => MenuItemData::from($menu))
+                        ->values()
+                        ->all(),
+                    'footer' => Menu::where('location', 'footer')
+                        ->where('is_active', true)
+                        ->whereNull('parent_id')
+                        ->orderBy('sort_order')
+                        ->get(['id', 'title', 'url', 'sort_order'])
+                        ->map(fn (Menu $menu) => MenuItemData::from($menu))
+                        ->values()
+                        ->all(),
+                ])->toArray()
+                : MenusData::from(['header' => [], 'footer' => []])->toArray(),
 
-            'settings' => $tablesExist
-                ? Setting::whereIn('key', self::PUBLIC_SETTINGS)->pluck('value', 'key')->toArray()
-                : [],
+            'settings' => fn () => $tablesExist
+                ? SettingsData::from(
+                    Setting::whereIn('key', self::PUBLIC_SETTINGS)->pluck('value', 'key')->toArray()
+                )->toArray()
+                : SettingsData::from([])->toArray(),
 
             'enabledFeatures' => config('template.features'),
 
@@ -134,12 +158,12 @@ class HandleInertiaRequests extends Middleware
             ? $this->seo->getMetaForRoute($routeName)
             : [];
 
-        return [
+        return SeoData::from([
             'site_name' => $siteName,
             'title' => $meta['title'] ?? null,
             'description' => $meta['description'] ?? $defaultDescription,
             'og_image' => $meta['og_image'] ?? $defaultImage,
             'canonical' => $request->url(),
-        ];
+        ])->toArray();
     }
 }

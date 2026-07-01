@@ -149,26 +149,50 @@ class MakeCrud extends Command
         $singular = Str::singular($resource);
         $permLine = "        '{$singular}' => ['view', 'create', 'update', 'delete'],";
         if (! str_contains($contents, "'{$singular}' =>")) {
-            $contents = preg_replace(
-                "/('permissions'\\s*=>\\s*\\[)([\\s\\S]*?)(\\],)/",
-                "$1$2\n{$permLine}\n    $3",
-                $contents,
-                1,
-            );
+            $contents = $this->appendToArrayBlock($contents, 'permissions', $permLine);
         }
 
         $models = Str::plural($name);
         $navLine = "        ['label' => '{$models}', 'route' => 'admin.{$resource}.index', 'icon' => 'cube', 'permission' => '{$singular}.view'],";
         if (! str_contains($contents, "'admin.{$resource}.index'")) {
-            $contents = preg_replace(
-                "/('nav'\\s*=>\\s*\\[)([\\s\\S]*?)(\\],)/",
-                "$1$2\n{$navLine}\n    $3",
-                $contents,
-                1,
-            );
+            $contents = $this->appendToArrayBlock($contents, 'nav', $navLine);
         }
 
         file_put_contents($manifestPath, $contents);
+    }
+
+    /**
+     * Insert $line just before the matching closing bracket of the named
+     * top-level array in $contents. Walks brackets so that nested arrays
+     * (e.g. an already-stamped permissions block containing `['view', ...],`)
+     * don't confuse the closing anchor — the previous non-greedy regex
+     * approach broke on the second stamp for exactly that reason.
+     */
+    protected function appendToArrayBlock(string $contents, string $key, string $line): string
+    {
+        if (! preg_match("/'{$key}'\\s*=>\\s*\\[/", $contents, $m, PREG_OFFSET_CAPTURE)) {
+            return $contents;
+        }
+        $i = $m[0][1] + strlen($m[0][0]);
+        $depth = 1;
+        $len = strlen($contents);
+        while ($i < $len && $depth > 0) {
+            $ch = $contents[$i];
+            if ($ch === '[') {
+                $depth++;
+            } elseif ($ch === ']') {
+                $depth--;
+                if ($depth === 0) {
+                    break;
+                }
+            }
+            $i++;
+        }
+        if ($depth !== 0) {
+            return $contents;
+        }
+
+        return substr($contents, 0, $i)."{$line}\n    ".substr($contents, $i);
     }
 
     protected function patchSmokeTest(string $paramKey, string $value): void

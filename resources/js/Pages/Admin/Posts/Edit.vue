@@ -1,10 +1,9 @@
-<script setup>
-// Reference page: how a v3 admin form is composed from
-// Atoms (Input/Textarea/Select/Checkbox) → Molecules (FormField/FormSection) →
-// Organism (FormShell). Errors auto-wire through the injected useForm().
+<script setup lang="ts">
+// Reference page: v3 admin form using Atoms → Molecules → Organisms + typed DTO props.
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 import { computed } from 'vue'
+import { route } from 'ziggy-js'
 
 import FormShell from '@/Components/Organisms/FormShell.vue'
 import AppFormField from '@/Components/Molecules/AppFormField.vue'
@@ -16,12 +15,12 @@ import AppCheckbox from '@/Components/Atoms/AppCheckbox.vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    post: { type: Object, required: true },
-    categories: { type: Array, default: () => [] },
-    tags: { type: Array, default: () => [] },
-    previewUrl: { type: String, default: null },
-})
+const props = defineProps<{
+    post: App.Data.PostData
+    categories: App.Data.CategorySummaryData[]
+    tags: App.Data.TagSummaryData[]
+    previewUrl: string | null
+}>()
 
 const form = useForm({
     title: props.post.title,
@@ -41,7 +40,7 @@ const categoryOptions = computed(() => [
     ...props.categories.map((c) => ({ value: c.id, label: c.name })),
 ])
 
-function toggleTag(id) {
+function toggleTag(id: number) {
     form.tags = form.tags.includes(id) ? form.tags.filter((t) => t !== id) : [...form.tags, id]
 }
 </script>
@@ -50,7 +49,7 @@ function toggleTag(id) {
     <Head title="Edit Post" />
 
     <div class="mb-6 flex items-center gap-3">
-        <Link href="/admin/posts" class="text-gray-500 hover:text-gray-700">&larr;</Link>
+        <Link :href="route('admin.posts.index')" class="text-gray-500 hover:text-gray-700">&larr;</Link>
         <h1 class="text-2xl font-bold text-gray-900">Edit Post</h1>
         <a
             v-if="previewUrl"
@@ -64,10 +63,10 @@ function toggleTag(id) {
 
     <FormShell
         :form="form"
-        :action="`/admin/posts/${post.id}`"
+        :action="route('admin.posts.update', post.id)"
         method="put"
         submit-label="Update Post"
-        cancel-href="/admin/posts"
+        :cancel-href="route('admin.posts.index')"
     >
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">

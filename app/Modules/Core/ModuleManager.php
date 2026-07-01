@@ -102,6 +102,14 @@ class ModuleManager
         );
     }
 
+    /**
+     * Was the module flagged unhealthy in the registry?
+     *
+     * Returns false when the registry table isn't reachable — during a DB
+     * outage or fresh install there is no signal, and `enabled()` falls back
+     * to the config flag. Callers should treat `false` as "no known problem"
+     * rather than a definitive healthy answer.
+     */
     public function unhealthy(string $key): bool
     {
         $registry = $this->registry();
@@ -172,14 +180,24 @@ class ModuleManager
 
         $this->forgetCache();
 
-        $this->runMigrations($key);
+        // Migrations run outside a wrapping transaction (Artisan manages its
+        // own), so we can't roll back on partial failure. Instead, catch any
+        // seeder/permission-sync throw and mark the module unhealthy — the
+        // admin then sees a red badge and can Reinstall from /admin/modules
+        // rather than silently drifting into a half-installed state.
+        try {
+            $this->runMigrations($key);
 
-        foreach ($manifest['seeders'] ?? [] as $seederClass) {
-            Artisan::call('db:seed', ['--class' => $seederClass, '--force' => true]);
-        }
+            foreach ($manifest['seeders'] ?? [] as $seederClass) {
+                Artisan::call('db:seed', ['--class' => $seederClass, '--force' => true]);
+            }
 
-        if (app()->bound(PermissionSyncer::class)) {
-            app(PermissionSyncer::class)->sync();
+            if (app()->bound(PermissionSyncer::class)) {
+                app(PermissionSyncer::class)->sync();
+            }
+        } catch (Throwable $e) {
+            $this->markUnhealthy($key, $e);
+            throw $e;
         }
 
         rescue(fn () => Artisan::call('responsecache:clear'), report: false);
@@ -269,6 +287,20 @@ class ModuleManager
 
         if (! empty($manifest['core'])) {
             throw new ModuleException("Module [{$key}] is core and cannot be uninstalled.");
+        }
+
+        // Same dependent-guard as disable(): uninstalling a module still
+        // depended on by others would rip out its permissions and migrations
+        // while their code still references them.
+        foreach ($this->manifests as $otherKey => $other) {
+            if ($otherKey === $key) {
+                continue;
+            }
+            if ($this->enabled($otherKey) && in_array($key, $other['dependencies'] ?? [], true)) {
+                throw new ModuleDependencyException(
+                    "Cannot uninstall [{$key}]: module [{$otherKey}] depends on it. Disable [{$otherKey}] first."
+                );
+            }
         }
 
         $path = $manifest['migrations_path'] ?? null;

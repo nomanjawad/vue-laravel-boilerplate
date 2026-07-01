@@ -25,36 +25,27 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')
                 ->group(base_path('routes/auth.php'));
 
+            // Module route files are always registered so enable/disable from
+            // /admin/modules is reflected immediately. The per-file `module:{key}`
+            // middleware short-circuits with 404 when a module is disabled.
+            // Each require is rescued so a broken module route file cannot
+            // 500 the entire panel.
             Route::middleware(['web', 'auth', 'admin'])
                 ->prefix('admin')
                 ->name('admin.')
                 ->group(function () {
                     require base_path('routes/admin.php');
-
-                    if (config('template.features.blog')) {
-                        require base_path('routes/admin-blog.php');
-                    }
-                    if (config('template.features.shop')) {
-                        require base_path('routes/admin-shop.php');
-                    }
-                    if (config('template.features.careers') || config('template.features.case_studies') || config('template.features.teams')) {
-                        require base_path('routes/admin-optional.php');
-                    }
+                    rescue(fn () => require base_path('routes/admin-blog.php'));
+                    rescue(fn () => require base_path('routes/admin-shop.php'));
+                    rescue(fn () => require base_path('routes/admin-optional.php'));
                 });
 
             Route::middleware('web')
                 ->group(function () {
                     require base_path('routes/public.php');
-
-                    if (config('template.features.blog')) {
-                        require base_path('routes/public-blog.php');
-                    }
-                    if (config('template.features.shop')) {
-                        require base_path('routes/public-shop.php');
-                    }
-                    if (config('template.features.careers') || config('template.features.case_studies') || config('template.features.teams')) {
-                        require base_path('routes/public-optional.php');
-                    }
+                    rescue(fn () => require base_path('routes/public-blog.php'));
+                    rescue(fn () => require base_path('routes/public-shop.php'));
+                    rescue(fn () => require base_path('routes/public-optional.php'));
                 });
         },
     )

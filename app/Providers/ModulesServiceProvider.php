@@ -59,9 +59,12 @@ class ModulesServiceProvider extends ServiceProvider
                     );
                 }
             } catch (Throwable $e) {
-                $key = method_exists($relative, 'moduleKey') ? (new $relative($this->app))->moduleKey() : basename(dirname($file));
+                // Do NOT re-instantiate — if the constructor threw, calling it
+                // again here re-throws inside catch and escapes fault isolation.
+                // Fall back to the folder name.
+                $key = strtolower(basename(dirname($file)));
                 report($e);
-                $manager->markUnhealthy($key, $e);
+                rescue(fn () => $manager->markUnhealthy($key, $e), report: false);
             }
         }
     }

@@ -1,38 +1,41 @@
 <?php
 
 // Routes for the {{model}} resource ({{module}} module).
-// Loaded automatically by AbstractModuleServiceProvider.
-//
-// The route group prefix/name set in bootstrap/app.php gives:
-//   /admin/{{resource}} → admin.{{resource}}.*
+// Loaded via AbstractModuleServiceProvider::bootModule() → loadRoutesFrom(),
+// which is a bare `require` with NO outer group — so this file has to apply
+// its own web/auth/admin middleware. Do not remove that group without
+// also updating the abstract provider.
 
 use App\Modules\{{module}}\Http\Controllers\Admin\{{model}}Controller;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('module:{{key}}')->group(function () {
-    Route::get('admin/{{resource}}', [{{model}}Controller::class, 'index'])
-        ->middleware('can:{{resource}}.view')
-        ->name('admin.{{resource}}.index');
+Route::middleware(['web', 'auth', 'admin', 'module:{{key}}'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('{{resource}}', [{{model}}Controller::class, 'index'])
+            ->middleware('can:{{resource}}.view')
+            ->name('{{resource}}.index');
 
-    Route::get('admin/{{resource}}/create', [{{model}}Controller::class, 'create'])
-        ->middleware('can:{{resource}}.create')
-        ->name('admin.{{resource}}.create');
+        Route::get('{{resource}}/create', [{{model}}Controller::class, 'create'])
+            ->middleware('can:{{resource}}.create')
+            ->name('{{resource}}.create');
 
-    Route::post('admin/{{resource}}', [{{model}}Controller::class, 'store'])
-        ->middleware('can:{{resource}}.create')
-        ->name('admin.{{resource}}.store');
+        Route::post('{{resource}}', [{{model}}Controller::class, 'store'])
+            ->middleware('can:{{resource}}.create')
+            ->name('{{resource}}.store');
 
-    // Admin routes bind by id (Laravel's default). Public routes that you
-    // wire by hand in this file should use {{{var}}:slug} for slug binding.
-    Route::get('admin/{{resource}}/{{{var}}}/edit', [{{model}}Controller::class, 'edit'])
-        ->middleware('can:{{resource}}.update')
-        ->name('admin.{{resource}}.edit');
+        // Admin routes bind by id (Laravel's default). Public routes that you
+        // wire by hand should use {{{var}}:slug} for slug binding.
+        Route::get('{{resource}}/{{{var}}}/edit', [{{model}}Controller::class, 'edit'])
+            ->middleware('can:{{resource}}.update')
+            ->name('{{resource}}.edit');
 
-    Route::put('admin/{{resource}}/{{{var}}}', [{{model}}Controller::class, 'update'])
-        ->middleware('can:{{resource}}.update')
-        ->name('admin.{{resource}}.update');
+        Route::put('{{resource}}/{{{var}}}', [{{model}}Controller::class, 'update'])
+            ->middleware('can:{{resource}}.update')
+            ->name('{{resource}}.update');
 
-    Route::delete('admin/{{resource}}/{{{var}}}', [{{model}}Controller::class, 'destroy'])
-        ->middleware('can:{{resource}}.delete')
-        ->name('admin.{{resource}}.destroy');
-});
+        Route::delete('{{resource}}/{{{var}}}', [{{model}}Controller::class, 'destroy'])
+            ->middleware('can:{{resource}}.delete')
+            ->name('{{resource}}.destroy');
+    });

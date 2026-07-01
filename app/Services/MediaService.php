@@ -6,6 +6,7 @@ use App\Models\Media;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
@@ -30,9 +31,25 @@ class MediaService
 
     private const OPTIMIZABLE = ['image/jpeg', 'image/png', 'image/webp'];
 
+    /**
+     * Second-line defence: `MediaController` validates uploads, but
+     * `importFromContents()` (used by WordPress import etc.) reaches this
+     * method directly. Reject anything that isn't an image or a PDF so
+     * .php/.phtml/.htaccess/.html files cannot land under public/storage.
+     */
+    private const ALLOWED_MIMES = [
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+        'application/pdf',
+    ];
+
     public function upload(UploadedFile $file, ?string $altText = null, ?int $userId = null): Media
     {
         $mime = $file->getMimeType();
+
+        if (! in_array($mime, self::ALLOWED_MIMES, true)) {
+            throw new InvalidArgumentException("Refusing to store file with MIME type [{$mime}].");
+        }
+
         $dir = 'media/'.date('Y/m');
 
         if (in_array($mime, self::OPTIMIZABLE, true)) {

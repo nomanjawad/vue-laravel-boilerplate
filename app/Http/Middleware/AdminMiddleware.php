@@ -10,7 +10,7 @@ class AdminMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->user() || ! $request->user()->hasAnyRole(['admin', 'editor'])) {
+        if (! $request->user() || ! $request->user()->hasAnyRole(['super-admin', 'admin', 'editor'])) {
             abort(403, 'Unauthorized.');
         }
 

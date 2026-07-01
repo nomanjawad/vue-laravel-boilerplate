@@ -2,10 +2,11 @@
 
 namespace App\Providers;
 
-use Spatie\LaravelTypeScriptTransformer\LaravelData\LaravelDataTransformedProvider;
-use Spatie\LaravelTypeScriptTransformer\Transformers\LaravelAttributedClassTransformer;
+use Spatie\LaravelTypeScriptTransformer\LaravelData\LaravelDataTypeScriptTransformerExtension;
+use Spatie\LaravelTypeScriptTransformer\LaravelTypeScriptTransformerExtension;
 use Spatie\LaravelTypeScriptTransformer\TypeScriptTransformerApplicationServiceProvider;
-use Spatie\TypeScriptTransformer\TransformedProviders\ReflectionTransformedProvider;
+use Spatie\TypeScriptTransformer\Transformers\AttributedClassTransformer;
+use Spatie\TypeScriptTransformer\Transformers\EnumTransformer;
 use Spatie\TypeScriptTransformer\TypeScriptTransformerConfigFactory;
 
 /**
@@ -19,13 +20,14 @@ class TypeScriptTransformerServiceProvider extends TypeScriptTransformerApplicat
     protected function configure(TypeScriptTransformerConfigFactory $config): void
     {
         $config
+            ->transformer(AttributedClassTransformer::class)
+            ->transformer(EnumTransformer::class)
             ->transformDirectories(
                 app_path('Data'),
                 app_path('Modules'),
             )
-            ->transformer(LaravelAttributedClassTransformer::class)
-            ->provider(ReflectionTransformedProvider::class)
-            ->provider(LaravelDataTransformedProvider::class)
+            ->extension(new LaravelTypeScriptTransformerExtension())
+            ->extension(new LaravelDataTypeScriptTransformerExtension())
             ->outputDirectory(resource_path('js/types'));
     }
 }

@@ -161,7 +161,9 @@ class PublicRoutesSmokeTest extends TestCase
 
     public function test_newsletter_signup_stores_subscriber(): void
     {
-        $this->post('/newsletter', ['email' => 'reader@example.com'])->assertRedirect();
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class)
+            ->post('/newsletter', ['email' => 'reader@example.com'])
+            ->assertRedirect();
 
         $this->assertDatabaseHas('subscribers', ['email' => 'reader@example.com']);
     }
@@ -202,12 +204,14 @@ class PublicRoutesSmokeTest extends TestCase
         $admin = User::role('admin')->first();
         $post = Post::where('slug', '=', 'smoke-post', 'and')->first();
 
-        $this->actingAs($admin)->put("/admin/posts/{$post->id}", [
-            'title' => $post->title,
-            'slug' => 'smoke-post-renamed',
-            'body' => $post->body,
-            'status' => 'published',
-        ]);
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class)
+            ->actingAs($admin)
+            ->put("/admin/posts/{$post->id}", [
+                'title' => $post->title,
+                'slug' => 'smoke-post-renamed',
+                'body' => $post->body,
+                'status' => 'published',
+            ]);
 
         $this->assertDatabaseHas('redirects', [
             'from_path' => '/blog/smoke-post',

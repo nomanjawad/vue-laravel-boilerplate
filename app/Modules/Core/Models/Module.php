@@ -29,9 +29,4 @@ class Module extends Model
         'installed_at' => 'datetime',
         'disabled_at' => 'datetime',
     ];
-
-    public function getRouteKeyName(): string
-    {
-        return 'key';
-    }
 }

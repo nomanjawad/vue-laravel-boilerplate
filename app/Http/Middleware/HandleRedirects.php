@@ -28,12 +28,29 @@ class HandleRedirects
             // Count the hit without busting the cached map (quiet update).
             Redirect::where('from_path', $path)->increment('hits');
 
-            $query = $request->getQueryString();
-            $target = $map[$path]['to'].($query ? '?'.$query : '');
+            $target = $this->appendQueryString(
+                $map[$path]['to'],
+                $request->getQueryString(),
+            );
 
             return redirect($target, $map[$path]['status']);
         }
 
         return $next($request);
+    }
+
+    /**
+     * Merge an incoming request's query string onto a redirect target that
+     * may already carry one — naïve concatenation produces `/foo?x=1?y=2`,
+     * which browsers treat as part of the value.
+     */
+    private function appendQueryString(string $target, ?string $requestQuery): string
+    {
+        if (! $requestQuery) {
+            return $target;
+        }
+        $separator = str_contains($target, '?') ? '&' : '?';
+
+        return $target.$separator.$requestQuery;
     }
 }

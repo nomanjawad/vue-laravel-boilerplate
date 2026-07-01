@@ -144,7 +144,7 @@ return [
         'public_route_file' => 'public-shop.php',
         'searchable' => [
             \App\Models\Product::class => ['name', 'description'],
-            \App\Models\Order::class => ['order_number', 'email'],
+            \App\Models\Order::class => ['order_number', 'customer_email'],
         ],
     ],
 

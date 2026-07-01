@@ -6,7 +6,7 @@ use App\Http\Controllers\Admin\TeamController;
 use Illuminate\Support\Facades\Route;
 
 // Careers.
-if (config('template.features.careers')) {
+Route::middleware('module:careers')->group(function () {
     Route::middleware('can:careers.view')->group(function () {
         Route::get('careers', [CareerController::class, 'index'])->name('careers.index');
     });
@@ -21,10 +21,10 @@ if (config('template.features.careers')) {
     Route::middleware('can:careers.delete')->group(function () {
         Route::delete('careers/{career:id}', [CareerController::class, 'destroy'])->name('careers.destroy');
     });
-}
+});
 
 // Case Studies.
-if (config('template.features.case_studies')) {
+Route::middleware('module:case_studies')->group(function () {
     Route::middleware('can:case_studies.view')->group(function () {
         Route::get('case-studies', [CaseStudyController::class, 'index'])->name('case-studies.index');
     });
@@ -39,10 +39,10 @@ if (config('template.features.case_studies')) {
     Route::middleware('can:case_studies.delete')->group(function () {
         Route::delete('case-studies/{case_study:id}', [CaseStudyController::class, 'destroy'])->name('case-studies.destroy');
     });
-}
+});
 
 // Team.
-if (config('template.features.teams')) {
+Route::middleware('module:teams')->group(function () {
     Route::middleware('can:teams.view')->group(function () {
         Route::get('teams', [TeamController::class, 'index'])->name('teams.index');
     });
@@ -57,4 +57,4 @@ if (config('template.features.teams')) {
     Route::middleware('can:teams.delete')->group(function () {
         Route::delete('teams/{team:id}', [TeamController::class, 'destroy'])->name('teams.destroy');
     });
-}
+});

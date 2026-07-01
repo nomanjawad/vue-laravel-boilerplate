@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\PostController;
 use App\Http\Controllers\Admin\TagController;
 use Illuminate\Support\Facades\Route;
 
+Route::middleware('module:blog')->group(function () {
 // Posts.
 Route::middleware('can:posts.view')->group(function () {
     Route::get('posts', [PostController::class, 'index'])->name('posts.index');
@@ -49,4 +50,5 @@ Route::middleware('can:tags.update')->group(function () {
 });
 Route::middleware('can:tags.delete')->group(function () {
     Route::delete('tags/{tag:id}', [TagController::class, 'destroy'])->name('tags.destroy');
+});
 });

@@ -81,7 +81,9 @@
         "ide": [
             "@php artisan ide-helper:generate",
             "@php artisan ide-helper:models --nowrite",
-            "@php artisan ide-helper:meta"
+            "@php artisan ide-helper:meta",
+            "@php artisan typescript:transform",
+            "@php artisan ziggy:generate resources/js/types/ziggy.js --types=resources/js/types/ziggy.d.ts"
         ],
         "module:enable": [
             "Composer\\Config::disableProcessTimeout",
@@ -95,6 +97,8 @@
             "@php artisan template:doctor --production",
             "@php artisan storage:link",
             "@php artisan migrate --force",
+            "@php artisan typescript:transform",
+            "@php artisan ziggy:generate resources/js/types/ziggy.js --types=resources/js/types/ziggy.d.ts",
             "@php artisan optimize",
             "@php artisan responsecache:clear"
         ]

@@ -1,59 +1,58 @@
 <script setup>
 import { usePage, Link, router } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
+import { route } from 'ziggy-js'
 import FlashToaster from '@/Components/Shared/FlashToaster.vue'
 import ConfirmDialog from '@/Components/Shared/ConfirmDialog.vue'
 import NotificationBell from '@/Components/Organisms/NotificationBell.vue'
+import GlobalSearch from '@/Components/Organisms/GlobalSearch.vue'
+import { useShortcuts } from '@/Composables/useShortcuts.js'
 
 const page = usePage()
 const sidebarOpen = ref(false)
+const shortcutHelpOpen = ref(false)
+const globalSearchOpen = ref(false)
 
 const user = computed(() => page.props.auth?.user)
 
 // Sidebar is fed by the module registry — each enabled module declares its
 // own nav entries in its manifest, already permission-filtered server-side.
-// Falls back to the legacy enabledFeatures map if the registry isn't shared
-// yet (e.g. mid-upgrade).
 const moduleNav = computed(() => page.props.modules?.nav ?? [])
 
 const menuItems = computed(() => {
-    const items = [{ title: 'Dashboard', href: '/admin', icon: 'dashboard' }]
+    const items = [{ title: 'Dashboard', href: route('admin.dashboard'), icon: 'dashboard' }]
 
     for (const entry of moduleNav.value) {
-        // Each entry has `{ label, route, icon, permission, module }`.
-        // The frontend doesn't know Laravel route names without Ziggy, so
-        // entries also accept a literal `href` from manifests (used for
-        // virtual modules during the v2-to-v3 transition).
-        const href = entry.href || routeToHref(entry.route)
+        const href = entry.href || (entry.route && route().has(entry.route) ? route(entry.route) : null)
         if (!href) continue
         items.push({ title: entry.label, href, icon: entry.icon })
     }
 
-    // Modules admin — only super-admins manage modules.
     if (user.value?.is_super_admin || user.value?.roles?.includes('admin')) {
-        items.push({ title: 'Modules', href: '/admin/modules', icon: 'modules' })
+        items.push({ title: 'Modules', href: route('admin.modules.index'), icon: 'modules' })
     }
 
     return items
 })
 
-function routeToHref(name) {
-    if (!name) return null
-    // Conservative name → URL fallback until Ziggy lands in Phase C.
-    // Pattern:  admin.<segment>.index  →  /admin/<segment with dashes>.
-    const m = name.match(/^admin\.([\w-]+(?:\.[\w-]+)*)\.index$/)
-    if (!m) return null
-    return '/admin/' + m[1].replace(/\./g, '/').replace(/_/g, '-')
-}
-
 const isActive = (href) => {
-    if (href === '/admin') return page.url === '/admin'
+    const dashboard = route('admin.dashboard')
+    if (href === dashboard) return page.url === dashboard
     return page.url.startsWith(href)
 }
 
 const logout = () => {
-    router.post('/logout')
+    router.post(route('logout'))
 }
+
+function openGlobalSearch() {
+    globalSearchOpen.value = true
+}
+
+useShortcuts({
+    onFocusSearch: openGlobalSearch,
+    onShowHelp: () => { shortcutHelpOpen.value = true },
+})
 </script>
 
 <template>
@@ -73,7 +72,7 @@ const logout = () => {
             ]"
         >
             <div class="flex items-center justify-between h-16 px-6 border-b border-gray-800">
-                <Link href="/admin" class="text-white text-lg font-bold">Admin Panel</Link>
+                <Link :href="route('admin.dashboard')" class="text-white text-lg font-bold">Admin Panel</Link>
                 <button @click="sidebarOpen = false" class="lg:hidden text-gray-400 hover:text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -109,7 +108,15 @@ const logout = () => {
                     </button>
                     <div class="flex-1" />
                     <div class="flex items-center space-x-4">
-                        <Link href="/" class="text-sm text-gray-500 hover:text-gray-700" target="_blank">
+                        <button
+                            type="button"
+                            class="hidden items-center gap-2 rounded-md border border-gray-200 px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700 sm:inline-flex"
+                            @click="openGlobalSearch"
+                        >
+                            <span>Search</span>
+                            <kbd class="rounded bg-gray-100 px-1 text-[10px] font-mono">/</kbd>
+                        </button>
+                        <Link :href="route('home')" class="text-sm text-gray-500 hover:text-gray-700" target="_blank">
                             View Site
                         </Link>
                         <NotificationBell />
@@ -132,5 +139,48 @@ const logout = () => {
 
         <FlashToaster />
         <ConfirmDialog />
+        <GlobalSearch :open="globalSearchOpen" @close="globalSearchOpen = false" />
+
+        <!-- Keyboard shortcut help -->
+        <div
+            v-if="shortcutHelpOpen"
+            class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 p-4"
+            @click.self="shortcutHelpOpen = false"
+        >
+            <div class="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+                <div class="mb-4 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-900">Keyboard shortcuts</h2>
+                    <button
+                        type="button"
+                        class="text-gray-400 hover:text-gray-600"
+                        @click="shortcutHelpOpen = false"
+                    >
+                        Esc
+                    </button>
+                </div>
+                <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-gray-500">Go to home</dt>
+                        <dd><kbd class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">g</kbd> <kbd class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">h</kbd></dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-gray-500">Go to dashboard</dt>
+                        <dd><kbd class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">g</kbd> <kbd class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">d</kbd></dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-gray-500">Go to posts</dt>
+                        <dd><kbd class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">g</kbd> <kbd class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">p</kbd></dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-gray-500">Global search</dt>
+                        <dd><kbd class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">/</kbd></dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-gray-500">Show this help</dt>
+                        <dd><kbd class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs">?</kbd></dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
     </div>
 </template>

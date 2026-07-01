@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Data\CategorySummaryData;
+use App\Data\PostData;
+use App\Data\TagSummaryData;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\Tag;
+use App\Modules\Core\ModuleManager;
 use App\Services\SlugService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
@@ -13,7 +17,7 @@ use Inertia\Inertia;
 
 class PostController extends Controller
 {
-    public function __construct(private SlugService $slugs) {}
+    public function __construct(private SlugService $slugs, private ModuleManager $modules) {}
 
     public function index(Request $request)
     {
@@ -23,7 +27,8 @@ class PostController extends Controller
                 ->when($request->status, fn ($q, $s) => $q->where('status', $s))
                 ->latest()
                 ->paginate(15)
-                ->withQueryString(),
+                ->withQueryString()
+                ->through(fn (Post $post) => PostData::fromModel($post)),
             'filters' => $request->only('search', 'status'),
         ]);
     }
@@ -31,8 +36,12 @@ class PostController extends Controller
     public function create()
     {
         return Inertia::render('Admin/Posts/Create', [
-            'categories' => Category::orderBy('name')->get(['id', 'name']),
-            'tags' => Tag::orderBy('name')->get(['id', 'name', 'slug']),
+            'categories' => CategorySummaryData::collect(
+                Category::orderBy('name')->get(['id', 'name'])
+            ),
+            'tags' => TagSummaryData::collect(
+                Tag::orderBy('name')->get(['id', 'name', 'slug'])
+            ),
         ]);
     }
 
@@ -71,13 +80,17 @@ class PostController extends Controller
     public function edit(Post $post)
     {
         return Inertia::render('Admin/Posts/Edit', [
-            'post' => $post->load('tags:id,name'),
+            'post' => PostData::fromModel($post->load('tags:id,name,slug')),
             // Signed link lets clients view drafts before publishing (valid 7 days).
-            'previewUrl' => config('template.features.blog')
+            'previewUrl' => $this->modules->enabled('blog')
                 ? URL::temporarySignedRoute('blog.show', now()->addDays(7), ['post' => $post->slug])
                 : null,
-            'categories' => Category::orderBy('name')->get(['id', 'name']),
-            'tags' => Tag::orderBy('name')->get(['id', 'name', 'slug']),
+            'categories' => CategorySummaryData::collect(
+                Category::orderBy('name')->get(['id', 'name'])
+            ),
+            'tags' => TagSummaryData::collect(
+                Tag::orderBy('name')->get(['id', 'name', 'slug'])
+            ),
         ]);
     }
 

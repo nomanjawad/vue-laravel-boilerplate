@@ -1,22 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
+import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    {{plural}}: { type: Object, default: () => ({ data: [] }) },
-    filters: { type: Object, default: () => ({}) },
-})
+const props = defineProps<{
+    {{plural}}: { data: Array<{ id: number; title: string; is_active?: boolean }> }
+    filters: { search?: string }
+}>()
 
 const search = ref(props.filters.search ?? '')
 
-let t = null
+let t: ReturnType<typeof setTimeout> | null = null
 watch(search, (v) => {
-    clearTimeout(t)
+    clearTimeout(t ?? undefined)
     t = setTimeout(() => {
-        router.get('/admin/{{resource}}', { search: v || undefined }, {
+        router.get(route('admin.{{resource}}.index'), { search: v || undefined }, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -24,9 +25,9 @@ watch(search, (v) => {
     }, 250)
 })
 
-function destroy(id) {
+function destroy(id: number) {
     if (!confirm('Delete this {{singular}}?')) return
-    router.delete(`/admin/{{resource}}/${id}`, { preserveScroll: true })
+    router.delete(route('admin.{{resource}}.destroy', id), { preserveScroll: true })
 }
 </script>
 
@@ -35,7 +36,7 @@ function destroy(id) {
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-900">{{models}}</h1>
         <Link
-            href="/admin/{{resource}}/create"
+            :href="route('admin.{{resource}}.create')"
             class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
         >
             New {{singular}}
@@ -61,7 +62,7 @@ function destroy(id) {
             <tbody class="divide-y divide-gray-100">
                 <tr v-for="row in {{plural}}.data" :key="row.id">
                     <td class="px-4 py-2 text-sm">
-                        <Link :href="`/admin/{{resource}}/${row.id}/edit`" class="text-indigo-600 hover:underline">
+                        <Link :href="route('admin.{{resource}}.edit', row.id)" class="text-indigo-600 hover:underline">
                             {{ '{{' }} row.title {{ '}}' }}
                         </Link>
                     </td>
