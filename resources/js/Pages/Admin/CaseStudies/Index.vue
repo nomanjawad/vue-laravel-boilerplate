@@ -1,16 +1,29 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    caseStudies: Object,
-    filters: Object,
-})
+interface CaseStudy {
+    id: number
+    title: string
+    client_name: string | null
+    is_active: boolean
+}
 
-const search = ref(props.filters?.search || '')
+interface CaseStudyFilters {
+    search?: string | null
+}
+
+interface Props {
+    caseStudies: Illuminate.LengthAwarePaginator<number, CaseStudy>
+    filters: CaseStudyFilters
+}
+
+const props = defineProps<Props>()
+
+const search = ref<string>(props.filters?.search || '')
 
 const applyFilters = () => {
     router.get('/admin/case-studies', { search: search.value }, { preserveState: true, replace: true })
@@ -18,7 +31,7 @@ const applyFilters = () => {
 
 watch(search, applyFilters)
 
-const deleteCaseStudy = (caseStudy) => {
+const deleteCaseStudy = (caseStudy: CaseStudy) => {
     if (confirm(`Delete "${caseStudy.title}"?`)) {
         router.delete(`/admin/case-studies/${caseStudy.id}`)
     }

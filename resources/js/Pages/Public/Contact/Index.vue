@@ -1,18 +1,40 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, useForm, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
+import type { SharedPageProps } from '@/types/inertia'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({
-    data: Object,
-})
+interface ContactHero {
+    title?: string | null
+    subtitle?: string | null
+}
 
-const page = usePage()
-const settings = computed(() => page.props.settings || {})
+interface ContactData {
+    hero?: ContactHero | null
+    office_hours?: string | null
+}
 
-const form = useForm({
+interface Props {
+    data?: ContactData | null
+}
+
+defineProps<Props>()
+
+interface ContactForm {
+    name: string
+    email: string
+    phone: string
+    subject: string
+    message: string
+    website: string
+}
+
+const page = usePage<SharedPageProps>()
+const settings = computed<App.Data.SettingsData>(() => page.props.settings || ({} as App.Data.SettingsData))
+
+const form = useForm<ContactForm>({
     name: '',
     email: '',
     phone: '',
@@ -21,7 +43,7 @@ const form = useForm({
     website: '', // honeypot — must stay empty (hidden from real users)
 })
 
-const submit = () => {
+const submit = (): void => {
     form.post('/contact', {
         onSuccess: () => form.reset(),
     })

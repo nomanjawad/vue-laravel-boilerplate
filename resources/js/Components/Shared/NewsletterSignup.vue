@@ -1,7 +1,11 @@
-<script setup>
+<script setup lang="ts">
 import { useForm } from '@inertiajs/vue3'
 
-const form = useForm({ email: '' })
+interface NewsletterForm {
+    email: string
+}
+
+const form = useForm<NewsletterForm>({ email: '' })
 
 const submit = () => {
     form.post('/newsletter', {

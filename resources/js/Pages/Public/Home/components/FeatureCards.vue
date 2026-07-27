@@ -1,6 +1,16 @@
-<script setup>
-defineProps({
-    features: { type: Array, default: () => [] },
+<script setup lang="ts">
+interface Feature {
+    title: string
+    description: string
+    icon?: string | null
+}
+
+interface Props {
+    features?: Feature[]
+}
+
+withDefaults(defineProps<Props>(), {
+    features: () => [],
 })
 </script>
 

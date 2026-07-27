@@ -1,24 +1,58 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({ product: Object, relatedProducts: Array })
+interface ProductCategory {
+    id: number
+    name: string
+    slug: string
+}
 
-const quantity = ref(1)
+interface Product {
+    id: number
+    slug: string
+    name: string
+    price: number
+    compare_price?: number | null
+    description?: string | null
+    featured_image?: string | null
+    sku?: string | null
+    stock_quantity: number
+    meta_title?: string | null
+    category?: ProductCategory | null
+}
 
-const formatPrice = (price) => {
+interface RelatedProduct {
+    id: number
+    slug: string
+    name: string
+    price: number
+    compare_price?: number | null
+    featured_image?: string | null
+}
+
+interface Props {
+    product: Product
+    relatedProducts?: RelatedProduct[] | null
+}
+
+const props = defineProps<Props>()
+
+const quantity = ref<number>(1)
+
+const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
 }
 
-const addToCart = () => {
+const addToCart = (): void => {
     router.post('/cart/add', { product_id: props.product.id, quantity: quantity.value }, { preserveScroll: true })
 }
 
-const incrementQty = () => { quantity.value++ }
-const decrementQty = () => { if (quantity.value > 1) quantity.value-- }
+const incrementQty = (): void => { quantity.value++ }
+const decrementQty = (): void => { if (quantity.value > 1) quantity.value-- }
 </script>
 
 <template>

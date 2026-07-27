@@ -1,16 +1,41 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    headerMenus: Array,
-    footerMenus: Array,
-})
+interface MenuItem {
+    id: number
+    title: string
+    url: string
+    sort_order: number
+    is_active: boolean
+}
 
-const newForm = useForm({
+interface Props {
+    headerMenus: MenuItem[]
+    footerMenus: MenuItem[]
+}
+
+interface NewMenuForm {
+    location: 'header' | 'footer'
+    title: string
+    url: string
+    sort_order: number
+    is_active: boolean
+}
+
+interface EditMenuForm {
+    title: string
+    url: string
+    sort_order: number
+    is_active: boolean
+}
+
+defineProps<Props>()
+
+const newForm = useForm<NewMenuForm>({
     location: 'header',
     title: '',
     url: '',
@@ -18,8 +43,8 @@ const newForm = useForm({
     is_active: true,
 })
 
-const editingId = ref(null)
-const editForm = useForm({
+const editingId = ref<number | null>(null)
+const editForm = useForm<EditMenuForm>({
     title: '',
     url: '',
     sort_order: 0,
@@ -32,7 +57,7 @@ const addMenu = () => {
     })
 }
 
-const startEdit = (item) => {
+const startEdit = (item: MenuItem) => {
     editingId.value = item.id
     editForm.title = item.title
     editForm.url = item.url
@@ -40,13 +65,13 @@ const startEdit = (item) => {
     editForm.is_active = item.is_active
 }
 
-const saveEdit = (id) => {
+const saveEdit = (id: number) => {
     editForm.put(`/admin/menus/${id}`, {
         onSuccess: () => { editingId.value = null },
     })
 }
 
-const deleteMenu = (id) => {
+const deleteMenu = (id: number) => {
     if (confirm('Delete this menu item?')) {
         router.delete(`/admin/menus/${id}`)
     }

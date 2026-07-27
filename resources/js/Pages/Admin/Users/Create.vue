@@ -1,14 +1,28 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    roles: Array,
-})
+interface Role {
+    id: number
+    name: string
+}
 
-const form = useForm({
+interface Props {
+    roles: Role[]
+}
+
+defineProps<Props>()
+
+interface UserForm {
+    name: string
+    email: string
+    password: string
+    role: string
+}
+
+const form = useForm<UserForm>({
     name: '',
     email: '',
     password: '',

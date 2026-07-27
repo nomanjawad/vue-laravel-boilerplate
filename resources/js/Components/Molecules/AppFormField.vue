@@ -1,16 +1,26 @@
-<script setup>
+<script setup lang="ts">
 import { inject } from 'vue'
 
-const props = defineProps({
-    name: { type: String, required: true },
-    label: { type: String, default: '' },
-    help: { type: String, default: '' },
-    required: { type: Boolean, default: false },
+interface Props {
+    name: string
+    label?: string
+    help?: string
+    required?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+    label: '',
+    help: '',
+    required: false,
 })
+
+interface InjectedForm {
+    errors: Record<string, string | undefined>
+}
 
 // Errors are read from the useForm() instance injected by <FormShell>.
 // Pages without a FormShell can still use this — errors prop is fallback.
-const form = inject('form', null)
+const form = inject<InjectedForm | null>('form', null)
 </script>
 
 <template>

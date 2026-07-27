@@ -1,12 +1,16 @@
-<script setup>
+<script setup lang="ts">
 /** Atom: small status pill (order status, post status, stock, ...). */
 import { computed } from 'vue'
 
-const props = defineProps({
-    color: { type: String, default: 'gray' }, // gray | green | amber | red | brand
+interface Props {
+    color?: string // gray | green | amber | red | brand
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    color: 'gray',
 })
 
-const palette = {
+const palette: Record<string, string> = {
     gray: 'bg-gray-100 text-gray-700',
     green: 'bg-green-100 text-green-700',
     amber: 'bg-amber-100 text-amber-700',

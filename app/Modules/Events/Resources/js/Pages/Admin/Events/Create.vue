@@ -5,7 +5,14 @@ import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
-const form = useForm({
+interface EventForm {
+    title: string
+    slug: string
+    body: string
+    is_active: boolean
+}
+
+const form = useForm<EventForm>({
     title: '',
     slug: '',
     body: '',

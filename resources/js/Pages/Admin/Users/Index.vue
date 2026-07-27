@@ -1,16 +1,34 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    users: Object,
-    filters: Object,
-})
+interface UserRole {
+    id: number
+    name: string
+}
 
-const search = ref(props.filters?.search || '')
+interface AdminUser {
+    id: number
+    name: string
+    email: string
+    roles: UserRole[]
+}
+
+interface UserFilters {
+    search?: string | null
+}
+
+interface Props {
+    users: Illuminate.LengthAwarePaginator<number, AdminUser>
+    filters: UserFilters
+}
+
+const props = defineProps<Props>()
+
+const search = ref<string>(props.filters?.search || '')
 
 watch(search, (value) => {
     router.get('/admin/users', { search: value }, {
@@ -19,7 +37,7 @@ watch(search, (value) => {
     })
 })
 
-const deleteUser = (user) => {
+const deleteUser = (user: AdminUser) => {
     if (confirm(`Delete user "${user.name}"?`)) {
         router.delete(`/admin/users/${user.id}`)
     }

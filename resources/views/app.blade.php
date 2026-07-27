@@ -7,7 +7,7 @@
             <meta name="robots" content="noindex, nofollow">
         @endunless
         <title inertia>{{ config('app.name', 'WebTemplate') }}</title>
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/app.css', 'resources/js/app.ts'])
         @inertiaHead
     </head>
     <body class="font-sans antialiased">

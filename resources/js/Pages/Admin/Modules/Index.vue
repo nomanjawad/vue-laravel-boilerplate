@@ -1,16 +1,37 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 
+type Primitive = string | number | boolean | null | undefined
+type Payload = Record<string, Primitive | Primitive[]>
+
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    modules: { type: Array, default: () => [] },
+interface ModuleEntry {
+    key: string
+    name: string
+    version: string
+    description: string
+    core: boolean
+    enabled: boolean
+    unhealthy: boolean
+    last_error?: string | null
+    dependencies?: string[]
+}
+
+interface Props {
+    modules?: ModuleEntry[]
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    modules: () => [],
 })
 
-const busy = ref(null)
-const uninstallTarget = ref(null)
+type ModuleAction = 'enable' | 'disable' | 'reinstall' | 'clear-health' | 'uninstall'
+
+const busy = ref<string | null>(null)
+const uninstallTarget = ref<ModuleEntry | null>(null)
 const uninstallConfirm = ref('')
 
 const sorted = computed(() =>
@@ -20,36 +41,46 @@ const sorted = computed(() =>
     }),
 )
 
-function call(key, action, method = 'post', extra = {}) {
+function call(key: string, action: ModuleAction, method: 'post' | 'put' | 'patch' = 'post', extra: Payload = {}) {
     busy.value = `${key}:${action}`
-    router[method](`/admin/modules/${key}/${action}`.replace(/\/$/, ''), extra, {
+    const url = `/admin/modules/${key}/${action}`.replace(/\/$/, '')
+    const options = {
         preserveScroll: true,
         onFinish: () => (busy.value = null),
-    })
+    }
+    if (method === 'put') {
+        router.put(url, extra, options)
+    } else if (method === 'patch') {
+        router.patch(url, extra, options)
+    } else {
+        router.post(url, extra, options)
+    }
 }
 
-function toggle(mod) {
+function toggle(mod: ModuleEntry) {
     call(mod.key, mod.enabled ? 'disable' : 'enable')
 }
 
-function reinstall(mod) {
+function reinstall(mod: ModuleEntry) {
     if (!confirm(`Re-run migrations and seeders for ${mod.name}?`)) return
     call(mod.key, 'reinstall')
 }
 
-function clearHealth(mod) {
+function clearHealth(mod: ModuleEntry) {
     call(mod.key, 'clear-health')
 }
 
-function openUninstall(mod) {
+function openUninstall(mod: ModuleEntry) {
     uninstallTarget.value = mod
     uninstallConfirm.value = ''
 }
 
 function confirmUninstall() {
     if (uninstallConfirm.value !== 'UNINSTALL') return
-    busy.value = `${uninstallTarget.value.key}:uninstall`
-    router.delete(`/admin/modules/${uninstallTarget.value.key}`, {
+    if (!uninstallTarget.value) return
+    const target = uninstallTarget.value
+    busy.value = `${target.key}:uninstall`
+    router.delete(`/admin/modules/${target.key}`, {
         data: { confirm: 'UNINSTALL' },
         preserveScroll: true,
         onFinish: () => {
@@ -152,7 +183,7 @@ function confirmUninstall() {
                     <button
                         type="button"
                         class="mt-2 text-xs text-rose-700 underline"
-                        :disabled="busy"
+                        :disabled="!!busy"
                         @click="clearHealth(mod)"
                     >
                         Clear health flag
@@ -164,7 +195,7 @@ function confirmUninstall() {
                         v-if="mod.enabled"
                         type="button"
                         class="rounded border border-gray-300 px-2 py-1 text-gray-700 hover:bg-gray-50"
-                        :disabled="busy"
+                        :disabled="!!busy"
                         @click="reinstall(mod)"
                     >
                         Reinstall
@@ -173,7 +204,7 @@ function confirmUninstall() {
                         v-if="!mod.core"
                         type="button"
                         class="rounded border border-rose-300 px-2 py-1 text-rose-700 hover:bg-rose-50"
-                        :disabled="busy"
+                        :disabled="!!busy"
                         @click="openUninstall(mod)"
                     >
                         Uninstall
@@ -216,7 +247,7 @@ function confirmUninstall() {
                     <button
                         type="button"
                         class="rounded bg-rose-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-                        :disabled="uninstallConfirm !== 'UNINSTALL' || busy"
+                        :disabled="uninstallConfirm !== 'UNINSTALL' || !!busy"
                         @click="confirmUninstall"
                     >
                         Uninstall

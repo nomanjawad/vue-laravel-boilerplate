@@ -1,19 +1,31 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-defineProps({
-    stats: {
-        type: Object,
-        default: () => ({})
-    },
-    topNotFound: {
-        type: Array,
-        default: () => []
-    }
+interface DashboardStats {
+    users?: number
+    posts?: number
+    products?: number
+    orders?: number
+}
+
+interface NotFoundLog {
+    id: number
+    path: string
+    hit_count: number
+}
+
+interface Props {
+    stats?: DashboardStats
+    topNotFound?: NotFoundLog[]
+}
+
+withDefaults(defineProps<Props>(), {
+    stats: () => ({}),
+    topNotFound: () => [],
 })
 
 const clearing = ref(false)

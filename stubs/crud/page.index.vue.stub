@@ -6,16 +6,26 @@ import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps<{
-    {{plural}}: { data: Array<{ id: number; title: string; is_active?: boolean }> }
-    filters: { search?: string }
+interface {{model}}ListItem {
+    id: number
+    title: string
+    is_active?: boolean
+}
+
+interface Filters {
+    search?: string
+}
+
+defineProps<{
+    {{plural}}: Illuminate.LengthAwarePaginator<number, {{model}}ListItem>
+    filters: Filters
 }>()
 
-const search = ref(props.filters.search ?? '')
+const search = ref<string>('')
 
 let t: ReturnType<typeof setTimeout> | null = null
 watch(search, (v) => {
-    clearTimeout(t ?? undefined)
+    if (t) clearTimeout(t)
     t = setTimeout(() => {
         router.get(route('admin.{{resource}}.index'), { search: v || undefined }, {
             preserveState: true,
@@ -27,7 +37,7 @@ watch(search, (v) => {
 
 function destroy(id: number) {
     if (!confirm('Delete this {{singular}}?')) return
-    router.delete(route('admin.{{resource}}.destroy', id), { preserveScroll: true })
+    router.delete(route('admin.{{resource}}.destroy', { id }), { preserveScroll: true })
 }
 </script>
 
@@ -62,7 +72,7 @@ function destroy(id: number) {
             <tbody class="divide-y divide-gray-100">
                 <tr v-for="row in {{plural}}.data" :key="row.id">
                     <td class="px-4 py-2 text-sm">
-                        <Link :href="route('admin.{{resource}}.edit', row.id)" class="text-indigo-600 hover:underline">
+                        <Link :href="route('admin.{{resource}}.edit', { id: row.id })" class="text-indigo-600 hover:underline">
                             {{ row.title }}
                         </Link>
                     </td>

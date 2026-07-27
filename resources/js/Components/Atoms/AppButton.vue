@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Atom: button/link with the template's two button styles.
  * Renders an Inertia <Link> when `href` is set, otherwise a <button>.
@@ -6,10 +6,16 @@
 import { Link } from '@inertiajs/vue3'
 import { computed } from 'vue'
 
-const props = defineProps({
-    href: { type: String, default: null },
-    variant: { type: String, default: 'primary' }, // primary | outline
-    light: { type: Boolean, default: false }, // invert for dark backgrounds
+interface Props {
+    href?: string | null
+    variant?: string // primary | outline
+    light?: boolean // invert for dark backgrounds
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    href: null,
+    variant: 'primary',
+    light: false,
 })
 
 const classes = computed(() => {

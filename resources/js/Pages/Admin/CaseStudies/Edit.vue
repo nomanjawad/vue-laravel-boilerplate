@@ -1,14 +1,39 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    caseStudy: Object,
-})
+interface CaseStudy {
+    id: number
+    title: string
+    slug: string
+    client_name: string | null
+    excerpt: string | null
+    body: string
+    featured_image: string | null
+    is_active: boolean
+    sort_order: number | null
+}
 
-const form = useForm({
+interface Props {
+    caseStudy: CaseStudy
+}
+
+interface CaseStudyForm {
+    title: string
+    slug: string
+    client_name: string
+    excerpt: string
+    body: string
+    featured_image: string
+    is_active: boolean
+    sort_order: number
+}
+
+const props = defineProps<Props>()
+
+const form = useForm<CaseStudyForm>({
     title: props.caseStudy.title,
     slug: props.caseStudy.slug,
     client_name: props.caseStudy.client_name || '',

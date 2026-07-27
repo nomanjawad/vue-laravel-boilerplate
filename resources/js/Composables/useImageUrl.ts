@@ -8,8 +8,10 @@
  *
  * Use this in admin Create/Edit previews instead of re-implementing per page.
  */
+export type ImagePath = string | null | undefined
+
 export function useImageUrl() {
-    const toImageUrl = (path) => {
+    const toImageUrl = (path: ImagePath): string | null => {
         if (!path) return null
         if (/^(https?:)?\/\//.test(path) || path.startsWith('/')) return path
         if (path.startsWith('uploads/')) return `/${path}`

@@ -5,13 +5,30 @@ import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps<{
-    event: { id: number; title: string; body?: string; is_active?: boolean; slug?: string }
-}>()
+interface Event {
+    id: number
+    title: string
+    body?: string
+    is_active?: boolean
+    slug?: string
+}
 
-const form = useForm({
+interface Props {
+    event: Event
+}
+
+interface EventForm {
+    title: string
+    slug: string
+    body: string
+    is_active: boolean
+}
+
+const props = defineProps<Props>()
+
+const form = useForm<EventForm>({
     title: props.event.title,
-    slug: props.event.slug,
+    slug: props.event.slug ?? '',
     body: props.event.body ?? '',
     is_active: !!props.event.is_active,
 })

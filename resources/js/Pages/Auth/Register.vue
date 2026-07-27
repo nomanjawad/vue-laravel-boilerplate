@@ -1,10 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import AuthLayout from '@/Layouts/AuthLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AuthLayout })
 
-const form = useForm({
+interface RegisterForm {
+    name: string
+    email: string
+    password: string
+    password_confirmation: string
+}
+
+const form = useForm<RegisterForm>({
     name: '',
     email: '',
     password: '',

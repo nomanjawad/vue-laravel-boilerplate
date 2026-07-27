@@ -1,17 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    posts: Object,
-    filters: Object,
-})
+interface PostFilters {
+    search?: string | null
+    status?: string | null
+}
 
-const search = ref(props.filters?.search || '')
-const status = ref(props.filters?.status || '')
+interface Props {
+    posts: Illuminate.LengthAwarePaginator<number, App.Data.PostData>
+    filters: PostFilters
+}
+
+const props = defineProps<Props>()
+
+const search = ref<string>(props.filters?.search || '')
+const status = ref<string>(props.filters?.status || '')
 
 const applyFilters = () => {
     router.get('/admin/posts', { search: search.value, status: status.value }, { preserveState: true, replace: true })
@@ -19,7 +26,7 @@ const applyFilters = () => {
 
 watch([search, status], applyFilters)
 
-const deletePost = (post) => {
+const deletePost = (post: App.Data.PostData) => {
     if (confirm(`Delete "${post.title}"?`)) {
         router.delete(`/admin/posts/${post.id}`)
     }

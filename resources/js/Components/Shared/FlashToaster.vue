@@ -1,26 +1,35 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
+import type { SharedPageProps } from '@/types/inertia'
 
-const page = usePage()
-const toasts = ref([])
+type Tone = 'success' | 'error' | 'info' | 'warning'
+
+interface Toast {
+    id: number
+    tone: Tone
+    message: string
+}
+
+const page = usePage<SharedPageProps>()
+const toasts = ref<Toast[]>([])
 let seq = 0
 
-const TONES = {
+const TONES: Record<Tone, string> = {
     success: 'bg-emerald-50 text-emerald-800 border-emerald-200',
     error: 'bg-rose-50 text-rose-800 border-rose-200',
     info: 'bg-sky-50 text-sky-800 border-sky-200',
     warning: 'bg-amber-50 text-amber-800 border-amber-200',
 }
 
-function push(tone, message) {
+function push(tone: Tone, message: string | null | undefined) {
     if (!message) return
     const id = ++seq
     toasts.value.push({ id, tone, message })
     setTimeout(() => dismiss(id), tone === 'error' ? 8000 : 4000)
 }
 
-function dismiss(id) {
+function dismiss(id: number) {
     toasts.value = toasts.value.filter((t) => t.id !== id)
 }
 

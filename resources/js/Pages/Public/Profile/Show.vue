@@ -1,21 +1,36 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, useForm } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({
-    user: Object,
-})
+interface ProfileUser {
+    id: number
+    name: string
+    email: string
+}
 
-const form = useForm({
+interface Props {
+    user: ProfileUser
+}
+
+const props = defineProps<Props>()
+
+interface ProfileForm {
+    name: string
+    email: string
+    password: string
+    password_confirmation: string
+}
+
+const form = useForm<ProfileForm>({
     name: props.user.name,
     email: props.user.email,
     password: '',
     password_confirmation: '',
 })
 
-const submit = () => {
+const submit = (): void => {
     form.put('/profile', {
         onSuccess: () => form.reset('password', 'password_confirmation'),
     })

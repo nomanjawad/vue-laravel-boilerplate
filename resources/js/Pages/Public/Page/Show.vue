@@ -1,12 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({
-    page: Object,
-})
+interface PageData {
+    id: number
+    slug: string
+    title: string
+    body: string
+    meta_title?: string | null
+    meta_description?: string | null
+}
+
+interface Props {
+    page: PageData
+}
+
+defineProps<Props>()
 </script>
 
 <template>

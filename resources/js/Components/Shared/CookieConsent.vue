@@ -1,10 +1,11 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import { useConsentScripts } from '@/Composables/useConsentScripts'
+import type { SharedPageProps } from '@/types/inertia'
 
-const page = usePage()
-const settings = computed(() => page.props.settings || {})
+const page = usePage<SharedPageProps>()
+const settings = computed<App.Data.SettingsData>(() => page.props.settings || {})
 
 const { consent, accept, decline, initialize } = useConsentScripts()
 

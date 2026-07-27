@@ -74,7 +74,9 @@ jobs:
             --exclude='/.gitattributes' \
             --exclude='/node_modules/' \
             --exclude='/.env' \
+            --exclude='/vite.config.ts' \
             --exclude='/vite.config.js' \
+            --exclude='/tsconfig.json' \
             --exclude='/package.json' \
             --exclude='/pnpm-lock.yaml' \
             --exclude='/phpunit.xml' \
@@ -87,6 +89,7 @@ jobs:
             --exclude='/resources/js/' \
             --exclude='/resources/css/' \
             --exclude='/public/storage' \
+            --exclude='/public/hot' \
             --exclude='/storage/' \
             --exclude='/bootstrap/cache/' \
             --exclude='/data/' \
@@ -101,8 +104,9 @@ jobs:
             "set -e && cd ${{ secrets.DEPLOY_PATH }} && \
              mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs storage/app/public bootstrap/cache && \
              chmod -R ug+rwx storage bootstrap/cache && \
-             php artisan template:doctor --production && \
              php artisan migrate --force && \
+             php artisan db:seed --class=RoleAndPermissionSeeder --force && \
+             php artisan db:seed --class=AdminUserSeeder --force && \
              php artisan storage:link --force && \
              php artisan optimize:clear && \
              php artisan responsecache:clear && \
@@ -110,4 +114,16 @@ jobs:
              php artisan route:cache && \
              (php artisan view:cache || true) && \
              php artisan --version && \
+             php artisan template:doctor --production --exit-zero && \
              echo 'Deploy finished successfully.'"
+        # Ordering notes (feedback.md §6):
+        #   - migrate FIRST so `Schema::hasTable('migrations')` and other
+        #     doctor checks have real state to inspect.
+        #   - Recurring seeders: only RoleAndPermissionSeeder + AdminUserSeeder,
+        #     both firstOrCreate (safe to re-run forever). ModulesSeeder /
+        #     SettingSeeder / MenuSeeder / PageMetaSeeder run ONCE manually on
+        #     first deploy (`php artisan db:seed --force`) — never here, or
+        #     they would silently revert admin edits.
+        #   - template:doctor runs LAST with --exit-zero: it's a post-deploy
+        #     health REPORT, not a gate. A red check must not abort a deploy
+        #     that already succeeded.

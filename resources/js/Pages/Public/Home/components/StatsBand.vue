@@ -1,6 +1,15 @@
-<script setup>
-defineProps({
-    stats: { type: Array, default: () => [] },
+<script setup lang="ts">
+interface Stat {
+    value: string | number
+    label: string
+}
+
+interface Props {
+    stats?: Stat[]
+}
+
+withDefaults(defineProps<Props>(), {
+    stats: () => [],
 })
 </script>
 

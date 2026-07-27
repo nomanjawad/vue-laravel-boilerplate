@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Page convention: a page file only composes section components from its own
  * `components/` folder (plus shared Atoms). Markup lives in the sections —
@@ -17,11 +17,64 @@ import CtaSection from './components/CtaSection.vue'
 
 defineOptions({ layout: PublicLayout })
 
-defineProps({
-    data: Object,
-    featuredPosts: Array,
-    featuredProducts: Array,
-})
+interface HomeHero {
+    title?: string | null
+    subtitle?: string | null
+    cta_text?: string | null
+    cta_url?: string | null
+    secondary_cta_text?: string | null
+    secondary_cta_url?: string | null
+}
+
+interface HomeFeature {
+    title: string
+    description: string
+    icon?: string | null
+}
+
+interface HomeStat {
+    value: string | number
+    label: string
+}
+
+interface HomeCta {
+    title: string
+    description: string
+    button_text: string
+    button_url?: string | null
+}
+
+interface HomeData {
+    hero?: HomeHero | null
+    features?: HomeFeature[] | null
+    stats?: HomeStat[] | null
+    cta_section?: HomeCta | null
+}
+
+interface HomeFeaturedPost {
+    id: number
+    slug: string
+    title: string
+    excerpt?: string | null
+    featured_image?: string | null
+}
+
+interface HomeFeaturedProduct {
+    id: number
+    slug: string
+    name: string
+    price: number
+    compare_price?: number | null
+    featured_image?: string | null
+}
+
+interface Props {
+    data?: HomeData | null
+    featuredPosts?: HomeFeaturedPost[] | null
+    featuredProducts?: HomeFeaturedProduct[] | null
+}
+
+defineProps<Props>()
 </script>
 
 <template>

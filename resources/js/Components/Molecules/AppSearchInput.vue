@@ -1,22 +1,30 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
 import AppIcon from '@/Components/Atoms/AppIcon.vue'
 
-const props = defineProps({
-    modelValue: { type: String, default: '' },
-    placeholder: { type: String, default: 'Search…' },
-    debounce: { type: Number, default: 250 },
+interface Props {
+    modelValue?: string
+    placeholder?: string
+    debounce?: number
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    modelValue: '',
+    placeholder: 'Search…',
+    debounce: 250,
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+    (e: 'update:modelValue', value: string): void
+}>()
 
-const inner = ref(props.modelValue)
-let t = null
+const inner = ref<string>(props.modelValue)
+let t: ReturnType<typeof setTimeout> | null = null
 
 watch(() => props.modelValue, (v) => { inner.value = v })
 
 watch(inner, (v) => {
-    clearTimeout(t)
+    if (t) clearTimeout(t)
     t = setTimeout(() => emit('update:modelValue', v), props.debounce)
 })
 </script>

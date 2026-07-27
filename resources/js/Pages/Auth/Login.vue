@@ -1,10 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import AuthLayout from '@/Layouts/AuthLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AuthLayout })
 
-const form = useForm({
+interface LoginForm {
+    email: string
+    password: string
+    remember: boolean
+}
+
+const form = useForm<LoginForm>({
     email: '',
     password: '',
     remember: false,

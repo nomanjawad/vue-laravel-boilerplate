@@ -6,10 +6,22 @@ import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps<{
-    faqs: { data: Array<{ id: number; title: string; is_active?: boolean }> }
-    filters: { search?: string }
-}>()
+interface FaqListItem {
+    id: number
+    title: string
+    is_active?: boolean
+}
+
+interface FaqFilters {
+    search?: string
+}
+
+interface Props {
+    faqs: Illuminate.LengthAwarePaginator<number, FaqListItem>
+    filters: FaqFilters
+}
+
+const props = defineProps<Props>()
 
 const search = ref(props.filters.search ?? '')
 

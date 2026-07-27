@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref, watch, type Ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 
 /**
@@ -11,20 +11,33 @@ import { router } from '@inertiajs/vue3'
  *     sort: props.filters.sort,
  *   }, { route: '/admin/posts' })
  */
-export function useTableFilters(initial = {}, { route, debounce = 250, only = [] } = {}) {
-    const refs = {}
+export interface TableFiltersOptions {
+    route?: string
+    debounce?: number
+    only?: string[]
+}
+
+export type FilterValue = string | number | null | undefined
+
+export function useTableFilters<T extends Record<string, FilterValue>>(
+    initial: T,
+    { route, debounce = 250, only = [] }: TableFiltersOptions = {},
+): { [K in keyof T]: Ref<T[K] | ''> } {
+    const refs = {} as { [K in keyof T]: Ref<T[K] | ''> }
     for (const k in initial) {
-        refs[k] = ref(initial[k] ?? '')
+        refs[k] = ref((initial[k] ?? '') as T[typeof k] | '') as Ref<T[typeof k] | ''>
     }
 
-    let t = null
+    let t: ReturnType<typeof setTimeout> | null = null
     function reload() {
-        clearTimeout(t)
+        if (t) clearTimeout(t)
         t = setTimeout(() => {
-            const params = {}
+            const params: Record<string, string | number> = {}
             for (const k in refs) {
                 const v = refs[k].value
-                if (v !== '' && v !== null && v !== undefined) params[k] = v
+                if (v !== '' && v !== null && v !== undefined) {
+                    params[k] = v as string | number
+                }
             }
             router.get(route ?? window.location.pathname, params, {
                 preserveState: true,

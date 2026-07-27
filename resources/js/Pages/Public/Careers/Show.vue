@@ -1,31 +1,46 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({
-    career: Object,
-})
+type CareerType = 'full-time' | 'part-time' | 'contract' | 'remote' | string
 
-const typeLabel = (type) => {
-    const labels = {
+interface Career {
+    id: number
+    slug: string
+    title: string
+    department?: string | null
+    location?: string | null
+    type: CareerType
+    description?: string | null
+    requirements?: string | null
+}
+
+interface Props {
+    career: Career
+}
+
+defineProps<Props>()
+
+const typeLabel = (type: CareerType): string => {
+    const labels: Record<string, string> = {
         'full-time': 'Full Time',
         'part-time': 'Part Time',
         'contract': 'Contract',
         'remote': 'Remote',
     }
-    return labels[type] || type
+    return labels[type] ?? type
 }
 
-const typeColor = (type) => {
-    const colors = {
+const typeColor = (type: CareerType): string => {
+    const colors: Record<string, string> = {
         'full-time': 'bg-blue-100 text-blue-800',
         'part-time': 'bg-purple-100 text-purple-800',
         'contract': 'bg-orange-100 text-orange-800',
         'remote': 'bg-green-100 text-green-800',
     }
-    return colors[type] || 'bg-gray-100 text-gray-800'
+    return colors[type] ?? 'bg-gray-100 text-gray-800'
 }
 </script>
 

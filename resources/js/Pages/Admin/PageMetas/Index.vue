@@ -1,23 +1,46 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    pageMetas: Array,
-})
+interface PageMeta {
+    id: number
+    route_name: string
+    meta_title: string | null
+    meta_description: string | null
+    og_image: string | null
+}
 
-const newForm = useForm({
+interface Props {
+    pageMetas: PageMeta[]
+}
+
+interface NewMetaForm {
+    route_name: string
+    meta_title: string
+    meta_description: string
+    og_image: string
+}
+
+interface EditMetaForm {
+    meta_title: string
+    meta_description: string
+    og_image: string
+}
+
+defineProps<Props>()
+
+const newForm = useForm<NewMetaForm>({
     route_name: '',
     meta_title: '',
     meta_description: '',
     og_image: '',
 })
 
-const editingId = ref(null)
-const editForm = useForm({
+const editingId = ref<number | null>(null)
+const editForm = useForm<EditMetaForm>({
     meta_title: '',
     meta_description: '',
     og_image: '',
@@ -29,20 +52,20 @@ const addMeta = () => {
     })
 }
 
-const startEdit = (meta) => {
+const startEdit = (meta: PageMeta) => {
     editingId.value = meta.id
     editForm.meta_title = meta.meta_title || ''
     editForm.meta_description = meta.meta_description || ''
     editForm.og_image = meta.og_image || ''
 }
 
-const saveEdit = (id) => {
+const saveEdit = (id: number) => {
     editForm.put(`/admin/page-metas/${id}`, {
         onSuccess: () => { editingId.value = null },
     })
 }
 
-const deleteMeta = (id) => {
+const deleteMeta = (id: number) => {
     if (confirm('Delete this page meta?')) {
         router.delete(`/admin/page-metas/${id}`)
     }

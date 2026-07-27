@@ -1,7 +1,12 @@
-<script setup>
-defineProps({
-    title: { type: String, default: '' },
-    padded: { type: Boolean, default: true },
+<script setup lang="ts">
+interface Props {
+    title?: string
+    padded?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+    title: '',
+    padded: true,
 })
 </script>
 

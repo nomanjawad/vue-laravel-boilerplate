@@ -1,13 +1,27 @@
-<script setup>
+<script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
 import SectionHeading from '@/Components/Atoms/SectionHeading.vue'
 import { useImageUrl } from '@/Composables/useImageUrl'
 
-defineProps({
-    products: { type: Array, default: () => [] },
+interface FeaturedProduct {
+    id: number
+    slug: string
+    name: string
+    price: number
+    compare_price?: number | null
+    featured_image?: string | null
+}
+
+interface Props {
+    products?: FeaturedProduct[]
+}
+
+withDefaults(defineProps<Props>(), {
+    products: () => [],
 })
 
-const { toImageUrl } = useImageUrl()
+const { toImageUrl: rawToImageUrl } = useImageUrl()
+const toImageUrl = (path: string | null | undefined): string | undefined => rawToImageUrl(path) ?? undefined
 </script>
 
 <template>

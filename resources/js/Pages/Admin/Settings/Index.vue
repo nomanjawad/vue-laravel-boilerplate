@@ -1,20 +1,32 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    settings: Object,
-})
+interface Setting {
+    key: string
+    value: string | null
+    type: string
+}
+
+interface Props {
+    settings: Record<string, Setting[]>
+}
+
+const props = defineProps<Props>()
+
+interface SettingsForm {
+    settings: Record<string, string>
+}
 
 // Flatten settings into a key-value object for the form
-const settingsObj = {}
-Object.values(props.settings).forEach(group => {
-    group.forEach(s => { settingsObj[s.key] = s.value || '' })
+const settingsObj: Record<string, string> = {}
+Object.values(props.settings).forEach((group: Setting[]) => {
+    group.forEach((s: Setting) => { settingsObj[s.key] = s.value || '' })
 })
 
-const form = useForm({
+const form = useForm<SettingsForm>({
     settings: settingsObj,
 })
 
@@ -22,7 +34,7 @@ const submit = () => {
     form.put('/admin/settings')
 }
 
-const groups = {
+const groups: Record<string, string> = {
     general: 'General',
     contact: 'Contact Information',
     social: 'Social Media',

@@ -1,14 +1,45 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    member: Object,
-})
+interface SocialLinks {
+    facebook: string
+    twitter: string
+    linkedin: string
+}
 
-const form = useForm({
+interface TeamMember {
+    id: number
+    name: string
+    position: string
+    bio: string | null
+    photo: string | null
+    email: string | null
+    social_links: Partial<SocialLinks> | null
+    sort_order: number | null
+    is_active: boolean
+}
+
+interface Props {
+    member: TeamMember
+}
+
+const props = defineProps<Props>()
+
+interface TeamMemberForm {
+    name: string
+    position: string
+    bio: string
+    photo: string
+    email: string
+    social_links: SocialLinks
+    sort_order: number
+    is_active: boolean
+}
+
+const form = useForm<TeamMemberForm>({
     name: props.member.name,
     position: props.member.position,
     bio: props.member.bio || '',

@@ -1,17 +1,35 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    orders: Object,
-    filters: Object,
-})
+interface Order {
+    id: number
+    order_number: string
+    customer_name: string
+    customer_email: string
+    total: number
+    status: string
+    payment_status: string
+    created_at: string
+}
 
-const search = ref(props.filters?.search || '')
-const status = ref(props.filters?.status || '')
+interface OrderFilters {
+    search?: string | null
+    status?: string | null
+}
+
+interface Props {
+    orders: Illuminate.LengthAwarePaginator<number, Order>
+    filters: OrderFilters
+}
+
+const props = defineProps<Props>()
+
+const search = ref<string>(props.filters?.search || '')
+const status = ref<string>(props.filters?.status || '')
 
 const applyFilters = () => {
     router.get('/admin/orders', { search: search.value, status: status.value }, { preserveState: true, replace: true })
@@ -19,16 +37,16 @@ const applyFilters = () => {
 
 watch([search, status], applyFilters)
 
-const formatPrice = (price) => {
+const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
 }
 
-const formatDate = (date) => {
+const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-const statusColor = (s) => {
-    const map = {
+const statusColor = (s: string) => {
+    const map: Record<string, string> = {
         pending: 'bg-yellow-100 text-yellow-800',
         processing: 'bg-blue-100 text-blue-800',
         completed: 'bg-green-100 text-green-800',
@@ -38,8 +56,8 @@ const statusColor = (s) => {
     return map[s] || 'bg-gray-100 text-gray-800'
 }
 
-const paymentStatusColor = (s) => {
-    const map = {
+const paymentStatusColor = (s: string) => {
+    const map: Record<string, string> = {
         paid: 'bg-green-100 text-green-800',
         failed: 'bg-red-100 text-red-800',
         pending: 'bg-yellow-100 text-yellow-800',

@@ -1,31 +1,42 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({
-    items: Array,
-    subtotal: Number,
-})
+interface CartItem {
+    product_id: number
+    name: string
+    slug: string
+    price: number
+    quantity: number
+    featured_image?: string | null
+}
 
-const formatPrice = (price) => {
+interface Props {
+    items: CartItem[]
+    subtotal: number
+}
+
+defineProps<Props>()
+
+const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
 }
 
-const updateQuantity = (productId, quantity) => {
+const updateQuantity = (productId: number, quantity: number): void => {
     router.patch('/cart/update', { product_id: productId, quantity }, { preserveScroll: true })
 }
 
-const removeItem = (productId) => {
+const removeItem = (productId: number): void => {
     router.delete(`/cart/remove/${productId}`, { preserveScroll: true })
 }
 
-const increment = (item) => {
+const increment = (item: CartItem): void => {
     updateQuantity(item.product_id, item.quantity + 1)
 }
 
-const decrement = (item) => {
+const decrement = (item: CartItem): void => {
     if (item.quantity > 1) {
         updateQuantity(item.product_id, item.quantity - 1)
     }

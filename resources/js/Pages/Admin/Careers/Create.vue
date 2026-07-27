@@ -1,10 +1,22 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const form = useForm({
+interface CareerForm {
+    title: string
+    slug: string
+    department: string
+    location: string
+    type: string
+    description: string
+    requirements: string
+    is_active: boolean
+    sort_order: number
+}
+
+const form = useForm<CareerForm>({
     title: '',
     slug: '',
     department: '',

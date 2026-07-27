@@ -1,14 +1,62 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    order: Object,
-})
+interface OrderItem {
+    id: number
+    product_name: string
+    unit_price: number
+    quantity: number
+    total: number
+}
 
-const statusForm = useForm({
+interface OrderAddress {
+    line1?: string | null
+    line2?: string | null
+    city?: string | null
+    state?: string | null
+    zip?: string | null
+    country?: string | null
+}
+
+interface OrderUser {
+    id: number
+    name: string
+}
+
+interface Order {
+    id: number
+    order_number: string
+    customer_name: string
+    customer_email: string
+    status: string
+    payment_status: string
+    payment_method: string | null
+    subtotal: number
+    tax: number
+    total: number
+    notes: string | null
+    created_at: string
+    paid_at: string | null
+    shipping_address: OrderAddress | string | null
+    billing_address: OrderAddress | string | null
+    user: OrderUser | null
+    items: OrderItem[]
+}
+
+interface Props {
+    order: Order
+}
+
+interface StatusForm {
+    status: string
+}
+
+const props = defineProps<Props>()
+
+const statusForm = useForm<StatusForm>({
     status: props.order.status,
 })
 
@@ -16,16 +64,16 @@ const updateStatus = () => {
     statusForm.patch(`/admin/orders/${props.order.order_number}/status`)
 }
 
-const formatPrice = (price) => {
+const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
 }
 
-const formatDate = (date) => {
+const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-const statusColor = (s) => {
-    const map = {
+const statusColor = (s: string) => {
+    const map: Record<string, string> = {
         pending: 'bg-yellow-100 text-yellow-800',
         processing: 'bg-blue-100 text-blue-800',
         completed: 'bg-green-100 text-green-800',
@@ -35,8 +83,8 @@ const statusColor = (s) => {
     return map[s] || 'bg-gray-100 text-gray-800'
 }
 
-const paymentStatusColor = (s) => {
-    const map = {
+const paymentStatusColor = (s: string) => {
+    const map: Record<string, string> = {
         paid: 'bg-green-100 text-green-800',
         failed: 'bg-red-100 text-red-800',
         pending: 'bg-yellow-100 text-yellow-800',
@@ -45,7 +93,7 @@ const paymentStatusColor = (s) => {
     return map[s] || 'bg-gray-100 text-gray-800'
 }
 
-const formatAddress = (address) => {
+const formatAddress = (address: OrderAddress | string | null | undefined) => {
     if (!address) return '-'
     if (typeof address === 'string') return address
     const parts = [address.line1, address.line2, address.city, address.state, address.zip, address.country].filter(Boolean)

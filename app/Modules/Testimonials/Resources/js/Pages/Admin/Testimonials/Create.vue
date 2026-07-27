@@ -5,7 +5,13 @@ import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
-const form = useForm({
+interface TestimonialForm {
+    title: string
+    body: string
+    is_active: boolean
+}
+
+const form = useForm<TestimonialForm>({
     title: '',
 
     body: '',

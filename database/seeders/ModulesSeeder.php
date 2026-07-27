@@ -20,7 +20,11 @@ class ModulesSeeder extends Seeder
             $flag = $manifest['feature_flag_fallback'] ?? $key;
             $defaultEnabled = $isCore || (bool) config("template.features.{$flag}", false);
 
-            Module::updateOrCreate(
+            // firstOrCreate (not updateOrCreate) — deploy safety. If an admin
+            // has toggled a module in /admin/modules, re-running this seeder on
+            // deploy must NOT revert their choice (`enabled`). New rows are seeded
+            // with defaults; existing rows are left alone. See feedback.md §6.
+            Module::firstOrCreate(
                 ['key' => $key],
                 [
                     'type' => 'virtual',

@@ -6,10 +6,22 @@ import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps<{
-    events: { data: Array<{ id: number; title: string; is_active?: boolean }> }
-    filters: { search?: string }
-}>()
+interface EventListItem {
+    id: number
+    title: string
+    is_active?: boolean
+}
+
+interface EventFilters {
+    search?: string
+}
+
+interface Props {
+    events: Illuminate.LengthAwarePaginator<number, EventListItem>
+    filters: EventFilters
+}
+
+const props = defineProps<Props>()
 
 const search = ref(props.filters.search ?? '')
 

@@ -1,14 +1,30 @@
-<script setup>
-defineProps({
-    modelValue: { type: String, default: '' },
-    rows: { type: Number, default: 6 },
-    placeholder: { type: String, default: '' },
-    disabled: { type: Boolean, default: false },
-    id: { type: String, default: undefined },
-    invalid: { type: Boolean, default: false },
+<script setup lang="ts">
+interface Props {
+    modelValue?: string
+    rows?: number
+    placeholder?: string
+    disabled?: boolean
+    id?: string
+    invalid?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+    modelValue: '',
+    rows: 6,
+    placeholder: '',
+    disabled: false,
+    id: undefined,
+    invalid: false,
 })
 
-defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+    (e: 'update:modelValue', value: string): void
+}>()
+
+function onInput(e: Event) {
+    const target = e.target as HTMLTextAreaElement
+    emit('update:modelValue', target.value)
+}
 </script>
 
 <template>
@@ -23,6 +39,6 @@ defineEmits(['update:modelValue'])
         :class="invalid
             ? 'border-rose-400 bg-rose-50 focus:ring-rose-200'
             : 'border-gray-300 bg-white focus:border-indigo-500 focus:ring-indigo-200 disabled:bg-gray-100'"
-        @input="$emit('update:modelValue', $event.target.value)"
+        @input="onInput"
     />
 </template>

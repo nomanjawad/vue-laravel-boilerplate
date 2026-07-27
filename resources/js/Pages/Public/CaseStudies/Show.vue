@@ -1,12 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({
-    caseStudy: Object,
-})
+interface CaseStudy {
+    id: number
+    slug: string
+    title: string
+    body?: string | null
+    excerpt?: string | null
+    featured_image?: string | null
+    client_name?: string | null
+}
+
+interface Props {
+    caseStudy: CaseStudy
+}
+
+defineProps<Props>()
 </script>
 
 <template>

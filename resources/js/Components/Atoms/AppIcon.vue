@@ -1,12 +1,16 @@
-<script setup>
+<script setup lang="ts">
 // Tiny built-in icon set keyed by name. Pure SVG, no external dep.
 // Extend the `paths` map below as needed. Names match the manifest icon keys.
-const props = defineProps({
-    name: { type: String, required: true },
-    size: { type: [Number, String], default: 18 },
+interface Props {
+    name: string
+    size?: number | string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    size: 18,
 })
 
-const paths = {
+const paths: Record<string, string> = {
     dashboard: 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',
     users: 'M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4zM8 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-2.7 0-8 1.3-8 4v3h16v-3c0-2.7-5.3-4-8-4zm8 0c-.4 0-.8 0-1.2.1A5.6 5.6 0 0 1 17 17v3h7v-3c0-2.7-5.3-4-8-4z',
     posts: 'M4 4h16v2H4zM4 11h16v2H4zM4 18h10v2H4z',
@@ -25,7 +29,7 @@ const paths = {
     cube: 'M12 2 2 7v10l10 5 10-5V7zm0 2.2L19.4 8 12 11.8 4.6 8zM4 9.5l7 3.5v7.6L4 17z',
 }
 
-const path = paths[props.name] ?? paths.cube
+const path = paths[props.name] ?? paths.cube ?? ''
 </script>
 
 <template>

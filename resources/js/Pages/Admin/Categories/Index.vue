@@ -1,12 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({ categories: Array })
+interface CategoryRow {
+    id: number
+    name: string
+    slug: string
+    posts_count: number
+}
 
-const deleteCategory = (cat) => {
+interface Props {
+    categories: CategoryRow[]
+}
+
+defineProps<Props>()
+
+const deleteCategory = (cat: CategoryRow) => {
     if (confirm(`Delete "${cat.name}"?`)) {
         router.delete(`/admin/categories/${cat.id}`)
     }

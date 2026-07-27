@@ -1,16 +1,31 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    careers: Object,
-    filters: Object,
-})
+interface Career {
+    id: number
+    title: string
+    department: string | null
+    location: string | null
+    type: string
+    is_active: boolean
+}
 
-const search = ref(props.filters?.search || '')
+interface CareerFilters {
+    search?: string | null
+}
+
+interface Props {
+    careers: Illuminate.LengthAwarePaginator<number, Career>
+    filters: CareerFilters
+}
+
+const props = defineProps<Props>()
+
+const search = ref<string>(props.filters?.search || '')
 
 const applyFilters = () => {
     router.get('/admin/careers', { search: search.value }, { preserveState: true, replace: true })
@@ -18,14 +33,14 @@ const applyFilters = () => {
 
 watch(search, applyFilters)
 
-const deleteCareer = (career) => {
+const deleteCareer = (career: Career) => {
     if (confirm(`Delete "${career.title}"?`)) {
         router.delete(`/admin/careers/${career.id}`)
     }
 }
 
-const typeLabel = (type) => {
-    const labels = {
+const typeLabel = (type: string) => {
+    const labels: Record<string, string> = {
         'full-time': 'Full Time',
         'part-time': 'Part Time',
         'contract': 'Contract',

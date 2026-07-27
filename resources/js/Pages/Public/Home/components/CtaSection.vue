@@ -1,8 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import AppButton from '@/Components/Atoms/AppButton.vue'
 
-defineProps({
-    cta: { type: Object, default: null },
+interface Cta {
+    title: string
+    description: string
+    button_text: string
+    button_url?: string | null
+}
+
+interface Props {
+    cta?: Cta | null
+}
+
+withDefaults(defineProps<Props>(), {
+    cta: null,
 })
 </script>
 

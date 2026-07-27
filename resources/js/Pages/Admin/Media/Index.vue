@@ -1,20 +1,36 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, router, Link } from '@inertiajs/vue3'
 import { ref } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    media: Object,
-})
+interface MediaItem {
+    id: number
+    filename: string
+    url: string
+    mime_type: string
+    size: number
+    alt_text: string | null
+}
 
-const form = useForm({
+interface Props {
+    media: Illuminate.LengthAwarePaginator<number, MediaItem>
+}
+
+interface UploadForm {
+    file: File | null
+    alt_text: string
+}
+
+defineProps<Props>()
+
+const form = useForm<UploadForm>({
     file: null,
     alt_text: '',
 })
 
-const fileInput = ref(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const uploadFile = () => {
     form.post('/admin/media', {
@@ -26,17 +42,18 @@ const uploadFile = () => {
     })
 }
 
-const onFileChange = (e) => {
-    form.file = e.target.files[0]
+const onFileChange = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    form.file = target.files?.[0] ?? null
 }
 
-const deleteMedia = (id) => {
+const deleteMedia = (id: number) => {
     if (confirm('Delete this file?')) {
         router.delete(`/admin/media/${id}`)
     }
 }
 
-const formatSize = (bytes) => {
+const formatSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B'
     if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
     return (bytes / 1048576).toFixed(1) + ' MB'
@@ -71,7 +88,7 @@ const formatSize = (bytes) => {
     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         <div v-for="item in media.data" :key="item.id" class="bg-white rounded-lg shadow overflow-hidden group">
             <div class="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
-                <img v-if="item.mime_type.startsWith('image/')" :src="item.url" :alt="item.alt_text" class="w-full h-full object-cover" />
+                <img v-if="item.mime_type.startsWith('image/')" :src="item.url" :alt="item.alt_text ?? ''" class="w-full h-full object-cover" />
                 <div v-else class="text-center p-2">
                     <div class="text-2xl text-gray-400 mb-1">&#128196;</div>
                     <p class="text-xs text-gray-500 truncate">{{ item.filename }}</p>

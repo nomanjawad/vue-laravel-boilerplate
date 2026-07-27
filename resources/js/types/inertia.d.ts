@@ -1,9 +1,13 @@
-import type { PageProps as InertiaPageProps } from '@inertiajs/core'
-
 /**
  * Shared Inertia props emitted by HandleInertiaRequests.
  * Field shapes are generated from app/Data/* DTOs via typescript:transform.
+ *
+ * Inertia 3.6+ pattern: augment InertiaConfig['sharedPageProps'] to make
+ * usePage() and $page.props return the typed shared props automatically.
+ * See node_modules/@inertiajs/core/types/types.d.ts (SharedPageProps).
  */
+import '@inertiajs/core'
+
 export interface SharedPageProps {
     auth: App.Data.AuthData
     modules: App.Data.ModulesSharedData
@@ -14,14 +18,13 @@ export interface SharedPageProps {
     cartCount: number
     seo: App.Data.SeoData
     organizationJsonLd: Record<string, unknown> | null
+    [key: string]: unknown
 }
 
 declare module '@inertiajs/core' {
-    interface PageProps extends SharedPageProps, InertiaPageProps {}
-}
-
-declare module '@inertiajs/vue3' {
-    interface PageProps extends SharedPageProps, InertiaPageProps {}
+    interface InertiaConfig {
+        sharedPageProps: SharedPageProps
+    }
 }
 
 declare module 'vue' {

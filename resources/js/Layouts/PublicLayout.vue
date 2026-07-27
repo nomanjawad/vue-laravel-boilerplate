@@ -1,24 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { usePage, Link, Head } from '@inertiajs/vue3'
 import { computed } from 'vue'
+import type { SharedPageProps } from '@/types/inertia'
 import CookieConsent from '@/Components/Shared/CookieConsent.vue'
 import NewsletterSignup from '@/Components/Shared/NewsletterSignup.vue'
 import FlashToaster from '@/Components/Shared/FlashToaster.vue'
 
-const page = usePage()
+const page = usePage<SharedPageProps>()
 
 const headerMenus = computed(() => page.props.menus?.header || [])
 const footerMenus = computed(() => page.props.menus?.footer || [])
-const settings = computed(() => page.props.settings || {})
+const settings = computed<Partial<App.Data.SettingsData>>(() => page.props.settings || {})
 const appName = computed(() => settings.value.site_name || 'WebTemplate')
 
-const seo = computed(() => page.props.seo || {})
+const seo = computed<Partial<App.Data.SeoData>>(() => page.props.seo || {})
 const ogTitle = computed(() => seo.value.title || seo.value.site_name || appName.value)
 
 // JSON-LD structured data: Organization on every page (shared prop) plus any
 // page-specific schemas passed by controllers as a `jsonLd` prop.
-const jsonLdBlocks = computed(() => {
-    const blocks = []
+const jsonLdBlocks = computed<unknown[]>(() => {
+    const blocks: unknown[] = []
     if (page.props.organizationJsonLd) blocks.push(page.props.organizationJsonLd)
     const pageSchemas = page.props.jsonLd
     if (Array.isArray(pageSchemas)) blocks.push(...pageSchemas)

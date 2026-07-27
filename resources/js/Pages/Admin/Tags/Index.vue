@@ -1,18 +1,33 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({ tags: Array })
+interface Tag {
+    id: number
+    name: string
+    slug: string
+    posts_count: number
+}
 
-const newForm = useForm({
+interface Props {
+    tags: Tag[]
+}
+
+defineProps<Props>()
+
+interface TagForm {
+    name: string
+}
+
+const newForm = useForm<TagForm>({
     name: '',
 })
 
-const editingId = ref(null)
-const editForm = useForm({
+const editingId = ref<number | null>(null)
+const editForm = useForm<TagForm>({
     name: '',
 })
 
@@ -22,18 +37,18 @@ const addTag = () => {
     })
 }
 
-const startEdit = (tag) => {
+const startEdit = (tag: Tag) => {
     editingId.value = tag.id
     editForm.name = tag.name
 }
 
-const saveEdit = (id) => {
+const saveEdit = (id: number) => {
     editForm.put(`/admin/tags/${id}`, {
         onSuccess: () => { editingId.value = null },
     })
 }
 
-const deleteTag = (tag) => {
+const deleteTag = (tag: Tag) => {
     if (confirm(`Delete "${tag.name}"?`)) {
         router.delete(`/admin/tags/${tag.id}`)
     }

@@ -1,12 +1,15 @@
-<script setup>
-import { usePermissions } from '@/Composables/usePermissions.js'
+<script setup lang="ts">
+import { usePermissions } from '@/Composables/usePermissions'
 
-const props = defineProps({
-    permission: { type: [String, Array], required: true },
-})
+interface Props {
+    permission?: string
+    any?: string[]
+}
+
+const props = defineProps<Props>()
 
 const { can, canAny } = usePermissions()
-const allowed = Array.isArray(props.permission) ? canAny(props.permission) : can(props.permission)
+const allowed = props.any ? canAny(props.any) : can(props.permission)
 </script>
 
 <template>

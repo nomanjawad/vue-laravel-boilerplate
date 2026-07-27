@@ -1,14 +1,21 @@
-<script setup>
+<script setup lang="ts">
 import { usePage, Link, router } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
 import { route } from 'ziggy-js'
+import type { SharedPageProps } from '@/types/inertia'
 import FlashToaster from '@/Components/Shared/FlashToaster.vue'
 import ConfirmDialog from '@/Components/Shared/ConfirmDialog.vue'
 import NotificationBell from '@/Components/Organisms/NotificationBell.vue'
 import GlobalSearch from '@/Components/Organisms/GlobalSearch.vue'
 import { useShortcuts } from '@/Composables/useShortcuts.js'
 
-const page = usePage()
+interface MenuItem {
+    title: string
+    href: string
+    icon: string
+}
+
+const page = usePage<SharedPageProps>()
 const sidebarOpen = ref(false)
 const shortcutHelpOpen = ref(false)
 const globalSearchOpen = ref(false)
@@ -17,10 +24,10 @@ const user = computed(() => page.props.auth?.user)
 
 // Sidebar is fed by the module registry — each enabled module declares its
 // own nav entries in its manifest, already permission-filtered server-side.
-const moduleNav = computed(() => page.props.modules?.nav ?? [])
+const moduleNav = computed<App.Data.ModuleNavEntry[]>(() => page.props.modules?.nav ?? [])
 
-const menuItems = computed(() => {
-    const items = [{ title: 'Dashboard', href: route('admin.dashboard'), icon: 'dashboard' }]
+const menuItems = computed<MenuItem[]>(() => {
+    const items: MenuItem[] = [{ title: 'Dashboard', href: route('admin.dashboard'), icon: 'dashboard' }]
 
     for (const entry of moduleNav.value) {
         const href = entry.href || (entry.route && route().has(entry.route) ? route(entry.route) : null)
@@ -35,7 +42,7 @@ const menuItems = computed(() => {
     return items
 })
 
-const isActive = (href) => {
+const isActive = (href: string): boolean => {
     const dashboard = route('admin.dashboard')
     if (href === dashboard) return page.url === dashboard
     return page.url.startsWith(href)

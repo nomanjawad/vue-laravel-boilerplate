@@ -1,15 +1,40 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({
-    items: Array,
-    subtotal: Number,
-})
+interface CheckoutItem {
+    product_id: number
+    name: string
+    price: number
+    quantity: number
+}
 
-const form = useForm({
+interface Props {
+    items: CheckoutItem[]
+    subtotal: number
+}
+
+defineProps<Props>()
+
+interface ShippingAddress {
+    line1: string
+    line2: string
+    city: string
+    state: string
+    zip: string
+    country: string
+}
+
+interface CheckoutForm {
+    customer_name: string
+    customer_email: string
+    shipping_address: ShippingAddress
+    notes: string
+}
+
+const form = useForm<CheckoutForm>({
     customer_name: '',
     customer_email: '',
     shipping_address: {
@@ -23,11 +48,11 @@ const form = useForm({
     notes: '',
 })
 
-const formatPrice = (price) => {
+const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
 }
 
-const submit = () => {
+const submit = (): void => {
     form.post('/checkout')
 }
 </script>

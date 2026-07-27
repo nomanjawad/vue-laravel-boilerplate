@@ -1,10 +1,21 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { Head, Link } from '@inertiajs/vue3'
 
-const props = defineProps({
-    status: { type: Number, default: 500 },
+interface Props {
+    status?: number
+    message?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    status: 500,
+    message: undefined,
 })
+
+interface ErrorInfo {
+    title: string
+    message: string
+}
 
 // Placeholder branding — adjust copy per project.
 const messages = {
@@ -14,9 +25,12 @@ const messages = {
     429: { title: 'Too Many Requests', message: "You're going a little fast. Please wait a moment and try again." },
     500: { title: 'Server Error', message: 'Something went wrong on our end. We have been notified.' },
     503: { title: 'Under Maintenance', message: "We're doing some quick maintenance. Please check back shortly." },
-}
+} satisfies Record<number, ErrorInfo>
 
-const info = computed(() => messages[props.status] ?? messages[500])
+const info = computed<ErrorInfo>(() => {
+    const found = (messages as Record<number, ErrorInfo | undefined>)[props.status]
+    return found ?? messages[500]
+})
 </script>
 
 <template>

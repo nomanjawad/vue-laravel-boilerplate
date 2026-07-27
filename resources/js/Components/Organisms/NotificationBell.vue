@@ -1,11 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Link } from '@inertiajs/vue3'
 
+interface Notification {
+    id: number | string
+    title: string
+    body?: string | null
+    href?: string | null
+    read_at?: string | null
+    created_at: string
+}
+
+interface NotificationsResponse {
+    recent?: Notification[]
+    unread?: number
+}
+
 const open = ref(false)
-const items = ref([])
+const items = ref<Notification[]>([])
 const unread = ref(0)
-let timer = null
+let timer: ReturnType<typeof setInterval> | null = null
 
 async function refresh() {
     try {
@@ -14,7 +28,7 @@ async function refresh() {
             headers: { Accept: 'application/json' },
         })
         if (!res.ok) return
-        const json = await res.json()
+        const json = (await res.json()) as NotificationsResponse
         items.value = json.recent ?? []
         unread.value = json.unread ?? 0
     } catch {
@@ -22,7 +36,7 @@ async function refresh() {
     }
 }
 
-async function markRead(id) {
+async function markRead(id: number | string) {
     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content')
     await fetch(`/admin/notifications/${id}/read`, {
         method: 'POST',
@@ -46,7 +60,9 @@ onMounted(() => {
     refresh()
     timer = setInterval(refresh, 60_000)
 })
-onBeforeUnmount(() => clearInterval(timer))
+onBeforeUnmount(() => {
+    if (timer !== null) clearInterval(timer)
+})
 </script>
 
 <template>

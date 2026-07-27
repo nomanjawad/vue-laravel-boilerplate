@@ -1,17 +1,35 @@
-<script setup>
+<script setup lang="ts">
 // Atom: text input. No business logic. Dark-admin-aware via admin.css overrides.
-defineProps({
-    modelValue: { type: [String, Number], default: '' },
-    type: { type: String, default: 'text' },
-    placeholder: { type: String, default: '' },
-    disabled: { type: Boolean, default: false },
-    autocomplete: { type: String, default: 'off' },
-    id: { type: String, default: undefined },
-    inputmode: { type: String, default: undefined },
-    invalid: { type: Boolean, default: false },
+interface Props {
+    modelValue?: string | number
+    type?: string
+    placeholder?: string
+    disabled?: boolean
+    autocomplete?: string
+    id?: string
+    inputmode?: 'none' | 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url'
+    invalid?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+    modelValue: '',
+    type: 'text',
+    placeholder: '',
+    disabled: false,
+    autocomplete: 'off',
+    id: undefined,
+    inputmode: undefined,
+    invalid: false,
 })
 
-defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+    (e: 'update:modelValue', value: string): void
+}>()
+
+function onInput(e: Event) {
+    const target = e.target as HTMLInputElement
+    emit('update:modelValue', target.value)
+}
 </script>
 
 <template>
@@ -28,6 +46,6 @@ defineEmits(['update:modelValue'])
         :class="invalid
             ? 'border-rose-400 bg-rose-50 focus:ring-rose-200'
             : 'border-gray-300 bg-white focus:border-indigo-500 focus:ring-indigo-200 disabled:bg-gray-100'"
-        @input="$emit('update:modelValue', $event.target.value)"
+        @input="onInput"
     >
 </template>

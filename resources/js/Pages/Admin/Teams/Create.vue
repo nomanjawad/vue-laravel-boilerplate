@@ -1,10 +1,27 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const form = useForm({
+interface SocialLinks {
+    facebook: string
+    twitter: string
+    linkedin: string
+}
+
+interface TeamMemberForm {
+    name: string
+    position: string
+    bio: string
+    photo: string
+    email: string
+    social_links: SocialLinks
+    sort_order: number
+    is_active: boolean
+}
+
+const form = useForm<TeamMemberForm>({
     name: '',
     position: '',
     bio: '',

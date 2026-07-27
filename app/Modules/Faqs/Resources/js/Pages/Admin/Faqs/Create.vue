@@ -5,7 +5,13 @@ import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
-const form = useForm({
+interface FaqForm {
+    title: string
+    body: string
+    is_active: boolean
+}
+
+const form = useForm<FaqForm>({
     title: '',
 
     body: '',

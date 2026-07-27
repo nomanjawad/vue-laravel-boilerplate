@@ -1,14 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    members: Array,
-})
+interface TeamMember {
+    id: number
+    name: string
+    position: string
+    photo: string | null
+    is_active: boolean
+}
 
-const deleteMember = (member) => {
+interface Props {
+    members: TeamMember[]
+}
+
+defineProps<Props>()
+
+const deleteMember = (member: TeamMember) => {
     if (confirm(`Remove "${member.name}" from the team?`)) {
         router.delete(`/admin/teams/${member.id}`)
     }

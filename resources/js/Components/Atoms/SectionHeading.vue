@@ -1,11 +1,16 @@
-<script setup>
+<script setup lang="ts">
 /** Atom: section heading with optional "view all" link on the right. */
 import { Link } from '@inertiajs/vue3'
 
-defineProps({
-    title: { type: String, required: true },
-    linkHref: { type: String, default: null },
-    linkText: { type: String, default: 'View All →' },
+interface Props {
+    title: string
+    linkHref?: string | null
+    linkText?: string
+}
+
+withDefaults(defineProps<Props>(), {
+    linkHref: null,
+    linkText: 'View All →',
 })
 </script>
 

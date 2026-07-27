@@ -1,18 +1,28 @@
-<script setup>
-defineProps({
-    accept: { type: String, default: 'image/*' },
-    multiple: { type: Boolean, default: false },
-    disabled: { type: Boolean, default: false },
-    id: { type: String, default: undefined },
+<script setup lang="ts">
+interface Props {
+    accept?: string
+    multiple?: boolean
+    disabled?: boolean
+    id?: string
+}
+
+withDefaults(defineProps<Props>(), {
+    accept: 'image/*',
+    multiple: false,
+    disabled: false,
+    id: undefined,
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits<{
+    (e: 'select', files: File[]): void
+}>()
 
-function onChange(e) {
-    const files = Array.from(e.target.files || [])
+function onChange(e: Event) {
+    const target = e.target as HTMLInputElement
+    const files = Array.from(target.files || [])
     if (!files.length) return
     emit('select', files)
-    e.target.value = ''
+    target.value = ''
 }
 </script>
 

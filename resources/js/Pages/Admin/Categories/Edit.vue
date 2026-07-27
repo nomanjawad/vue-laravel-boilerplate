@@ -1,15 +1,34 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    category: Object,
-    parentCategories: Array,
-})
+interface Category {
+    id: number
+    name: string
+    slug: string
+    description: string | null
+    parent_id: number | null
+    sort_order: number | null
+}
 
-const form = useForm({
+interface Props {
+    category: Category
+    parentCategories: App.Data.CategorySummaryData[]
+}
+
+interface CategoryForm {
+    name: string
+    slug: string
+    description: string
+    parent_id: number | ''
+    sort_order: number
+}
+
+const props = defineProps<Props>()
+
+const form = useForm<CategoryForm>({
     name: props.category.name,
     slug: props.category.slug,
     description: props.category.description || '',

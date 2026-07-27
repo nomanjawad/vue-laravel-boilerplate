@@ -1,10 +1,21 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const form = useForm({
+interface CaseStudyForm {
+    title: string
+    slug: string
+    client_name: string
+    excerpt: string
+    body: string
+    featured_image: string
+    is_active: boolean
+    sort_order: number
+}
+
+const form = useForm<CaseStudyForm>({
     title: '',
     slug: '',
     client_name: '',

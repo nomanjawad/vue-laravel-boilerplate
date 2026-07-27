@@ -1,15 +1,30 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    categories: Array,
-    tags: Array,
-})
+interface Props {
+    categories: App.Data.CategorySummaryData[]
+    tags: App.Data.TagSummaryData[]
+}
 
-const form = useForm({
+defineProps<Props>()
+
+interface PostForm {
+    title: string
+    slug: string
+    excerpt: string
+    body: string
+    category_id: number | string
+    status: string
+    featured_image: string
+    meta_title: string
+    meta_description: string
+    tags: number[]
+}
+
+const form = useForm<PostForm>({
     title: '',
     slug: '',
     excerpt: '',

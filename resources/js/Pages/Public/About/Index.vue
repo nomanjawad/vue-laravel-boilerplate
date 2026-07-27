@@ -1,13 +1,50 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({
-    data: Object,
-    teamMembers: Array,
-})
+interface AboutHero {
+    title?: string | null
+    subtitle?: string | null
+}
+
+interface AboutMission {
+    title: string
+    description: string
+}
+
+interface AboutValue {
+    title: string
+    description: string
+}
+
+interface AboutStory {
+    title: string
+    paragraphs: string[]
+}
+
+interface AboutData {
+    hero?: AboutHero | null
+    mission?: AboutMission | null
+    values?: AboutValue[] | null
+    story?: AboutStory | null
+}
+
+interface TeamMember {
+    id: number
+    name: string
+    position?: string | null
+    bio?: string | null
+    photo?: string | null
+}
+
+interface Props {
+    data?: AboutData | null
+    teamMembers?: TeamMember[] | null
+}
+
+defineProps<Props>()
 </script>
 
 <template>

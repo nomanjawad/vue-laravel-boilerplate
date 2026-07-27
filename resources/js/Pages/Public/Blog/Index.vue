@@ -1,14 +1,42 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({ posts: Object, categories: Array, filters: Object })
+interface BlogListPost {
+    id: number
+    slug: string
+    title: string
+    excerpt?: string | null
+    featured_image?: string | null
+    published_at: string
+    category?: { id: number; name: string; slug: string } | null
+}
 
-const search = ref(props.filters?.search || '')
-const category = ref(props.filters?.category || '')
+interface BlogCategory {
+    id: number
+    name: string
+    slug: string
+    posts_count?: number
+}
+
+interface BlogFilters {
+    search?: string | null
+    category?: string | null
+}
+
+interface Props {
+    posts: Illuminate.LengthAwarePaginator<number, BlogListPost>
+    categories: BlogCategory[]
+    filters?: BlogFilters | null
+}
+
+const props = defineProps<Props>()
+
+const search = ref<string>(props.filters?.search || '')
+const category = ref<string>(props.filters?.category || '')
 
 watch([search, category], () => {
     router.get('/blog', { search: search.value, category: category.value }, { preserveState: true, replace: true })

@@ -1,23 +1,37 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { route } from 'ziggy-js'
 
-const props = defineProps({
-    open: { type: Boolean, default: false },
+interface Props {
+    open?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    open: false,
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits<{
+    (e: 'close'): void
+}>()
+
+interface SearchResponse {
+    groups?: App.Data.SearchGroupData[]
+}
+
+interface FlatResult extends App.Data.SearchResultData {
+    groupLabel: string
+}
 
 const query = ref('')
-const groups = ref([])
+const groups = ref<App.Data.SearchGroupData[]>([])
 const loading = ref(false)
 const activeIndex = ref(-1)
-const inputRef = ref(null)
+const inputRef = ref<HTMLInputElement | null>(null)
 
-let debounceTimer = null
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-const flatResults = ref([])
+const flatResults = ref<FlatResult[]>([])
 
 // Each group's results paired with their global flat-list index so template
 // highlighting stays correct even when two results share the same href.
@@ -33,7 +47,7 @@ const groupsWithIndex = computed(() => {
 })
 
 function rebuildFlatResults() {
-    const flat = []
+    const flat: FlatResult[] = []
     for (const group of groups.value) {
         for (const result of group.results ?? []) {
             flat.push({ ...result, groupLabel: group.label })
@@ -60,7 +74,7 @@ async function runSearch() {
             headers: { Accept: 'application/json' },
         })
         if (!res.ok) return
-        const json = await res.json()
+        const json = (await res.json()) as SearchResponse
         groups.value = json.groups ?? []
         rebuildFlatResults()
     } catch {
@@ -84,17 +98,17 @@ watch(() => props.open, async (isOpen) => {
 })
 
 watch(query, () => {
-    clearTimeout(debounceTimer)
+    if (debounceTimer !== null) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(runSearch, 200)
 })
 
-function visit(result) {
+function visit(result: FlatResult | App.Data.SearchResultData | undefined) {
     if (!result?.href) return
     emit('close')
     router.visit(result.href)
 }
 
-function onKeydown(e) {
+function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
         e.preventDefault()
         emit('close')
@@ -118,7 +132,7 @@ function onKeydown(e) {
 onMounted(() => document.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => {
     document.removeEventListener('keydown', onKeydown)
-    clearTimeout(debounceTimer)
+    if (debounceTimer !== null) clearTimeout(debounceTimer)
 })
 </script>
 

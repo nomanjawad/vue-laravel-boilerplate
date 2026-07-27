@@ -1,14 +1,41 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    career: Object,
-})
+interface Career {
+    id: number
+    title: string
+    slug: string
+    department: string | null
+    location: string | null
+    type: string
+    description: string
+    requirements: string | null
+    is_active: boolean
+    sort_order: number | null
+}
 
-const form = useForm({
+interface Props {
+    career: Career
+}
+
+interface CareerForm {
+    title: string
+    slug: string
+    department: string
+    location: string
+    type: string
+    description: string
+    requirements: string
+    is_active: boolean
+    sort_order: number
+}
+
+const props = defineProps<Props>()
+
+const form = useForm<CareerForm>({
     title: props.career.title,
     slug: props.career.slug,
     department: props.career.department || '',

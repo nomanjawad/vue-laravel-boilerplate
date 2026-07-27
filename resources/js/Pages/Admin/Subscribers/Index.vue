@@ -1,25 +1,38 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    subscribers: Object,
-    filters: Object,
-})
+interface Subscriber {
+    id: number
+    email: string
+    name: string | null
+    unsubscribed_at: string | null
+}
 
-const search = ref(props.filters?.search || '')
-let timer = null
+interface SubscriberFilters {
+    search?: string | null
+}
+
+interface Props {
+    subscribers: Illuminate.LengthAwarePaginator<number, Subscriber>
+    filters: SubscriberFilters
+}
+
+const props = defineProps<Props>()
+
+const search = ref<string>(props.filters?.search || '')
+let timer: ReturnType<typeof setTimeout> | null = null
 watch(search, (value) => {
-    clearTimeout(timer)
+    if (timer) clearTimeout(timer)
     timer = setTimeout(() => {
         router.get('/admin/subscribers', value ? { search: value } : {}, { preserveState: true, replace: true })
     }, 300)
 })
 
-const remove = (id) => {
+const remove = (id: number) => {
     if (confirm('Remove this subscriber?')) {
         router.delete(`/admin/subscribers/${id}`, { preserveScroll: true })
     }

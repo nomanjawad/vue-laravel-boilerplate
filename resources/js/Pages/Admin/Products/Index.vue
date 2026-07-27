@@ -1,16 +1,35 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps({
-    products: Object,
-    filters: Object,
-})
+interface Product {
+    id: number
+    name: string
+    slug: string
+    sku: string | null
+    price: number | string
+    compare_price: number | string | null
+    stock_quantity: number
+    is_active: boolean
+    featured_image: string | null
+    category: App.Data.CategorySummaryData | null
+}
 
-const search = ref(props.filters?.search || '')
+interface ProductFilters {
+    search?: string | null
+}
+
+interface Props {
+    products: Illuminate.LengthAwarePaginator<number, Product>
+    filters: ProductFilters
+}
+
+const props = defineProps<Props>()
+
+const search = ref<string>(props.filters?.search || '')
 
 const applyFilters = () => {
     router.get('/admin/products', { search: search.value }, { preserveState: true, replace: true })
@@ -18,14 +37,14 @@ const applyFilters = () => {
 
 watch(search, applyFilters)
 
-const deleteProduct = (product) => {
+const deleteProduct = (product: Product) => {
     if (confirm(`Delete "${product.name}"?`)) {
         router.delete(`/admin/products/${product.id}`)
     }
 }
 
-const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
+const formatPrice = (price: number | string) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(price))
 }
 </script>
 

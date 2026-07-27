@@ -1,14 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import AuthLayout from '@/Layouts/AuthLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: AuthLayout })
 
-const props = defineProps({
-    status: String,
-})
+interface Props {
+    status?: string
+}
 
-const form = useForm({
+defineProps<Props>()
+
+interface ForgotPasswordForm {
+    email: string
+}
+
+const form = useForm<ForgotPasswordForm>({
     email: '',
 })
 

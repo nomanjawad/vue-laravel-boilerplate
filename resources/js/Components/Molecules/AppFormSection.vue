@@ -1,7 +1,12 @@
-<script setup>
-defineProps({
-    title: { type: String, default: '' },
-    description: { type: String, default: '' },
+<script setup lang="ts">
+interface Props {
+    title?: string
+    description?: string
+}
+
+withDefaults(defineProps<Props>(), {
+    title: '',
+    description: '',
 })
 </script>
 

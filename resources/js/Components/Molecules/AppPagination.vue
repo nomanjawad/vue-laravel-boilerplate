@@ -1,11 +1,27 @@
-<script setup>
+<script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+
+interface PaginatorLink {
+    url: string | null
+    label: string
+    active: boolean
+}
+
+interface Paginator {
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+    links: PaginatorLink[]
+}
+
+interface Props {
+    paginator: Paginator
+}
 
 // Accepts a Laravel paginator JSON ({ links: [...], meta: {...} } or the
 // flat `{links, current_page, last_page, per_page, total}` shape).
-defineProps({
-    paginator: { type: Object, required: true },
-})
+defineProps<Props>()
 </script>
 
 <template>

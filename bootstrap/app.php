@@ -46,6 +46,14 @@ return Application::configure(basePath: dirname(__DIR__))
                     rescue(fn () => require base_path('routes/public-blog.php'));
                     rescue(fn () => require base_path('routes/public-shop.php'));
                     rescue(fn () => require base_path('routes/public-optional.php'));
+
+                    // Next.js-style file-system routing: for every
+                    // resources/js/Pages/Public/{Folder}/Index.vue without a
+                    // matching explicit route above, auto-register GET /kebab.
+                    // Explicit routes always win, so all DB-bound pages
+                    // (Home, About, Blog, Shop, etc.) keep their controllers.
+                    // See App\Support\FileSystemPageRouter.
+                    app(\App\Support\FileSystemPageRouter::class)->register(app('router'));
                 });
         },
     )

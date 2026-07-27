@@ -1,9 +1,9 @@
-<script setup>
-import { useConfirm } from '@/Composables/useConfirm.js'
+<script setup lang="ts">
+import { useConfirm } from '@/Composables/useConfirm'
 
 const { _state } = useConfirm()
 
-function resolve(answer) {
+function resolve(answer: boolean) {
     _state.value?.resolve?.(answer)
     _state.value = null
 }

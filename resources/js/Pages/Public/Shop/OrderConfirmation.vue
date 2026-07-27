@@ -1,22 +1,54 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({
-    order: Object,
-})
+interface OrderItem {
+    id: number
+    product_name: string
+    quantity: number
+    total: number
+}
 
-const formatPrice = (price) => {
+interface OrderShippingAddress {
+    line1?: string | null
+    line2?: string | null
+    city?: string | null
+    state?: string | null
+    zip?: string | null
+    country?: string | null
+}
+
+interface Order {
+    id: number
+    order_number: string
+    created_at: string
+    customer_name: string
+    subtotal: number
+    tax: number
+    total: number
+    status: string
+    payment_status: string
+    shipping_address?: OrderShippingAddress | string | null
+    items: OrderItem[]
+}
+
+interface Props {
+    order: Order
+}
+
+defineProps<Props>()
+
+const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
 }
 
-const formatDate = (date) => {
+const formatDate = (date: string): string => {
     return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-const formatAddress = (address) => {
+const formatAddress = (address: OrderShippingAddress | string | null | undefined): string => {
     if (!address) return ''
     if (typeof address === 'string') return address
     const parts = [address.line1, address.line2, address.city, address.state, address.zip, address.country].filter(Boolean)

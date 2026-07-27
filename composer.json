@@ -75,7 +75,7 @@
             "@php artisan ide-helper:models --nowrite",
             "@php artisan ide-helper:meta",
             "@php artisan typescript:transform",
-            "@php artisan ziggy:generate resources/js/types/ziggy.js --types=resources/js/types/ziggy.d.ts"
+            "@php artisan ziggy:generate resources/js/types/ziggy.js --types=resources/js/types/ziggy-routes.d.ts"
         ],
         "module:enable": [
             "Composer\\Config::disableProcessTimeout",
@@ -86,13 +86,15 @@
             "@php artisan tinker --execute=\"app(\\App\\Modules\\Core\\ModuleManager::class)->disable(\\$argv[1] ?? '')\""
         ],
         "deploy": [
-            "@php artisan template:doctor --production",
-            "@php artisan storage:link",
             "@php artisan migrate --force",
+            "@php artisan db:seed --class=RoleAndPermissionSeeder --force",
+            "@php artisan db:seed --class=AdminUserSeeder --force",
+            "@php artisan storage:link",
             "@php artisan typescript:transform",
-            "@php artisan ziggy:generate resources/js/types/ziggy.js --types=resources/js/types/ziggy.d.ts",
+            "@php artisan ziggy:generate resources/js/types/ziggy.js --types=resources/js/types/ziggy-routes.d.ts",
             "@php artisan optimize",
-            "@php artisan responsecache:clear"
+            "@php artisan responsecache:clear",
+            "@php artisan template:doctor --production --exit-zero"
         ]
     },
     "extra": {

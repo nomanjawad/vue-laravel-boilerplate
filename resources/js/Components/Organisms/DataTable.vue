@@ -1,27 +1,58 @@
-<script setup>
+<script setup lang="ts" generic="T extends Record<string, unknown> = Record<string, unknown>">
 import { computed } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import AppEmptyState from '@/Components/Molecules/AppEmptyState.vue'
 import AppPagination from '@/Components/Molecules/AppPagination.vue'
 
-const props = defineProps({
+interface Column {
+    key: string
+    label: string
+    sortable?: boolean
+    formatter?: (value: unknown, row: T) => unknown
+}
+
+interface PaginatorLink {
+    url: string | null
+    label: string
+    active: boolean
+}
+
+interface Paginator {
+    data: T[]
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+    links: PaginatorLink[]
+}
+
+interface Props {
     // Columns: [{ key, label, sortable?, formatter? }]
-    columns: { type: Array, required: true },
+    columns: Column[]
     // Either a Laravel paginator JSON or a plain array of rows.
-    rows: { type: [Object, Array], required: true },
+    rows: Paginator | T[]
     // Current sort + URL — used to render up/down arrows on sortable columns.
-    sort: { type: String, default: null },
-    direction: { type: String, default: 'asc' },
-    emptyTitle: { type: String, default: 'No records yet.' },
-    rowKey: { type: String, default: 'id' },
+    sort?: string | null
+    direction?: string
+    emptyTitle?: string
+    rowKey?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    sort: null,
+    direction: 'asc',
+    emptyTitle: 'No records yet.',
+    rowKey: 'id',
 })
 
-defineEmits(['rowClick'])
+defineEmits<{
+    (e: 'rowClick', row: T): void
+}>()
 
-const data = computed(() => (Array.isArray(props.rows) ? props.rows : props.rows?.data ?? []))
-const paginator = computed(() => (Array.isArray(props.rows) ? null : props.rows))
+const data = computed<T[]>(() => (Array.isArray(props.rows) ? props.rows : props.rows?.data ?? []))
+const paginator = computed<Paginator | null>(() => (Array.isArray(props.rows) ? null : props.rows))
 
-function toggleSort(col) {
+function toggleSort(col: Column) {
     if (!col.sortable) return
     const sort = col.key
     const direction = props.sort === sort && props.direction === 'asc' ? 'desc' : 'asc'
@@ -56,7 +87,7 @@ function toggleSort(col) {
                 <tbody class="divide-y divide-gray-100">
                     <tr
                         v-for="row in data"
-                        :key="row[rowKey]"
+                        :key="String(row[rowKey])"
                         class="hover:bg-gray-50"
                         @click="$emit('rowClick', row)"
                     >

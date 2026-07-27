@@ -1,25 +1,43 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppFileInput from '@/Components/Atoms/AppFileInput.vue'
 import AppSpinner from '@/Components/Atoms/AppSpinner.vue'
-import { toImageUrl } from '@/Composables/useImageUrl.js'
+import { useImageUrl } from '@/Composables/useImageUrl'
 
-const props = defineProps({
+interface MediaItem {
+    id: number | string
+    url?: string | null
+    variants?: Record<string, string | undefined> | null
+    alt_text?: string | null
+}
+
+interface Props {
     // The bound value: a media row { id, url, variants, alt_text } or its id.
-    modelValue: { type: [Object, Number, String, null], default: null },
-    accept: { type: String, default: 'image/*' },
-    label: { type: String, default: 'Upload image' },
-    uploadUrl: { type: String, default: '/admin/media' },
+    modelValue?: MediaItem | number | string | null
+    accept?: string
+    label?: string
+    uploadUrl?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    modelValue: null,
+    accept: 'image/*',
+    label: 'Upload image',
+    uploadUrl: '/admin/media',
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+    (e: 'update:modelValue', value: MediaItem | null): void
+}>()
+
+const { toImageUrl } = useImageUrl()
 
 const uploading = ref(false)
 const dragOver = ref(false)
-const error = ref(null)
+const error = ref<string | null>(null)
 
-const preview = computed(() => {
+const preview = computed<string | null>(() => {
     if (!props.modelValue) return null
     if (typeof props.modelValue === 'object') {
         const variants = props.modelValue.variants ?? {}
@@ -28,9 +46,10 @@ const preview = computed(() => {
     return null
 })
 
-async function upload(files) {
-    if (!files?.length) return
+async function upload(files: File[] | FileList | null | undefined) {
+    if (!files || !files.length) return
     const file = files[0]
+    if (!file) return
     uploading.value = true
     error.value = null
 
@@ -43,10 +62,11 @@ async function upload(files) {
         preserveScroll: true,
         preserveState: true,
         onSuccess: (page) => {
-            const media = page.props.flash?.media ?? null
+            const flash = (page.props as { flash?: { media?: MediaItem | null } }).flash
+            const media = flash?.media ?? null
             if (media) emit('update:modelValue', media)
         },
-        onError: (errors) => {
+        onError: (errors: Record<string, string | string[]>) => {
             error.value = Object.values(errors).flat().join(' ')
         },
         onFinish: () => { uploading.value = false },
@@ -57,7 +77,7 @@ function clear() {
     emit('update:modelValue', null)
 }
 
-function onDrop(e) {
+function onDrop(e: DragEvent) {
     dragOver.value = false
     upload(Array.from(e.dataTransfer?.files ?? []))
 }

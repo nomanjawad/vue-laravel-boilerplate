@@ -1,13 +1,26 @@
-<script setup>
+<script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
 import SectionHeading from '@/Components/Atoms/SectionHeading.vue'
 import { useImageUrl } from '@/Composables/useImageUrl'
 
-defineProps({
-    posts: { type: Array, default: () => [] },
+interface FeaturedPost {
+    id: number
+    slug: string
+    title: string
+    excerpt?: string | null
+    featured_image?: string | null
+}
+
+interface Props {
+    posts?: FeaturedPost[]
+}
+
+withDefaults(defineProps<Props>(), {
+    posts: () => [],
 })
 
-const { toImageUrl } = useImageUrl()
+const { toImageUrl: rawToImageUrl } = useImageUrl()
+const toImageUrl = (path: string | null | undefined): string | undefined => rawToImageUrl(path) ?? undefined
 </script>
 
 <template>

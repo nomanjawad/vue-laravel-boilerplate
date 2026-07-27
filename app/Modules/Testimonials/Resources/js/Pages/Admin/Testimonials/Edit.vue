@@ -5,11 +5,27 @@ import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
-const props = defineProps<{
-    testimonial: { id: number; title: string; body?: string; is_active?: boolean; slug?: string }
-}>()
+interface Testimonial {
+    id: number
+    title: string
+    body?: string
+    is_active?: boolean
+    slug?: string
+}
 
-const form = useForm({
+interface Props {
+    testimonial: Testimonial
+}
+
+interface TestimonialForm {
+    title: string
+    body: string
+    is_active: boolean
+}
+
+const props = defineProps<Props>()
+
+const form = useForm<TestimonialForm>({
     title: props.testimonial.title,
 
     body: props.testimonial.body ?? '',

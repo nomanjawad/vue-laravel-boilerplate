@@ -1,10 +1,48 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({ post: Object, relatedPosts: Array })
+interface BlogPostCategory {
+    id: number
+    name: string
+    slug: string
+}
+
+interface BlogPostTag {
+    id: number
+    name: string
+    slug: string
+}
+
+interface BlogPost {
+    id: number
+    slug: string
+    title: string
+    body: string
+    excerpt?: string | null
+    featured_image?: string | null
+    meta_title?: string | null
+    published_at: string
+    category?: BlogPostCategory | null
+    user?: { id: number; name: string } | null
+    tags?: BlogPostTag[]
+}
+
+interface RelatedPost {
+    id: number
+    slug: string
+    title: string
+    featured_image?: string | null
+}
+
+interface Props {
+    post: BlogPost
+    relatedPosts?: RelatedPost[] | null
+}
+
+defineProps<Props>()
 </script>
 
 <template>

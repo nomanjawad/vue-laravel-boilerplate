@@ -1,8 +1,21 @@
-<script setup>
+<script setup lang="ts">
 import AppButton from '@/Components/Atoms/AppButton.vue'
 
-defineProps({
-    hero: { type: Object, default: () => ({}) },
+interface Hero {
+    title?: string | null
+    subtitle?: string | null
+    cta_text?: string | null
+    cta_url?: string | null
+    secondary_cta_text?: string | null
+    secondary_cta_url?: string | null
+}
+
+interface Props {
+    hero?: Hero | null
+}
+
+withDefaults(defineProps<Props>(), {
+    hero: () => ({}),
 })
 </script>
 

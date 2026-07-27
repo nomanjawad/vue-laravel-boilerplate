@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 
 const CONSENT_KEY = 'cookie-consent'
 
@@ -9,10 +9,24 @@ const CONSENT_KEY = 'cookie-consent'
  * the visitor accepts the cookie banner. Never <script src> analytics directly
  * in a layout — it would bypass consent.
  */
-export function useConsentScripts() {
-    const consent = ref(localStorage.getItem(CONSENT_KEY)) // null | 'accepted' | 'declined'
+export type ConsentValue = 'accepted' | 'declined' | null
 
-    const injectScripts = (settings) => {
+export interface ConsentSettings {
+    ga_measurement_id?: string | null
+    gtm_container_id?: string | null
+}
+
+export function useConsentScripts(): {
+    consent: Ref<ConsentValue>
+    accept: (settings?: ConsentSettings | null) => void
+    decline: () => void
+    initialize: (settings?: ConsentSettings | null) => void
+} {
+    const consent: Ref<ConsentValue> = ref(
+        (localStorage.getItem(CONSENT_KEY) as ConsentValue) ?? null,
+    )
+
+    const injectScripts = (settings?: ConsentSettings | null) => {
         if (document.getElementById('consent-scripts')) return
 
         const marker = document.createElement('meta')
@@ -42,7 +56,7 @@ gtag('config', '${ga}');`
         }
     }
 
-    const accept = (settings) => {
+    const accept = (settings?: ConsentSettings | null) => {
         localStorage.setItem(CONSENT_KEY, 'accepted')
         consent.value = 'accepted'
         injectScripts(settings)
@@ -54,7 +68,7 @@ gtag('config', '${ga}');`
     }
 
     // Call on mount: re-inject for returning visitors who already accepted.
-    const initialize = (settings) => {
+    const initialize = (settings?: ConsentSettings | null) => {
         if (consent.value === 'accepted') injectScripts(settings)
     }
 

@@ -1,14 +1,34 @@
-<script setup>
+<script setup lang="ts">
 import { onBeforeUnmount, provide } from 'vue'
 import { Link } from '@inertiajs/vue3'
 
-const props = defineProps({
+type HttpMethod = 'post' | 'put' | 'patch' | 'delete'
+
+type FormSubmit = (url: string, options?: Record<string, unknown>) => void
+
+interface InjectedForm {
+    isDirty: boolean
+    processing: boolean
+    errors: Record<string, string | undefined>
+    post: FormSubmit
+    put: FormSubmit
+    patch: FormSubmit
+    delete: FormSubmit
+}
+
+interface Props {
     // The useForm() instance — provided to descendants via inject('form').
-    form: { type: Object, required: true },
-    action: { type: String, required: true },
-    method: { type: String, default: 'post', validator: (v) => ['post', 'put', 'patch', 'delete'].includes(v) },
-    submitLabel: { type: String, default: 'Save' },
-    cancelHref: { type: String, default: null },
+    form: InjectedForm
+    action: string
+    method?: HttpMethod
+    submitLabel?: string
+    cancelHref?: string | null
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    method: 'post',
+    submitLabel: 'Save',
+    cancelHref: null,
 })
 
 provide('form', props.form)
@@ -19,7 +39,7 @@ function submit() {
 
 // Unsaved-change warning. Browsers ignore the message text now but still show
 // the native confirmation dialog when beforeunload returns a string.
-function guard(e) {
+function guard(e: BeforeUnloadEvent) {
     if (props.form.isDirty) {
         e.preventDefault()
         e.returnValue = ''

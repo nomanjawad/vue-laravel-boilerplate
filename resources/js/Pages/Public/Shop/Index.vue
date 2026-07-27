@@ -1,15 +1,42 @@
-<script setup>
+<script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
 
 defineOptions({ layout: PublicLayout })
 
-const props = defineProps({ products: Object, categories: Array, filters: Object })
+interface ShopProduct {
+    id: number
+    slug: string
+    name: string
+    price: number
+    compare_price?: number | null
+    featured_image?: string | null
+}
 
-const search = ref(props.filters?.search || '')
-const category = ref(props.filters?.category || '')
-const sort = ref(props.filters?.sort || '')
+interface ShopCategory {
+    id: number
+    name: string
+    slug: string
+}
+
+interface ShopFilters {
+    search?: string | null
+    category?: string | null
+    sort?: string | null
+}
+
+interface Props {
+    products: Illuminate.LengthAwarePaginator<number, ShopProduct>
+    categories: ShopCategory[]
+    filters?: ShopFilters | null
+}
+
+const props = defineProps<Props>()
+
+const search = ref<string>(props.filters?.search || '')
+const category = ref<string>(props.filters?.category || '')
+const sort = ref<string>(props.filters?.sort || '')
 
 watch([search, category, sort], () => {
     router.get('/shop', {
@@ -19,11 +46,11 @@ watch([search, category, sort], () => {
     }, { preserveState: true, replace: true })
 })
 
-const formatPrice = (price) => {
+const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
 }
 
-const addToCart = (productId) => {
+const addToCart = (productId: number): void => {
     router.post('/cart/add', { product_id: productId, quantity: 1 }, { preserveScroll: true })
 }
 </script>

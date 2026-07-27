@@ -20,7 +20,9 @@ use Throwable;
  */
 class TemplateDoctor extends Command
 {
-    protected $signature = 'template:doctor {--production : Stricter checks for production deploy}';
+    protected $signature = 'template:doctor
+                            {--production : Stricter checks for production deploy}
+                            {--exit-zero : Always return exit code 0 even if checks fail — use in post-deploy health-report step so a failing check does not abort the deploy pipeline}';
 
     protected $description = 'Run pre-deploy + post-clone health checks. Catches the things that silently break in production.';
 
@@ -54,6 +56,12 @@ class TemplateDoctor extends Command
         }
 
         $this->error("{$this->failures} check(s) failed. Address the items above.");
+
+        if ($this->option('exit-zero')) {
+            $this->line('(--exit-zero set: returning 0 so this post-deploy report does not abort the pipeline.)');
+
+            return self::SUCCESS;
+        }
 
         return self::FAILURE;
     }

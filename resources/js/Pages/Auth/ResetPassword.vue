@@ -1,15 +1,27 @@
-<script setup>
+<script setup lang="ts">
 import AuthLayout from '@/Layouts/AuthLayout.vue'
 import { Head, useForm } from '@inertiajs/vue3'
 
 defineOptions({ layout: AuthLayout })
 
-const props = defineProps({
-    email: String,
-    token: String,
+interface Props {
+    email?: string
+    token?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    email: '',
+    token: '',
 })
 
-const form = useForm({
+interface ResetPasswordForm {
+    token: string
+    email: string
+    password: string
+    password_confirmation: string
+}
+
+const form = useForm<ResetPasswordForm>({
     token: props.token,
     email: props.email,
     password: '',

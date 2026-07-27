@@ -1,25 +1,54 @@
-<script setup>
+<script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 
 defineOptions({ layout: AdminLayout })
 
-defineProps({
-    redirects: Object,
-    topNotFound: Array,
-    filters: Object,
-})
+interface Redirect {
+    id: number
+    from_path: string
+    to_path: string
+    status_code: number
+    is_active: boolean
+    hits: number
+}
 
-const newForm = useForm({
+interface NotFoundLog {
+    id: number
+    path: string
+    hit_count: number
+    referrer: string | null
+}
+
+interface RedirectFilters {
+    search?: string | null
+}
+
+interface Props {
+    redirects: Illuminate.LengthAwarePaginator<number, Redirect>
+    topNotFound: NotFoundLog[]
+    filters: RedirectFilters
+}
+
+defineProps<Props>()
+
+interface RedirectForm {
+    from_path: string
+    to_path: string
+    status_code: number
+    is_active: boolean
+}
+
+const newForm = useForm<RedirectForm>({
     from_path: '',
     to_path: '',
     status_code: 301,
     is_active: true,
 })
 
-const editingId = ref(null)
-const editForm = useForm({
+const editingId = ref<number | null>(null)
+const editForm = useForm<RedirectForm>({
     from_path: '',
     to_path: '',
     status_code: 301,
@@ -33,7 +62,7 @@ const addRedirect = () => {
     })
 }
 
-const startEdit = (item) => {
+const startEdit = (item: Redirect) => {
     editingId.value = item.id
     editForm.from_path = item.from_path
     editForm.to_path = item.to_path
@@ -41,21 +70,21 @@ const startEdit = (item) => {
     editForm.is_active = item.is_active
 }
 
-const saveEdit = (id) => {
+const saveEdit = (id: number) => {
     editForm.put(`/admin/redirects/${id}`, {
         preserveScroll: true,
         onSuccess: () => { editingId.value = null },
     })
 }
 
-const deleteRedirect = (id) => {
+const deleteRedirect = (id: number) => {
     if (confirm('Delete this redirect?')) {
         router.delete(`/admin/redirects/${id}`, { preserveScroll: true })
     }
 }
 
 // Quick action from the 404 report: prefill the form with the missed path.
-const prefillFrom = (path) => {
+const prefillFrom = (path: string) => {
     newForm.from_path = path
     window.scrollTo({ top: 0, behavior: 'smooth' })
 }
