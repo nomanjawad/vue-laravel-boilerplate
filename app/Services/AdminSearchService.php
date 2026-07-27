@@ -109,7 +109,14 @@ class AdminSearchService
                     continue;
                 }
 
-                $meta = self::MODEL_META[$modelClass] ?? null;
+                // Fall through to convention-derived meta so physical modules
+                // (Testimonials, Faqs, Events, and anything future) don't have
+                // to add themselves to MODEL_META. Convention:
+                //   label      → plural class basename
+                //   permission → `{kebab-plural}.view` (matches make:crud output)
+                //   route      → `admin.{kebab-plural}.edit`
+                //   title      → 'title' or 'name' if either exists on the model
+                $meta = self::MODEL_META[$modelClass] ?? $this->deriveMeta($modelClass);
                 if (! $meta) {
                     continue;
                 }
@@ -166,6 +173,47 @@ class AdminSearchService
         }
 
         return $groups;
+    }
+
+    /**
+     * @return array{label:string, permission:string, route:string, title:string}|null
+     */
+    private function deriveMeta(string $modelClass): ?array
+    {
+        $basename = class_basename($modelClass);        // Testimonial
+        $plural = Str::plural($basename);               // Testimonials
+        $resource = Str::kebab($plural);                // testimonials
+        $routeName = "admin.{$resource}.edit";
+
+        // Only expose the group in search if the edit route actually exists —
+        // an admin-index-only module has no edit target, and a broken route()
+        // call would 500 the whole search endpoint.
+        if (! app('router')->has($routeName)) {
+            $indexName = "admin.{$resource}.index";
+            if (! app('router')->has($indexName)) {
+                return null;
+            }
+            $routeName = $indexName;
+        }
+
+        // Pick the first column that looks like a display title. Falls back to
+        // id (rendered as "#123") if neither exists — better than empty.
+        $columns = ['title', 'name', 'label', 'heading'];
+        $titleColumn = 'title';
+        foreach ($columns as $c) {
+            $instance = new $modelClass();
+            if (in_array($c, $instance->getFillable() ?? [], true)) {
+                $titleColumn = $c;
+                break;
+            }
+        }
+
+        return [
+            'label' => $plural,
+            'permission' => "{$resource}.view",
+            'route' => $routeName,
+            'title' => $titleColumn,
+        ];
     }
 
     private function titleFor(Model $record, string $title): string

@@ -24,7 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const page = usePage<SharedPageProps>()
-const siteName = computed(() => page.props.settings?.site_name || 'WebTemplate')
+const siteName = computed(() => page.props.settings?.site_name ?? '')
 </script>
 
 <template>

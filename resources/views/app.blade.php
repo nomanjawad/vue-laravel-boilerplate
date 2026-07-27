@@ -6,7 +6,7 @@
         @unless(config('template.indexable'))
             <meta name="robots" content="noindex, nofollow">
         @endunless
-        <title inertia>{{ config('app.name', 'WebTemplate') }}</title>
+        <title inertia>{{ config('app.name') }}</title>
         @vite(['resources/css/app.css', 'resources/js/app.ts'])
         @inertiaHead
     </head>

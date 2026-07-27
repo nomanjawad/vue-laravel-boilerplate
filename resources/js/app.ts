@@ -33,11 +33,21 @@ type PageModule = { default: DefineComponent }
 const corePages = import.meta.glob<PageModule>('./Pages/**/*.vue', { eager: true })
 const modulePages = import.meta.glob<PageModule>('../../app/Modules/*/Resources/js/Pages/**/*.vue', { eager: true })
 
+// Silent brand-name fallbacks silently ship the wrong tab title to production
+// when VITE_APP_NAME isn't loaded at build time (e.g. CI that doesn't source
+// .env, a `.env` where VITE_APP_NAME="${APP_NAME}" wasn't interpolated).
+// Fail the build instead — see feedback.md §5. Projects should set
+// VITE_APP_NAME in .env.example alongside APP_NAME.
+const APP_NAME = import.meta.env.VITE_APP_NAME
+if (!APP_NAME || APP_NAME.trim() === '') {
+    throw new Error(
+        'VITE_APP_NAME is not set. Add VITE_APP_NAME="${APP_NAME}" to .env before building — ' +
+        'shipping a build with an empty brand name would silently show the placeholder in every browser tab.',
+    )
+}
+
 createInertiaApp({
-    title: (title) => {
-        const appName = import.meta.env.VITE_APP_NAME || 'WebTemplate'
-        return title ? `${title} - ${appName}` : appName
-    },
+    title: (title) => title ? `${title} - ${APP_NAME}` : APP_NAME,
     resolve: (name) => {
         const coreKey = `./Pages/${name}.vue`
         const core = corePages[coreKey]

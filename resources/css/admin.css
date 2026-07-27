@@ -3,25 +3,62 @@
 | Admin design system (dark by default)
 |--------------------------------------------------------------------------
 | The admin shell (AdminLayout.vue) adds the `admin-dark` class to its root.
-| Inside it, the standard light utility classes used by admin pages are
-| re-themed below — so a page written with `bg-white` + `text-gray-900`
-| renders correctly on the dark shell WITHOUT being rewritten. New admin
-| pages can keep using the familiar light classes.
 |
-| For new components, prefer the dedicated classes:
-|   .glass     — frosted card surface
-|   .btn-grad  — primary gradient button
-|   .field     — form input
+| TWO WAYS to style admin content, in preferred order:
+|
+| 1. Semantic tokens (preferred for new code):
+|      color: var(--admin-fg);
+|      background: var(--admin-surface);
+|      border-color: var(--admin-border);
+|    The tokens are resolved per-theme (dark by default; light is trivial
+|    to add). A project retuning the brand palette cannot accidentally
+|    leave a token pointing at an invisible value.
+|
+| 2. Standard Tailwind gray utilities (bg-white, text-gray-900, border-gray-200):
+|    re-themed below so a page written with light-mode classes still reads
+|    correctly on the dark shell. The full gray scale (50-900) is covered so
+|    a natural class choice — text-gray-500, bg-gray-800 — can never fall
+|    through to Tailwind's raw light-mode value.
+|    Historical bug (feedback.md §7): a partial remap left text-gray-800
+|    rendering dark-on-dark in the Leads module tables. Full coverage below
+|    prevents that class of failure.
+|
+| BRAND TOKEN CONTRAST WARNING
+| ----------------------------
+| The brand token (`--color-brand-*` in app.css) is used for admin links,
+| buttons, gradients, and focus rings on this dark shell. If a project
+| retunes it to a very DARK color (e.g. navy `hsl(220 55% 20%)`), all
+| `text-indigo-*` links become invisible against `--admin-surface`. Keep
+| the brand's 500/400 steps above ~L 45 for legibility on dark, or point
+| admin-specific tokens to a lighter variant.
 |
 | Tokens live in app.css (@theme). Adjust colors there, not here.
 */
 
+/* --- Semantic tokens (dark) --------------------------------------- */
+
+.admin-dark {
+    --admin-bg: #0f172a;                          /* slate-900 */
+    --admin-surface: rgb(30 41 59 / 0.75);        /* slate-800 @ 75% — cards */
+    --admin-surface-raised: rgb(30 41 59 / 0.9);  /* dialogs, dropdowns */
+    --admin-surface-sunken: rgb(15 23 42 / 0.6);  /* inputs, gutters */
+    --admin-border: rgb(148 163 184 / 0.15);      /* slate-400 @ 15% */
+    --admin-border-strong: rgb(148 163 184 / 0.3);
+    --admin-fg: #f8fafc;                          /* slate-50 — primary text */
+    --admin-fg-muted: #cbd5e1;                    /* slate-300 — labels, secondary */
+    --admin-fg-subtle: #94a3b8;                   /* slate-400 — placeholders, meta */
+    --admin-fg-faint: #64748b;                    /* slate-500 — disabled, timestamps */
+    background-color: var(--admin-bg);
+    color: var(--admin-fg-muted);
+    min-height: 100vh;
+}
+
 /* --- Design-system primitives ------------------------------------- */
 
 .admin-dark .glass {
-    background: rgb(30 41 59 / 0.65);
+    background: var(--admin-surface);
     backdrop-filter: blur(10px);
-    border: 1px solid rgb(148 163 184 / 0.1);
+    border: 1px solid var(--admin-border);
     border-radius: 0.75rem;
 }
 
@@ -40,10 +77,10 @@
 }
 
 .admin-dark .field {
-    background: rgb(15 23 42 / 0.6);
-    border: 1px solid rgb(148 163 184 / 0.25);
+    background: var(--admin-surface-sunken);
+    border: 1px solid var(--admin-border-strong);
     border-radius: 0.5rem;
-    color: #f1f5f9;
+    color: var(--admin-fg);
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
 }
@@ -54,70 +91,75 @@
     border-color: transparent;
 }
 
-/* --- Re-theme of standard light utilities -------------------------- */
-/* Cards & surfaces */
-.admin-dark .bg-white {
-    background-color: rgb(30 41 59 / 0.75);
-    backdrop-filter: blur(8px);
-}
+/* --- Re-theme of standard light utilities ------------------------- */
+/* Full coverage: bg-white + bg-gray-{50…900}, text-gray-{100…900},   */
+/* border-gray-{100…900}. Prevents any natural class choice from      */
+/* falling through to Tailwind's raw light-mode value on the dark     */
+/* shell (feedback.md §7 Bug A).                                      */
 
-.admin-dark .bg-gray-50 {
-    background-color: rgb(15 23 42 / 0.6);
-}
+/* Surfaces */
+.admin-dark .bg-white          { background-color: var(--admin-surface); backdrop-filter: blur(8px); }
+.admin-dark .bg-gray-50        { background-color: var(--admin-surface-sunken); }
+.admin-dark .bg-gray-100       { background-color: rgb(51 65 85 / 0.6); }
+.admin-dark .bg-gray-200       { background-color: rgb(51 65 85 / 0.7); }
+.admin-dark .bg-gray-300       { background-color: rgb(71 85 105 / 0.7); }
+.admin-dark .bg-gray-400       { background-color: rgb(71 85 105 / 0.8); }
+.admin-dark .bg-gray-500       { background-color: rgb(100 116 139 / 0.7); }
+.admin-dark .bg-gray-600       { background-color: rgb(100 116 139 / 0.9); }
+.admin-dark .bg-gray-700       { background-color: rgb(51 65 85 / 0.85); }
+.admin-dark .bg-gray-800       { background-color: var(--admin-surface-raised); }
+.admin-dark .bg-gray-900       { background-color: var(--admin-bg); }
 
-.admin-dark .bg-gray-100 {
-    background-color: rgb(51 65 85 / 0.6);
-}
+.admin-dark .shadow            { box-shadow: 0 1px 3px rgb(0 0 0 / 0.4); }
+.admin-dark .shadow-sm         { box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); }
+.admin-dark .shadow-md         { box-shadow: 0 4px 6px rgb(0 0 0 / 0.4); }
 
-.admin-dark .shadow {
-    box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
-}
+/* Text — full scale */
+.admin-dark .text-gray-100     { color: var(--admin-fg); }
+.admin-dark .text-gray-200     { color: var(--admin-fg); }
+.admin-dark .text-gray-300     { color: var(--admin-fg-muted); }
+.admin-dark .text-gray-400     { color: var(--admin-fg-muted); }
+.admin-dark .text-gray-500     { color: var(--admin-fg-subtle); }
+.admin-dark .text-gray-600     { color: var(--admin-fg-subtle); }
+.admin-dark .text-gray-700     { color: var(--admin-fg-muted); }
+.admin-dark .text-gray-800     { color: var(--admin-fg); }
+.admin-dark .text-gray-900     { color: var(--admin-fg); }
 
-/* Text */
-.admin-dark .text-gray-900 { color: #f8fafc; }
-.admin-dark .text-gray-700 { color: #cbd5e1; }
-.admin-dark .text-gray-600 { color: #94a3b8; }
-.admin-dark .text-gray-500 { color: #94a3b8; }
-.admin-dark .text-gray-400 { color: #64748b; }
-
-/* Borders & dividers */
+/* Borders — full scale */
 .admin-dark .border,
 .admin-dark .border-b,
 .admin-dark .border-t,
+.admin-dark .border-l,
+.admin-dark .border-r          { border-color: var(--admin-border); }
+.admin-dark .border-gray-100,
 .admin-dark .border-gray-200,
-.admin-dark .border-gray-300 {
-    border-color: rgb(148 163 184 / 0.15);
-}
+.admin-dark .border-gray-300   { border-color: var(--admin-border); }
+.admin-dark .border-gray-400,
+.admin-dark .border-gray-500,
+.admin-dark .border-gray-600,
+.admin-dark .border-gray-700,
+.admin-dark .border-gray-800,
+.admin-dark .border-gray-900   { border-color: var(--admin-border-strong); }
 
-.admin-dark .divide-y > * + * {
-    border-color: rgb(148 163 184 / 0.15);
-}
+.admin-dark .divide-y > * + *  { border-color: var(--admin-border); }
+.admin-dark .divide-gray-100 > * + *,
+.admin-dark .divide-gray-200 > * + * { border-color: var(--admin-border); }
 
 /* Form controls written with the light pattern */
 .admin-dark input:not([type='checkbox']):not([type='radio']),
 .admin-dark select,
 .admin-dark textarea {
-    background-color: rgb(15 23 42 / 0.6);
-    border-color: rgb(148 163 184 / 0.25);
-    color: #f1f5f9;
+    background-color: var(--admin-surface-sunken);
+    border-color: var(--admin-border-strong);
+    color: var(--admin-fg);
 }
 
 .admin-dark input::placeholder,
-.admin-dark textarea::placeholder {
-    color: #64748b;
-}
+.admin-dark textarea::placeholder { color: var(--admin-fg-faint); }
 
 /* Hover states tuned for dark */
-.admin-dark .hover\:bg-gray-100:hover {
-    background-color: rgb(51 65 85 / 0.6);
-}
-
-.admin-dark .hover\:text-gray-900:hover { color: #f8fafc; }
-.admin-dark .hover\:text-gray-700:hover { color: #e2e8f0; }
-
-/* Page background */
-.admin-dark {
-    background-color: #0f172a;
-    color: #e2e8f0;
-    min-height: 100vh;
-}
+.admin-dark .hover\:bg-gray-50:hover  { background-color: rgb(30 41 59 / 0.9); }
+.admin-dark .hover\:bg-gray-100:hover { background-color: rgb(51 65 85 / 0.6); }
+.admin-dark .hover\:bg-gray-200:hover { background-color: rgb(51 65 85 / 0.75); }
+.admin-dark .hover\:text-gray-900:hover { color: var(--admin-fg); }
+.admin-dark .hover\:text-gray-700:hover { color: var(--admin-fg-muted); }

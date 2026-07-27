@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\ContentSecurityPolicy;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\HandleRedirects;
 use App\Http\Middleware\PreventSearchIndexing;
@@ -65,6 +66,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             HandleInertiaRequests::class,
+            // No-op when CSP_ENABLED=false (default). See config/csp.php.
+            ContentSecurityPolicy::class,
         ]);
 
         // Discourage search engines until SEO_INDEXABLE=true (e.g. in production).
@@ -79,6 +82,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+
+        // Optional Sentry integration — opt-in. Set SENTRY_LARAVEL_DSN in .env
+        // and run `composer require sentry/sentry-laravel` (already in
+        // composer.json require). Guarded by class_exists so the template
+        // still boots cleanly when the package isn't installed.
+        if (class_exists(\Sentry\Laravel\Integration::class)) {
+            $exceptions->reportable(function (Throwable $e) {
+                \Sentry\Laravel\Integration::captureUnhandledException($e);
+            });
+        }
 
         // Render branded Inertia error pages in production (resources/js/Pages/Error.vue).
         // In local dev the default Laravel error screens stay visible for debugging.

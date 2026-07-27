@@ -11,7 +11,7 @@ const page = usePage<SharedPageProps>()
 const headerMenus = computed(() => page.props.menus?.header || [])
 const footerMenus = computed(() => page.props.menus?.footer || [])
 const settings = computed<Partial<App.Data.SettingsData>>(() => page.props.settings || {})
-const appName = computed(() => settings.value.site_name || 'WebTemplate')
+const appName = computed(() => settings.value.site_name ?? '')
 
 const seo = computed<Partial<App.Data.SeoData>>(() => page.props.seo || {})
 const ogTitle = computed(() => seo.value.title || seo.value.site_name || appName.value)

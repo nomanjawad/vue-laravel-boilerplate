@@ -32,9 +32,14 @@ return [
             'roles' => ['view', 'update'],
             // Module dashboard guard — admins only, never editor.
             'modules' => ['manage'],
+            // Audit log guard — admins only. Reads the spatie/activitylog
+            // stream (content CRUD + login events). See feedback.md §-
+            // "who deleted this?" is the recurring question this closes.
+            'audit_log' => ['view'],
         ],
         'nav' => [
             ['label' => 'Users', 'route' => 'admin.users.index', 'icon' => 'users', 'permission' => 'users.view'],
+            ['label' => 'Audit log', 'route' => 'admin.audit-log.index', 'icon' => 'clipboard-document-list', 'permission' => 'audit_log.view'],
         ],
     ],
 

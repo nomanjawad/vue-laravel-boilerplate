@@ -276,6 +276,77 @@ cron:
 * * * * * cd /home/user/webTemplate && php artisan schedule:run >> /dev/null 2>&1
 ```
 
+### 6.4 Production go-live checklist
+
+Things that have gone wrong on live deploys (from `feedback.md`) — walk this
+list before pointing DNS at a new site:
+
+**`.env` values**
+
+- `APP_ENV=production`, `APP_DEBUG=false`, `LOG_LEVEL=warning` (not `debug`).
+- `APP_URL` set, **no trailing slash**, matching the canonical host you'll
+  serve from. Every SEO tag, sitemap link, and OG image URL is built from
+  this — a mismatch shows the wrong host in Google previews.
+- `APP_NAME` and `VITE_APP_NAME="${APP_NAME}"` both set. `pnpm build` fails
+  loud if `VITE_APP_NAME` is unset, so a silent-wrong tab title can never
+  ship.
+- `SEO_INDEXABLE=true`. Default is `false`; leaving it produces a site with
+  a `noindex, nofollow` meta tag and a blocking `robots.txt`. Invisible to
+  Google.
+- Real `MAIL_*` + `MAIL_FROM_ADDRESS`. Without these, contact-form and
+  newsletter submissions silently fail. Test with a smoke send before opening.
+- `RESPONSE_CACHE_ENABLED=true` is the default and is safe (Phase 6 of v4
+  added `InertiaAwareCacheProfile` so Inertia XHR and full-page requests
+  never collide in cache).
+
+**Canonical host + HTTPS**
+
+Force one host + https via `public/.htaccess`:
+
+```apache
+# force HTTPS + non-www → https://example.com
+RewriteCond %{HTTP_HOST} ^www\. [NC,OR]
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://example.com%{REQUEST_URI} [R=301,L]
+```
+
+If a CDN (Cloudflare, etc.) terminates SSL upstream, `%{HTTPS}` is `off`
+at the origin — check `%{HTTP:X-Forwarded-Proto}` instead to avoid a
+redirect loop.
+
+**First-time seed (one-time, before the first automated deploy)**
+
+The automated deploy step (composer `deploy` / GH Actions) re-runs only
+the safe idempotent seeders (`RoleAndPermissionSeeder` + `AdminUserSeeder`)
+on every release. Content-shaped seeders (`ModulesSeeder`, `MenuSeeder`,
+`SettingSeeder`, `PageMetaSeeder`) run **once, manually**, on the very
+first production deploy:
+
+```bash
+php artisan db:seed --force
+```
+
+Never wire the full `db:seed` into recurring deploys — after an admin edits
+`site_name` in `/admin/settings`, the next deploy would silently overwrite
+it with the seeded default.
+
+**Pre-launch grep**
+
+Grep the deployed tree for leftover `WebTemplate` literals — every one
+should be gone (Phase 10 purged them from the template; project-specific
+copy-paste can reintroduce):
+
+```bash
+grep -rn "WebTemplate" resources/ app/ | grep -v /node_modules/
+```
+
+**Post-deploy health**
+
+`php artisan template:doctor --production` prints a health report
+(PHP/extensions, `.env`, DB, storage symlink, Vite manifest, queue, module
+health). It runs automatically at the end of the deploy pipeline with
+`--exit-zero`, so a failure surfaces in the log without aborting the deploy.
+
 ---
 
 ## 7. Conventions

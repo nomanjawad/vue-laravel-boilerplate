@@ -1,2 +1,12 @@
 /* Page-specific styles for the about page. Tailwind-first: keep this file
-   empty unless the page needs CSS that utilities can't express. */
+   empty unless the page needs CSS that utilities can't express.
+
+   SCOPE RULE — all pages/*.css files compile into ONE global bundle, so a
+   bare selector here (e.g. `.hero-cta { … }`) leaks across every page.
+   ALWAYS prefix rules with a page-root class:
+
+       .page-about .hero-cta { … }
+
+   The page component should add a matching `class="page-about"` to its
+   root. See feedback.md §3 for a real case where an unscoped .hero-ctas
+   rule from home.css re-centered service-page buttons. */

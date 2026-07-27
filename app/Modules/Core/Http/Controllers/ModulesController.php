@@ -74,4 +74,22 @@ class ModulesController extends Controller
 
         return back()->with('success', "Module \"{$key}\" health flag cleared.");
     }
+
+    /**
+     * Toggle whether a module's manifest nav entries appear in the sidebar.
+     * Distinct from enable/disable — a core module (which can never be
+     * disabled) can still be nav-hidden. See feedback.md §11.
+     */
+    public function toggleNav(Request $request, string $key): \Illuminate\Http\RedirectResponse
+    {
+        $request->validate(['visible' => 'required|boolean']);
+
+        try {
+            $this->manager->setNavVisible($key, (bool) $request->boolean('visible'));
+        } catch (ModuleException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', "Module \"{$key}\" sidebar visibility updated.");
+    }
 }

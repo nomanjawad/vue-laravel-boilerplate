@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Listeners\LogAuthenticationActivity;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,5 +26,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(function ($user, $ability) {
             return $user?->hasRole('super-admin') ? true : null;
         });
+
+        // Auth event → activity-log stream. Content CRUD is covered by the
+        // LogsContentActivity trait on every content model; this closes the
+        // "who logged in" half so /admin/audit-log tells the full story.
+        Event::listen(Login::class,  [LogAuthenticationActivity::class, 'login']);
+        Event::listen(Logout::class, [LogAuthenticationActivity::class, 'logout']);
+        Event::listen(Failed::class, [LogAuthenticationActivity::class, 'failed']);
     }
 }

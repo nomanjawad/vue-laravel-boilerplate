@@ -8,6 +8,7 @@ interface Setting {
     key: string
     value: string | null
     type: string
+    is_secret?: boolean
 }
 
 interface Props {
@@ -20,7 +21,11 @@ interface SettingsForm {
     settings: Record<string, string>
 }
 
-// Flatten settings into a key-value object for the form
+// Flatten settings into a key-value object for the form. Secret values arrive
+// from the server blanked (see Admin\SettingController::index) — we keep them
+// blank so an unmodified submit is treated as "leave the existing value alone"
+// server-side. Never seed a secret input with anything a user might mistake
+// for the real value.
 const settingsObj: Record<string, string> = {}
 Object.values(props.settings).forEach((group: Setting[]) => {
     group.forEach((s: Setting) => { settingsObj[s.key] = s.value || '' })
@@ -64,11 +69,22 @@ const groups: Record<string, string> = {
                             class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
                         />
                         <input
+                            v-else-if="setting.is_secret"
+                            v-model="form.settings[setting.key]"
+                            type="password"
+                            autocomplete="new-password"
+                            placeholder="•••••••• (leave blank to keep current)"
+                            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+                        />
+                        <input
                             v-else
                             v-model="form.settings[setting.key]"
                             type="text"
                             class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
                         />
+                        <p v-if="setting.is_secret" class="mt-1 text-xs text-gray-500">
+                            Stored encrypted. Leave blank to keep the current value.
+                        </p>
                     </div>
                 </template>
             </div>

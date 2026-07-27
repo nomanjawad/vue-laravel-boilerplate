@@ -149,7 +149,10 @@ class HandleInertiaRequests extends Middleware
         $settings = $settingsExist
             ? Setting::whereIn('key', ['site_name', 'site_description', 'og_image'])->pluck('value', 'key')
             : collect();
-        $siteName = $settings->get('site_name') ?: config('app.name', 'WebTemplate');
+        // No literal brand fallback — an empty site_name + empty APP_NAME
+        // should surface as an obvious blank in the tab title so the project
+        // owner notices during setup, not ship a placeholder to visitors.
+        $siteName = $settings->get('site_name') ?: (string) config('app.name');
         $defaultDescription = $settings->get('site_description') ?: '';
         $defaultImage = $settings->get('og_image');
 

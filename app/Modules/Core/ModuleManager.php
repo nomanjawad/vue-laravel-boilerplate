@@ -103,6 +103,48 @@ class ModuleManager
     }
 
     /**
+     * Whether the module's manifest `nav` entries should show in the sidebar.
+     * Independent of `enabled()` — a module can be enabled but nav-hidden, or
+     * (in principle) disabled with nav still visible (which navFor() then
+     * suppresses because it also checks `enabled`).
+     *
+     * Defaults to true when the registry row is missing (fresh install) so
+     * new modules appear in the sidebar until an admin explicitly hides them.
+     */
+    public function navVisible(string $key): bool
+    {
+        $registry = $this->registry();
+
+        if (! isset($registry[$key])) {
+            return true;
+        }
+
+        return (bool) ($registry[$key]['nav_visible'] ?? true);
+    }
+
+    /**
+     * Toggle a module's nav visibility. Core modules ARE allowed here — the
+     * whole point of the flag is to hide `page_metas` / `menus` / etc. from
+     * projects that don't use them, without disabling them.
+     */
+    public function setNavVisible(string $key, bool $visible): void
+    {
+        if (! isset($this->manifests[$key])) {
+            throw new ModuleNotFoundException("Unknown module: {$key}");
+        }
+        if (! $this->tablesReady()) {
+            return;
+        }
+
+        Module::updateOrCreate(
+            ['key' => $key],
+            ['nav_visible' => $visible],
+        );
+
+        Cache::forget(self::CACHE_KEY);
+    }
+
+    /**
      * Was the module flagged unhealthy in the registry?
      *
      * Returns false when the registry table isn't reachable — during a DB
@@ -136,10 +178,11 @@ class ModuleManager
             // Plain array — Cache::remember must round-trip through file driver
             // per v2 conventions (Cache::remember stores arrays, never Collections).
             return Module::query()
-                ->get(['key', 'enabled', 'unhealthy', 'last_error', 'last_error_at', 'installed_version'])
+                ->get(['key', 'enabled', 'nav_visible', 'unhealthy', 'last_error', 'last_error_at', 'installed_version'])
                 ->keyBy('key')
                 ->map(fn ($m) => [
                     'enabled' => (bool) $m->enabled,
+                    'nav_visible' => (bool) $m->nav_visible,
                     'unhealthy' => (bool) $m->unhealthy,
                     'last_error' => $m->last_error,
                     'last_error_at' => optional($m->last_error_at)->toIso8601String(),
@@ -333,7 +376,7 @@ class ModuleManager
     }
 
     /**
-     * @return array<int, array{key:string, name:string, description:string, version:string, installed_version:?string, dependencies:array, enabled:bool, unhealthy:bool, last_error:?string, core:bool}>
+     * @return array<int, array{key:string, name:string, description:string, version:string, installed_version:?string, dependencies:array, enabled:bool, nav_visible:bool, has_nav:bool, unhealthy:bool, last_error:?string, core:bool}>
      */
     public function summary(): array
     {
@@ -349,6 +392,11 @@ class ModuleManager
                 'installed_version' => $reg['installed_version'] ?? null,
                 'dependencies' => $manifest['dependencies'] ?? [],
                 'enabled' => $this->enabled($key),
+                'nav_visible' => $this->navVisible($key),
+                // has_nav is a UI hint: if the manifest declares no nav entries
+                // the "Show in nav" toggle would have nothing to hide, so the
+                // /admin/modules page can suppress it. Cheap; keeps UI honest.
+                'has_nav' => ! empty($manifest['nav'] ?? []),
                 'unhealthy' => $reg['unhealthy'] ?? false,
                 'last_error' => $reg['last_error'] ?? null,
                 'core' => (bool) ($manifest['core'] ?? false),
@@ -370,6 +418,13 @@ class ModuleManager
         $nav = [];
         foreach ($this->manifests as $key => $manifest) {
             if (! $this->enabled($key)) {
+                continue;
+            }
+            // Enabled ≠ nav-visible. A module can be fully active while an
+            // admin has hidden its sidebar entries via /admin/modules
+            // (feedback.md §11). Also lets core modules — which can't be
+            // disabled — be trimmed from the nav without hand-editing config.
+            if (! $this->navVisible($key)) {
                 continue;
             }
             foreach ($manifest['nav'] ?? [] as $entry) {

@@ -12,6 +12,7 @@ class Module extends Model
         'key',
         'type',
         'enabled',
+        'nav_visible',
         'installed_version',
         'unhealthy',
         'last_error',
@@ -23,6 +24,7 @@ class Module extends Model
 
     protected $casts = [
         'enabled' => 'bool',
+        'nav_visible' => 'bool',
         'unhealthy' => 'bool',
         'settings' => 'array',
         'last_error_at' => 'datetime',

@@ -15,6 +15,8 @@ interface ModuleEntry {
     description: string
     core: boolean
     enabled: boolean
+    nav_visible: boolean
+    has_nav: boolean
     unhealthy: boolean
     last_error?: string | null
     dependencies?: string[]
@@ -28,7 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
     modules: () => [],
 })
 
-type ModuleAction = 'enable' | 'disable' | 'reinstall' | 'clear-health' | 'uninstall'
+type ModuleAction = 'enable' | 'disable' | 'reinstall' | 'clear-health' | 'toggle-nav' | 'uninstall'
 
 const busy = ref<string | null>(null)
 const uninstallTarget = ref<ModuleEntry | null>(null)
@@ -68,6 +70,13 @@ function reinstall(mod: ModuleEntry) {
 
 function clearHealth(mod: ModuleEntry) {
     call(mod.key, 'clear-health')
+}
+
+// Nav visibility is independent of enable: available on core modules too,
+// so a project that doesn't use page_metas / menus / etc. can hide them
+// from the sidebar without disabling them (feedback.md §11).
+function toggleNav(mod: ModuleEntry) {
+    call(mod.key, 'toggle-nav', 'post', { visible: !mod.nav_visible })
 }
 
 function openUninstall(mod: ModuleEntry) {
@@ -190,7 +199,7 @@ function confirmUninstall() {
                     </button>
                 </div>
 
-                <div class="mt-4 flex flex-wrap gap-2 text-xs">
+                <div class="mt-4 flex flex-wrap items-center gap-2 text-xs">
                     <button
                         v-if="mod.enabled"
                         type="button"
@@ -200,10 +209,24 @@ function confirmUninstall() {
                     >
                         Reinstall
                     </button>
+                    <label
+                        v-if="mod.has_nav"
+                        class="flex cursor-pointer items-center gap-1.5 text-gray-600"
+                        :class="{ 'pointer-events-none opacity-50': busy }"
+                        :title="mod.nav_visible ? 'Hide this module from the admin sidebar' : 'Show this module in the admin sidebar'"
+                    >
+                        <input
+                            type="checkbox"
+                            class="rounded border-gray-300"
+                            :checked="mod.nav_visible"
+                            @change="toggleNav(mod)"
+                        >
+                        <span>Show in nav</span>
+                    </label>
                     <button
                         v-if="!mod.core"
                         type="button"
-                        class="rounded border border-rose-300 px-2 py-1 text-rose-700 hover:bg-rose-50"
+                        class="ml-auto rounded border border-rose-300 px-2 py-1 text-rose-700 hover:bg-rose-50"
                         :disabled="!!busy"
                         @click="openUninstall(mod)"
                     >

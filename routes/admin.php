@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CacheController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MediaController;
@@ -26,6 +27,13 @@ Route::get('notifications', [NotificationsController::class, 'index'])->name('no
 Route::post('notifications/{id}/read', [NotificationsController::class, 'markRead'])->name('notifications.read');
 Route::post('notifications/read-all', [NotificationsController::class, 'markAllRead'])->name('notifications.read-all');
 
+// Audit log — permission-gated. Reads spatie/activitylog rows populated by
+// LogsContentActivity trait (content CRUD) + LogAuthenticationActivity
+// listener (login/logout/failed).
+Route::get('audit-log', [AuditLogController::class, 'index'])
+    ->middleware('can:audit_log.view')
+    ->name('audit-log.index');
+
 // Cache controls — admins only.
 Route::post('cache/clear', [CacheController::class, 'clear'])
     ->middleware('can:settings.update')
@@ -39,6 +47,9 @@ Route::prefix('modules')->name('modules.')->middleware('can:modules.manage')->gr
     Route::post('{key}/disable', [ModulesController::class, 'disable'])->name('disable');
     Route::post('{key}/reinstall', [ModulesController::class, 'reinstall'])->name('reinstall');
     Route::post('{key}/clear-health', [ModulesController::class, 'clearHealth'])->name('clear-health');
+    // Sidebar visibility toggle — independent of enable/disable so core
+    // modules (which can't be disabled) can still be hidden from the nav.
+    Route::post('{key}/toggle-nav', [ModulesController::class, 'toggleNav'])->name('toggle-nav');
     Route::delete('{key}', [ModulesController::class, 'uninstall'])->name('uninstall');
 });
 
