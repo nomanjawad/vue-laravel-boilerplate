@@ -174,22 +174,34 @@ class ModuleManager
             return [];
         }
 
-        return Cache::rememberForever(self::CACHE_KEY, function (): array {
-            // Plain array — Cache::remember must round-trip through file driver
-            // per v2 conventions (Cache::remember stores arrays, never Collections).
-            return Module::query()
-                ->get(['key', 'enabled', 'nav_visible', 'unhealthy', 'last_error', 'last_error_at', 'installed_version'])
-                ->keyBy('key')
-                ->map(fn ($m) => [
-                    'enabled' => (bool) $m->enabled,
-                    'nav_visible' => (bool) $m->nav_visible,
-                    'unhealthy' => (bool) $m->unhealthy,
-                    'last_error' => $m->last_error,
-                    'last_error_at' => optional($m->last_error_at)->toIso8601String(),
-                    'installed_version' => $m->installed_version,
-                ])
-                ->toArray();
-        });
+        // Defensive: registry() is called during service-provider boot for
+        // every request. A pending migration (missing column), DB outage,
+        // or wrong credentials must NOT 500 the whole panel — enabled()
+        // falls back to config('template.features.*') when this returns
+        // empty, so a degraded but functional site is always available.
+        // The exception is `report()`ed so Sentry/log picks it up.
+        try {
+            return Cache::rememberForever(self::CACHE_KEY, function (): array {
+                // Plain array — Cache::remember must round-trip through file driver
+                // per v2 conventions (Cache::remember stores arrays, never Collections).
+                return Module::query()
+                    ->get(['key', 'enabled', 'nav_visible', 'unhealthy', 'last_error', 'last_error_at', 'installed_version'])
+                    ->keyBy('key')
+                    ->map(fn ($m) => [
+                        'enabled' => (bool) $m->enabled,
+                        'nav_visible' => (bool) $m->nav_visible,
+                        'unhealthy' => (bool) $m->unhealthy,
+                        'last_error' => $m->last_error,
+                        'last_error_at' => optional($m->last_error_at)->toIso8601String(),
+                        'installed_version' => $m->installed_version,
+                    ])
+                    ->toArray();
+            });
+        } catch (Throwable $e) {
+            report($e);
+
+            return [];
+        }
     }
 
     public function forgetCache(): void

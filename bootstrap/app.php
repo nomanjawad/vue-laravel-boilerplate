@@ -6,6 +6,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\HandleRedirects;
 use App\Http\Middleware\PreventSearchIndexing;
 use App\Models\NotFoundLog;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -92,6 +93,51 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Sentry\Laravel\Integration::captureUnhandledException($e);
             });
         }
+
+        // Friendly database-error page. Instead of a raw PDOException stack
+        // trace, render resources/views/errors/database.blade.php with a
+        // hint tailored to the SQLSTATE code (missing column, connection
+        // refused, access denied, etc.). Only in production; local dev keeps
+        // the debug stack so developers can copy the actual query.
+        $exceptions->render(function (QueryException|\PDOException $e, Request $request) {
+            if (app()->environment(['local', 'testing']) && config('app.debug')) {
+                return null; // let Laravel's debug page render
+            }
+
+            $sqlState = $e instanceof QueryException
+                ? ($e->errorInfo[0] ?? null)
+                : $e->getCode();
+            $driverCode = $e instanceof QueryException ? ($e->errorInfo[1] ?? null) : null;
+
+            [$title, $hint] = match (true) {
+                $sqlState === '42S22' => [
+                    'The database schema is out of date.',
+                    'A recent update added a column that hasn\'t been migrated yet. Run <code>php artisan migrate</code> on the server.',
+                ],
+                $sqlState === '42S02' => [
+                    'The database is missing a table this page needs.',
+                    'This usually means migrations haven\'t been run on this environment. Run <code>php artisan migrate</code>.',
+                ],
+                $sqlState === 'HY000' && (int) $driverCode === 2002 => [
+                    'The database server isn\'t reachable.',
+                    'Check <code>DB_HOST</code> / <code>DB_PORT</code> in <code>.env</code>. On local dev, make sure MAMP / MySQL is running.',
+                ],
+                $sqlState === '28000' || (int) $driverCode === 1045 => [
+                    'The database rejected the app\'s credentials.',
+                    'Verify <code>DB_USERNAME</code> / <code>DB_PASSWORD</code> in <code>.env</code> match a user that can access <code>DB_DATABASE</code>.',
+                ],
+                default => [
+                    'A database query failed.',
+                    'The application couldn\'t complete a database operation. If this persists, check <code>storage/logs/laravel.log</code>.',
+                ],
+            };
+
+            return response()->view('errors.database', [
+                'title' => $title,
+                'hint' => $hint,
+                'detail' => app()->environment('local') ? $e->getMessage() : null,
+            ], 500);
+        });
 
         // Render branded Inertia error pages in production (resources/js/Pages/Error.vue).
         // In local dev the default Laravel error screens stay visible for debugging.
