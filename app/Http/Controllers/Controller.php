@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Storage;
 
 abstract class Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Normalize a stored image path to a browser-usable URL.
      *
