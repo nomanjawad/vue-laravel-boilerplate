@@ -21,6 +21,13 @@ folder and can be turned on/off from the dashboard.
 - `php artisan optimize` must stay clean (CI gate)
 - `php artisan template:init` — first-run setup (site name, admin user, migrate+seed)
 
+## Agent skills
+
+Task-focused guides live in `.claude/skills/` — they load automatically when
+relevant: `create-module`, `admin-crud`, `page-content`, `blog`,
+`modules-reference`, `settings-and-media`, `dev-workflow`. Prefer consulting
+them over re-deriving conventions from the code.
+
 ## Architecture & conventions (the non-obvious rules)
 - **Module system.** Physical modules live in `app/Modules/{Name}/` (with `rescue()`
   fault isolation); "virtual modules" are declared in `config/modules.php`. The
