@@ -1,3 +1,12 @@
+<?php
+// Admin > Custom Code snippets — injected verbatim into the public site only,
+// never the admin panel (a customer's own tracking/verification scripts have
+// no business running while an admin edits content). One query for all three
+// placements; see App\Services\CustomCodeService.
+$__customCode = request()->is('admin*')
+    ? ['head' => '', 'body_start' => '', 'body_end' => '']
+    : app(\App\Services\CustomCodeService::class)->renderAll();
+?>
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -13,8 +22,11 @@
         @routes
         @vite(['resources/css/app.css', 'resources/js/app.ts'])
         @inertiaHead
+        {!! $__customCode['head'] !!}
     </head>
     <body class="font-sans antialiased">
+        {!! $__customCode['body_start'] !!}
         @inertia
+        {!! $__customCode['body_end'] !!}
     </body>
 </html>

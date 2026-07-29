@@ -100,6 +100,17 @@ return [
         ],
     ],
 
+    'custom_code' => [
+        'name' => 'Custom Code',
+        'description' => 'HTML/JS/CSS snippets injected into <head>, right after <body>, or right before </body>.',
+        'core' => true,
+        'nav_group' => 'system',
+        'permissions' => ['custom_code' => ['view', 'create', 'update', 'delete']],
+        'nav' => [
+            ['label' => 'Custom Code', 'route' => 'admin.custom-code.index', 'icon' => 'code-bracket', 'permission' => 'custom_code.view'],
+        ],
+    ],
+
     'subscribers' => [
         'name' => 'Newsletter',
         'description' => 'Email subscribers + CSV export.',

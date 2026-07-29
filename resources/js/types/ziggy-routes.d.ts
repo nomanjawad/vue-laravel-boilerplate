@@ -199,6 +199,37 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.custom-code.index": [],
+    "admin.custom-code.create": [],
+    "admin.custom-code.store": [],
+    "admin.custom-code.edit": [
+        {
+            "name": "customCode",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.custom-code.update": [
+        {
+            "name": "customCode",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.custom-code.toggle": [
+        {
+            "name": "customCode",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.custom-code.destroy": [
+        {
+            "name": "customCode",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "admin.subscribers.index": [],
     "admin.subscribers.export": [],
     "admin.subscribers.destroy": [

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CacheController;
+use App\Http\Controllers\Admin\CustomCodeController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MenuController;
@@ -115,6 +116,24 @@ Route::middleware('can:redirects.update')->group(function () {
 });
 Route::middleware('can:redirects.delete')->group(function () {
     Route::delete('redirects/{redirect}', [RedirectController::class, 'destroy'])->name('redirects.destroy');
+});
+
+// Custom Code — HTML/JS/CSS snippets injected into app.blade.php at
+// head/body_start/body_end (see App\Services\CustomCodeService).
+Route::middleware('can:custom_code.view')->group(function () {
+    Route::get('custom-code', [CustomCodeController::class, 'index'])->name('custom-code.index');
+});
+Route::middleware('can:custom_code.create')->group(function () {
+    Route::get('custom-code/create', [CustomCodeController::class, 'create'])->name('custom-code.create');
+    Route::post('custom-code', [CustomCodeController::class, 'store'])->name('custom-code.store');
+});
+Route::middleware('can:custom_code.update')->group(function () {
+    Route::get('custom-code/{customCode}/edit', [CustomCodeController::class, 'edit'])->name('custom-code.edit');
+    Route::put('custom-code/{customCode}', [CustomCodeController::class, 'update'])->name('custom-code.update');
+    Route::patch('custom-code/{customCode}/toggle', [CustomCodeController::class, 'toggle'])->name('custom-code.toggle');
+});
+Route::middleware('can:custom_code.delete')->group(function () {
+    Route::delete('custom-code/{customCode}', [CustomCodeController::class, 'destroy'])->name('custom-code.destroy');
 });
 
 // Subscribers.
