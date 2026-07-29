@@ -2,7 +2,9 @@
     "seo": {
         "title": "About Us",
         "description": "Learn more about our company.",
-        "og_image": ""
+        "og_image": "",
+        "noindex": false,
+        "json_ld": ""
     },
     "hero": {
         "title": "About Us",

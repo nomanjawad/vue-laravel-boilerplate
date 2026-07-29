@@ -92,8 +92,10 @@ Route::middleware('can:menus.delete')->group(function () {
 });
 
 // Page Content (data/*.json editor — replaces the old Page SEO/page_metas module).
+// Pages and Header/Footer are separate sidebar entries, not tabs on one screen.
 Route::middleware('can:page_content.view')->group(function () {
     Route::get('page-content', [PageContentController::class, 'index'])->name('page-content.index');
+    Route::get('page-content/layout', [PageContentController::class, 'layout'])->name('page-content.layout');
 });
 Route::middleware('can:page_content.update')->group(function () {
     Route::put('page-content/{file}', [PageContentController::class, 'update'])

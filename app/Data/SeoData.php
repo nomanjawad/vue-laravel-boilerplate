@@ -14,5 +14,10 @@ class SeoData extends Data
         public string $description,
         public ?string $og_image,
         public string $canonical,
+        public bool $noindex = false,
+        // Raw JSON-LD text as entered by the admin (Page Content panel), not a
+        // decoded structure — PublicLayout writes it verbatim into a <script
+        // type="application/ld+json"> placed right after <body> for that page.
+        public ?string $json_ld = null,
     ) {}
 }

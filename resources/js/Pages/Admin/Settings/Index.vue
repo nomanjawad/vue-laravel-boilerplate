@@ -8,6 +8,7 @@ import AppFormField from '@/Components/Molecules/AppFormField.vue'
 import AppInput from '@/Components/Atoms/AppInput.vue'
 import AppTextarea from '@/Components/Atoms/AppTextarea.vue'
 import AppMediaPicker from '@/Components/Organisms/AppMediaPicker.vue'
+import AppSwitch from '@/Components/Atoms/AppSwitch.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -33,7 +34,7 @@ interface MediaItem {
     url?: string | null
 }
 
-type FieldInput = 'text' | 'textarea' | 'image' | 'email' | 'tel' | 'url'
+type FieldInput = 'text' | 'textarea' | 'image' | 'email' | 'tel' | 'url' | 'toggle'
 
 interface FieldDef {
     key: string
@@ -108,6 +109,12 @@ const TABS: TabDef[] = [
             { key: 'ga_measurement_id', label: 'Google Analytics Measurement ID', placeholder: 'G-XXXXXXXXXX' },
             { key: 'gtm_container_id', label: 'Google Tag Manager Container ID', placeholder: 'GTM-XXXXXXX' },
             { key: 'cookie_consent_text', label: 'Cookie Consent Banner Text', input: 'textarea' },
+            {
+                key: 'site_noindex',
+                label: 'Hide entire site from search engines',
+                input: 'toggle',
+                help: 'Adds a sitewide noindex meta tag to every public page. Useful while a site is in staging — turn off before launch.',
+            },
         ],
     },
 ]
@@ -213,6 +220,13 @@ const activeFields = computed<FieldDef[]>(
                             :rows="3"
                             :placeholder="field.placeholder"
                             :invalid="invalid"
+                        />
+                        <!-- Settings are persisted as strings; a toggle stores '1' / '' so an
+                             unmodified submit still round-trips through Setting::value cleanly. -->
+                        <AppSwitch
+                            v-else-if="resolveInput(field) === 'toggle'"
+                            :model-value="form.settings[field.key] === '1'"
+                            @update:model-value="(v) => { form.settings[field.key] = v ? '1' : '' }"
                         />
                         <AppInput
                             v-else

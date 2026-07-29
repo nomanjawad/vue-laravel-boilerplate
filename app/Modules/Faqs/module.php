@@ -16,6 +16,7 @@ return [
     'description'  => 'Frequently asked questions grouped by category.',
     'version'      => '1.0.0',
     'dependencies' => [],
+    'nav_group'    => 'content',
     'permissions'  => [
         'faqs' => ['view', 'create', 'update', 'delete'],
     ],

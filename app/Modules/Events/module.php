@@ -16,6 +16,7 @@ return [
     'description'  => 'Events with dates, locations, and public listings.',
     'version'      => '1.0.0',
     'dependencies' => ['media'],
+    'nav_group'    => 'content',
     'permissions'  => [
         'events' => ['view', 'create', 'update', 'delete'],
     ],

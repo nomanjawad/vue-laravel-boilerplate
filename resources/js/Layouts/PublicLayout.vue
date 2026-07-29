@@ -32,6 +32,8 @@ const jsonLdBlocks = computed<unknown[]>(() => {
     <Head>
         <meta v-if="seo.description" head-key="description" name="description" :content="seo.description" />
         <link v-if="seo.canonical" head-key="canonical" rel="canonical" :href="seo.canonical" />
+        <!-- Page Content panel's per-page "No-index" toggle. -->
+        <meta v-if="seo.noindex" head-key="robots" name="robots" content="noindex, nofollow" />
 
         <!-- Open Graph -->
         <meta head-key="og:type" property="og:type" content="website" />
@@ -59,6 +61,17 @@ const jsonLdBlocks = computed<unknown[]>(() => {
     </Head>
 
     <div class="min-h-screen flex flex-col bg-white">
+        <!-- Page Content panel's per-page JSON-LD schema field: written verbatim
+             (not JSON.stringify'd — it's already raw JSON text from the admin
+             textarea) as the first thing in the body, not hoisted to <head>
+             like jsonLdBlocks above. -->
+        <component
+            v-if="seo.json_ld"
+            :is="'script'"
+            type="application/ld+json"
+            v-text="seo.json_ld"
+        />
+
         <!-- Header -->
         <header class="bg-white border-b border-gray-200">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

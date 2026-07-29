@@ -33,6 +33,7 @@ class SettingSeeder extends Seeder
             ['key' => 'shop_currency_symbol', 'value' => '$', 'type' => 'string', 'group' => 'shop'],
             // SEO & Analytics tab. Analytics scripts load only after cookie-consent acceptance.
             ['key' => 'og_image', 'value' => '', 'type' => 'image', 'group' => 'seo'],
+            ['key' => 'site_noindex', 'value' => '', 'type' => 'boolean', 'group' => 'seo'],
             ['key' => 'ga_measurement_id', 'value' => '', 'type' => 'string', 'group' => 'analytics'],
             ['key' => 'gtm_container_id', 'value' => '', 'type' => 'string', 'group' => 'analytics'],
             ['key' => 'cookie_consent_text', 'value' => '', 'type' => 'text', 'group' => 'analytics'],

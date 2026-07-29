@@ -23,6 +23,7 @@ class PostData extends Data
         public ?string $featured_image,
         public ?string $meta_title,
         public ?string $meta_description,
+        public bool $noindex,
         public ?CategorySummaryData $category = null,
         public ?UserSummaryData $user = null,
         public array $tags = [],
@@ -41,6 +42,7 @@ class PostData extends Data
             featured_image: $post->featured_image,
             meta_title: $post->meta_title,
             meta_description: $post->meta_description,
+            noindex: $post->noindex,
             category: $post->relationLoaded('category') && $post->category
                 ? CategorySummaryData::fromModel($post->category)
                 : null,

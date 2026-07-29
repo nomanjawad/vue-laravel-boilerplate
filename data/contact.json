@@ -2,7 +2,9 @@
     "seo": {
         "title": "Contact Us",
         "description": "Get in touch with us.",
-        "og_image": ""
+        "og_image": "",
+        "noindex": false,
+        "json_ld": ""
     },
     "hero": {
         "title": "Contact Us",

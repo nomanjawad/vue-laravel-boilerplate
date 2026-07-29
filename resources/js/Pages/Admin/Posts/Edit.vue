@@ -12,6 +12,7 @@ import AppInput from '@/Components/Atoms/AppInput.vue'
 import AppTextarea from '@/Components/Atoms/AppTextarea.vue'
 import AppSelect from '@/Components/Atoms/AppSelect.vue'
 import AppCheckbox from '@/Components/Atoms/AppCheckbox.vue'
+import AppSwitch from '@/Components/Atoms/AppSwitch.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -32,6 +33,7 @@ const form = useForm({
     featured_image: props.post.featured_image || '',
     meta_title: props.post.meta_title || '',
     meta_description: props.post.meta_description || '',
+    noindex: props.post.noindex,
     tags: props.post.tags?.map((t) => t.id) || [],
 })
 
@@ -106,6 +108,13 @@ function toggleTag(id: number) {
                         <template #default="{ id, invalid }">
                             <AppTextarea :id="id" v-model="form.meta_description" :rows="2" :invalid="invalid" />
                         </template>
+                    </AppFormField>
+                    <AppFormField
+                        name="noindex"
+                        label="No-index"
+                        help="Hides this post from Google and other search engines (adds a noindex meta tag)."
+                    >
+                        <AppSwitch v-model="form.noindex" />
                     </AppFormField>
                 </AppFormSection>
             </div>

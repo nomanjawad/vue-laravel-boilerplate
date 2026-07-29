@@ -2,6 +2,7 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
+import BlogTabs from '@/Components/Organisms/BlogTabs.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -57,6 +58,7 @@ const deleteTag = (tag: Tag) => {
 
 <template>
     <Head title="Tags" />
+    <BlogTabs />
     <h1 class="text-2xl font-bold text-gray-900 mb-6">Tags</h1>
 
     <!-- Add new tag -->

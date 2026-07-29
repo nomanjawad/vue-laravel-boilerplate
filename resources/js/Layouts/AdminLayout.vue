@@ -15,6 +15,22 @@ interface MenuItem {
     icon: string
 }
 
+interface MenuSection {
+    key: string
+    label: string
+    items: MenuItem[]
+}
+
+// Fixed display order + human labels for the groups a module manifest can
+// declare via `nav_group` (see ModuleManager::navFor()). An unrecognized or
+// missing group falls back to 'content' so a module never silently vanishes
+// from the sidebar.
+const SECTION_ORDER: { key: string; label: string }[] = [
+    { key: 'content', label: 'Content' },
+    { key: 'commerce', label: 'Commerce' },
+    { key: 'system', label: 'System' },
+]
+
 const page = usePage<SharedPageProps>()
 const sidebarOpen = ref(false)
 const shortcutHelpOpen = ref(false)
@@ -23,24 +39,30 @@ const globalSearchOpen = ref(false)
 const user = computed(() => page.props.auth?.user)
 
 // Sidebar is fed by the module registry — each enabled module declares its
-// own nav entries in its manifest, already permission-filtered server-side.
+// own nav entries (+ which section they belong to) in its manifest, already
+// permission-filtered server-side.
 const moduleNav = computed<App.Data.ModuleNavEntry[]>(() => page.props.modules?.nav ?? [])
 
-const menuItems = computed<MenuItem[]>(() => {
-    const items: MenuItem[] = [{ title: 'Dashboard', href: route('admin.dashboard'), icon: 'dashboard' }]
+const menuSections = computed<MenuSection[]>(() => {
+    const buckets: Record<string, MenuItem[]> = { content: [], commerce: [], system: [] }
 
     for (const entry of moduleNav.value) {
         const href = entry.href || (entry.route && route().has(entry.route) ? route(entry.route) : null)
         if (!href) continue
-        items.push({ title: entry.label, href, icon: entry.icon })
+        const group = buckets[entry.group] ? entry.group : 'content'
+        buckets[group]!.push({ title: entry.label, href, icon: entry.icon })
     }
 
     if (user.value?.is_super_admin || user.value?.roles?.includes('admin')) {
-        items.push({ title: 'Modules', href: route('admin.modules.index'), icon: 'modules' })
+        buckets.system!.push({ title: 'Modules', href: route('admin.modules.index'), icon: 'modules' })
     }
 
-    return items
+    return SECTION_ORDER
+        .map(({ key, label }) => ({ key, label, items: buckets[key] ?? [] }))
+        .filter((section) => section.items.length > 0)
 })
+
+const dashboardItem: MenuItem = { title: 'Dashboard', href: route('admin.dashboard'), icon: 'dashboard' }
 
 const isActive = (href: string): boolean => {
     const dashboard = route('admin.dashboard')
@@ -86,20 +108,41 @@ useShortcuts({
                     </svg>
                 </button>
             </div>
-            <nav class="mt-4 px-3 space-y-1 overflow-y-auto" style="max-height: calc(100vh - 4rem)">
-                <Link
-                    v-for="item in menuItems"
-                    :key="item.href"
-                    :href="item.href"
-                    :class="[
-                        'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                        isActive(item.href)
-                            ? 'bg-gray-800 text-white'
-                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                    ]"
-                >
-                    {{ item.title }}
-                </Link>
+            <nav class="mt-4 space-y-4 overflow-y-auto px-3 pb-4" style="max-height: calc(100vh - 4rem)">
+                <div class="space-y-1">
+                    <Link
+                        :href="dashboardItem.href"
+                        :class="[
+                            'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                            isActive(dashboardItem.href)
+                                ? 'bg-gray-800 text-white'
+                                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                        ]"
+                    >
+                        {{ dashboardItem.title }}
+                    </Link>
+                </div>
+
+                <div v-for="section in menuSections" :key="section.key">
+                    <p class="px-3 pb-1 text-xs font-semibold tracking-wider text-gray-500 uppercase">
+                        {{ section.label }}
+                    </p>
+                    <div class="space-y-1">
+                        <Link
+                            v-for="item in section.items"
+                            :key="item.href"
+                            :href="item.href"
+                            :class="[
+                                'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                                isActive(item.href)
+                                    ? 'bg-gray-800 text-white'
+                                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                            ]"
+                        >
+                            {{ item.title }}
+                        </Link>
+                    </div>
+                </div>
             </nav>
         </aside>
 

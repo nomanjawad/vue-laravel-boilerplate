@@ -21,6 +21,7 @@ interface PostForm {
     featured_image: string
     meta_title: string
     meta_description: string
+    noindex: boolean
     tags: number[]
 }
 
@@ -34,6 +35,7 @@ const form = useForm<PostForm>({
     featured_image: '',
     meta_title: '',
     meta_description: '',
+    noindex: false,
     tags: [],
 })
 
@@ -83,6 +85,10 @@ const submit = () => {
                     <label class="block text-sm font-medium text-gray-700">Meta Description</label>
                     <textarea v-model="form.meta_description" rows="2" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
                 </div>
+                <label class="flex items-center gap-2">
+                    <input v-model="form.noindex" type="checkbox" class="rounded border-gray-300 text-gray-900 focus:ring-gray-500" />
+                    <span class="text-sm font-medium text-gray-700">No-index (hide from search engines)</span>
+                </label>
             </div>
         </div>
 

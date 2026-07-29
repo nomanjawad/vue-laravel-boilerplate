@@ -2,7 +2,9 @@
     "seo": {
         "title": "Home",
         "description": "Welcome to our website.",
-        "og_image": ""
+        "og_image": "",
+        "noindex": false,
+        "json_ld": ""
     },
     "hero": {
         "title": "Build Something Amazing",

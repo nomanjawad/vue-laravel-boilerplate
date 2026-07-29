@@ -2,6 +2,7 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
+import BlogTabs from '@/Components/Organisms/BlogTabs.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -35,6 +36,7 @@ const deletePost = (post: App.Data.PostData) => {
 
 <template>
     <Head title="Posts" />
+    <BlogTabs />
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Posts</h1>
         <Link href="/admin/posts/create" class="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800">

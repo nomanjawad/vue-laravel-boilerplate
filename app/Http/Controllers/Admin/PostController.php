@@ -57,10 +57,15 @@ class PostController extends Controller
             'featured_image' => ['nullable', 'string', 'max:255'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
+            'noindex' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['exists:tags,id'],
         ]);
 
+        // $request->boolean(), not the validated value directly: a switch/
+        // checkbox that's off may not send the key at all, and `boolean()`
+        // treats a missing key as false instead of leaving the column null.
+        $validated['noindex'] = $request->boolean('noindex');
         $validated['slug'] = $this->slugs->generate(new Post, $validated['slug'] ?: $validated['title']);
         $validated['user_id'] = auth()->id();
 
@@ -106,9 +111,12 @@ class PostController extends Controller
             'featured_image' => ['nullable', 'string', 'max:255'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
+            'noindex' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['exists:tags,id'],
         ]);
+
+        $validated['noindex'] = $request->boolean('noindex');
 
         if ($validated['status'] === 'published' && ! $post->published_at) {
             $validated['published_at'] = now();

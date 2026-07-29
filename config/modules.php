@@ -27,6 +27,7 @@ return [
         'name' => 'Users & Auth',
         'description' => 'Admin users, roles, password reset, module toggles.',
         'core' => true,
+        'nav_group' => 'system',
         'permissions' => [
             'users' => ['view', 'create', 'update', 'delete'],
             'roles' => ['view', 'update'],
@@ -47,6 +48,7 @@ return [
         'name' => 'Site Settings',
         'description' => 'Branding, contact, SEO defaults, analytics ids, integrations.',
         'core' => true,
+        'nav_group' => 'system',
         'permissions' => ['settings' => ['view', 'update']],
         'nav' => [
             ['label' => 'Settings', 'route' => 'admin.settings.index', 'icon' => 'cog-6-tooth', 'permission' => 'settings.view'],
@@ -57,6 +59,7 @@ return [
         'name' => 'Media',
         'description' => 'Image uploads with WebP variants. Required by most content modules.',
         'core' => true,
+        'nav_group' => 'content',
         'permissions' => ['media' => ['view', 'create', 'update', 'delete']],
         'nav' => [
             ['label' => 'Media', 'route' => 'admin.media.index', 'icon' => 'photo', 'permission' => 'media.view'],
@@ -67,6 +70,7 @@ return [
         'name' => 'Menus',
         'description' => 'Header & footer navigation builder.',
         'core' => true,
+        'nav_group' => 'content',
         'permissions' => ['menus' => ['view', 'create', 'update', 'delete']],
         'nav' => [
             ['label' => 'Menus', 'route' => 'admin.menus.index', 'icon' => 'bars-3', 'permission' => 'menus.view'],
@@ -77,9 +81,11 @@ return [
         'name' => 'Page Content',
         'description' => 'Static page content (home/about/contact + header/footer), stored in data/*.json. Each page carries its own SEO block.',
         'core' => true,
+        'nav_group' => 'content',
         'permissions' => ['page_content' => ['view', 'update']],
         'nav' => [
             ['label' => 'Pages', 'route' => 'admin.page-content.index', 'icon' => 'document-text', 'permission' => 'page_content.view'],
+            ['label' => 'Header / Footer', 'route' => 'admin.page-content.layout', 'icon' => 'bars-3', 'permission' => 'page_content.view'],
         ],
     ],
 
@@ -87,6 +93,7 @@ return [
         'name' => 'Redirects',
         'description' => '301 manager with 404 monitoring.',
         'core' => true,
+        'nav_group' => 'system',
         'permissions' => ['redirects' => ['view', 'create', 'update', 'delete']],
         'nav' => [
             ['label' => 'Redirects', 'route' => 'admin.redirects.index', 'icon' => 'arrow-path-rounded-square', 'permission' => 'redirects.view'],
@@ -97,6 +104,7 @@ return [
         'name' => 'Newsletter',
         'description' => 'Email subscribers + CSV export.',
         'core' => true,
+        'nav_group' => 'system',
         'permissions' => ['subscribers' => ['view', 'delete']],
         'nav' => [
             ['label' => 'Subscribers', 'route' => 'admin.subscribers.index', 'icon' => 'envelope', 'permission' => 'subscribers.view'],
@@ -113,16 +121,18 @@ return [
         'name' => 'Blog',
         'description' => 'Posts, categories, tags, author bylines, RSS, sitemap entries.',
         'dependencies' => ['media'],
+        'nav_group' => 'content',
         'feature_flag_fallback' => 'blog',
         'permissions' => [
             'posts' => ['view', 'create', 'update', 'delete', 'publish'],
             'categories' => ['view', 'create', 'update', 'delete'],
             'tags' => ['view', 'create', 'update', 'delete'],
         ],
+        // Posts/Categories/Tags share one sidebar entry — the Posts index page
+        // (and its siblings) render a BlogTabs bar to switch between them, so
+        // the sidebar doesn't need three separate links for one content type.
         'nav' => [
-            ['label' => 'Posts', 'route' => 'admin.posts.index', 'icon' => 'document-text', 'permission' => 'posts.view'],
-            ['label' => 'Categories', 'route' => 'admin.categories.index', 'icon' => 'folder', 'permission' => 'categories.view'],
-            ['label' => 'Tags', 'route' => 'admin.tags.index', 'icon' => 'tag', 'permission' => 'tags.view'],
+            ['label' => 'Blog', 'route' => 'admin.posts.index', 'icon' => 'document-text', 'permission' => 'posts.view'],
         ],
         'admin_route_file' => 'admin-blog.php',
         'public_route_file' => 'public-blog.php',
@@ -136,6 +146,7 @@ return [
         'name' => 'Shop',
         'description' => 'Products, orders, cart, currency settings.',
         'dependencies' => ['media'],
+        'nav_group' => 'commerce',
         'feature_flag_fallback' => 'shop',
         'permissions' => [
             'products' => ['view', 'create', 'update', 'delete'],
@@ -157,6 +168,7 @@ return [
         'name' => 'Careers',
         'description' => 'Job listings with JobPosting JSON-LD.',
         'dependencies' => [],
+        'nav_group' => 'content',
         'feature_flag_fallback' => 'careers',
         'permissions' => ['careers' => ['view', 'create', 'update', 'delete']],
         'nav' => [
@@ -173,6 +185,7 @@ return [
         'name' => 'Case Studies',
         'description' => 'Portfolio entries.',
         'dependencies' => ['media'],
+        'nav_group' => 'content',
         'feature_flag_fallback' => 'case_studies',
         'permissions' => ['case_studies' => ['view', 'create', 'update', 'delete']],
         'nav' => [
@@ -189,6 +202,7 @@ return [
         'name' => 'Team',
         'description' => 'Team member directory.',
         'dependencies' => ['media'],
+        'nav_group' => 'content',
         'feature_flag_fallback' => 'teams',
         'permissions' => ['teams' => ['view', 'create', 'update', 'delete']],
         'nav' => [

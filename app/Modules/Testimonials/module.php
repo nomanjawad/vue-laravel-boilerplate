@@ -16,6 +16,7 @@ return [
     'description'  => 'Client testimonials with author name, quote, and optional photo.',
     'version'      => '1.0.0',
     'dependencies' => ['media'],
+    'nav_group'    => 'content',
     'permissions'  => [
         'testimonials' => ['view', 'create', 'update', 'delete'],
     ],

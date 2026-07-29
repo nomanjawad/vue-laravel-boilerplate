@@ -41,6 +41,9 @@ class ModuleManager
             'dependencies' => [],
             'permissions' => [],
             'nav' => [],
+            // Which sidebar section this module's nav entries render under.
+            // See navFor() and AdminLayout.vue's fixed section order.
+            'nav_group' => 'content',
             'core' => false,
             'searchable' => [],
             'feature_flag_fallback' => $key,
@@ -448,7 +451,10 @@ class ModuleManager
                     continue;
                 }
                 // Defensive defaults — manifests that omit icon or route
-                // shouldn't crash the layout's template render.
+                // shouldn't crash the layout's template render. `group` comes
+                // from the module's manifest (one section per module), not
+                // per nav entry — a nav item can still override it explicitly
+                // if a module ever needs to split across sections.
                 $nav[] = array_merge([
                     'module' => $key,
                     'label' => '',
@@ -456,6 +462,7 @@ class ModuleManager
                     'route' => null,
                     'href' => null,
                     'permission' => null,
+                    'group' => $manifest['nav_group'] ?? 'content',
                 ], $entry);
             }
         }

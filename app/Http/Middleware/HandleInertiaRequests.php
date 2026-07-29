@@ -166,7 +166,7 @@ class HandleInertiaRequests extends Middleware
     protected function resolveSeo(Request $request, bool $settingsExist): array
     {
         $settings = $settingsExist
-            ? Setting::whereIn('key', ['site_name', 'site_description', 'og_image'])->pluck('value', 'key')
+            ? Setting::whereIn('key', ['site_name', 'site_description', 'og_image', 'site_noindex'])->pluck('value', 'key')
             : collect();
         // No literal brand fallback — an empty site_name + empty APP_NAME
         // should surface as an obvious blank in the tab title so the project
@@ -174,6 +174,10 @@ class HandleInertiaRequests extends Middleware
         $siteName = $settings->get('site_name') ?: (string) config('app.name');
         $defaultDescription = $settings->get('site_description') ?: '';
         $defaultImage = $settings->get('og_image');
+        // Sitewide kill switch (Admin > Settings > SEO & Analytics) — forces
+        // noindex on every route, composed with (never overridden by) a
+        // page's own noindex below.
+        $siteNoindex = $settings->get('site_noindex') === '1';
 
         $routeName = $request->route()?->getName();
         $jsonFile = self::SEO_PAGE_MAP[$routeName] ?? null;
@@ -187,6 +191,7 @@ class HandleInertiaRequests extends Middleware
         $title = $meta['title'] ?? '';
         $description = $meta['description'] ?? '';
         $ogImage = $meta['og_image'] ?? '';
+        $jsonLd = $meta['json_ld'] ?? '';
 
         // og:image must be an absolute URL for social crawlers. Media URLs are
         // stored root-relative (see Media::getUrlAttribute), so promote a
@@ -202,6 +207,8 @@ class HandleInertiaRequests extends Middleware
             'description' => $description ?: $defaultDescription,
             'og_image' => $ogImage,
             'canonical' => $request->url(),
+            'noindex' => $siteNoindex || (bool) ($meta['noindex'] ?? false),
+            'json_ld' => $jsonLd !== '' ? $jsonLd : null,
         ])->toArray();
     }
 }

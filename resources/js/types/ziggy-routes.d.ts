@@ -176,6 +176,7 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.page-content.index": [],
+    "admin.page-content.layout": [],
     "admin.page-content.update": [
         {
             "name": "file",

@@ -15,5 +15,8 @@ class ModuleNavEntry extends Data
         public ?string $href,
         public string $icon,
         public ?string $permission,
+        // Sidebar section this entry renders under — see ModuleManager::navFor()
+        // and AdminLayout.vue's fixed section order.
+        public string $group,
     ) {}
 }

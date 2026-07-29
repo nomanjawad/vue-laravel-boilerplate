@@ -24,6 +24,7 @@ interface BlogPost {
     excerpt?: string | null
     featured_image?: string | null
     meta_title?: string | null
+    noindex?: boolean
     published_at: string
     category?: BlogPostCategory | null
     user?: { id: number; name: string } | null
@@ -46,7 +47,12 @@ defineProps<Props>()
 </script>
 
 <template>
-    <Head :title="post.meta_title || post.title" />
+    <Head>
+        <title>{{ post.meta_title || post.title }}</title>
+        <!-- Per-post override (Admin > Posts > Edit); independent of the
+             sitewide `seo.noindex` PublicLayout already renders. -->
+        <meta v-if="post.noindex" name="robots" content="noindex, nofollow" />
+    </Head>
 
     <article class="py-12">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">

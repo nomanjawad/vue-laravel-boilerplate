@@ -18,13 +18,14 @@ class Post extends Model
     protected $fillable = [
         'user_id', 'category_id', 'title', 'slug', 'excerpt', 'body',
         'featured_image', 'status', 'published_at', 'meta_title',
-        'meta_description', 'og_image',
+        'meta_description', 'og_image', 'noindex',
     ];
 
     protected function casts(): array
     {
         return [
             'published_at' => 'datetime',
+            'noindex' => 'boolean',
         ];
     }
 
