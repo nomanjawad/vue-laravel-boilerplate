@@ -2,7 +2,6 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
-import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
@@ -27,7 +26,7 @@ let t: ReturnType<typeof setTimeout> | null = null
 watch(search, (v) => {
     if (t) clearTimeout(t)
     t = setTimeout(() => {
-        router.get(route('admin.{{resource}}.index'), { search: v || undefined }, {
+        router.get('/admin/{{resource}}', { search: v || undefined }, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -37,7 +36,7 @@ watch(search, (v) => {
 
 function destroy(id: number) {
     if (!confirm('Delete this {{singular}}?')) return
-    router.delete(route('admin.{{resource}}.destroy', { id }), { preserveScroll: true })
+    router.delete(`/admin/{{resource}}/${id}`, { preserveScroll: true })
 }
 </script>
 
@@ -46,7 +45,7 @@ function destroy(id: number) {
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-900">{{models}}</h1>
         <Link
-            :href="route('admin.{{resource}}.create')"
+            href="/admin/{{resource}}/create"
             class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
         >
             New {{singular}}
@@ -72,7 +71,7 @@ function destroy(id: number) {
             <tbody class="divide-y divide-gray-100">
                 <tr v-for="row in {{plural}}.data" :key="row.id">
                     <td class="px-4 py-2 text-sm">
-                        <Link :href="route('admin.{{resource}}.edit', { id: row.id })" class="text-indigo-600 hover:underline">
+                        <Link :href="`/admin/{{resource}}/${row.id}/edit`" class="text-indigo-600 hover:underline">
                             {{ row.title }}
                         </Link>
                     </td>

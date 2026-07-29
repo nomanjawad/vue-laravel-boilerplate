@@ -11,8 +11,8 @@ import { Link } from '@inertiajs/vue3'
  * disable prefetch on a specific link (e.g. a POST/DELETE action), pass
  * `:prefetch="false"`.
  *
- *   <AppLink :href="route('home')">Home</AppLink>
- *   <AppLink :href="route('admin.posts.destroy', post.id)" method="delete" :prefetch="false">
+ *   <AppLink href="/">Home</AppLink>
+ *   <AppLink :href="`/admin/posts/${post.id}`" method="delete" :prefetch="false">
  *     Delete
  *   </AppLink>
  */

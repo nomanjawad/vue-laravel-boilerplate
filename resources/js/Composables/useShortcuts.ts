@@ -1,6 +1,5 @@
 import { onMounted, onUnmounted } from 'vue'
 import { router } from '@inertiajs/vue3'
-import { route } from 'ziggy-js'
 
 /**
  * GitHub-style admin keyboard shortcuts.
@@ -27,9 +26,8 @@ export function useShortcuts({ onFocusSearch, onShowHelp }: ShortcutOptions = {}
         return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
     }
 
-    function visit(name: string) {
-        if (!route().has(name)) return
-        router.visit(route(name))
+    function visit(path: string) {
+        router.visit(path)
     }
 
     function onKeydown(e: KeyboardEvent) {
@@ -55,13 +53,13 @@ export function useShortcuts({ onFocusSearch, onShowHelp }: ShortcutOptions = {}
             clearPending()
             if (e.key === 'h') {
                 e.preventDefault()
-                visit('home')
+                visit('/')
             } else if (e.key === 'd') {
                 e.preventDefault()
-                visit('admin.dashboard')
+                visit('/admin')
             } else if (e.key === 'p') {
                 e.preventDefault()
-                visit('admin.posts.index')
+                visit('/admin/posts')
             }
             return
         }

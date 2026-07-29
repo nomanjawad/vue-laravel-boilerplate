@@ -2,7 +2,6 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
-import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
@@ -29,7 +28,7 @@ let t: ReturnType<typeof setTimeout> | null = null
 watch(search, (v) => {
     clearTimeout(t ?? undefined)
     t = setTimeout(() => {
-        router.get(route('admin.faqs.index'), { search: v || undefined }, {
+        router.get('/admin/faqs', { search: v || undefined }, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -39,7 +38,7 @@ watch(search, (v) => {
 
 function destroy(id: number) {
     if (!confirm('Delete this faq?')) return
-    router.delete(route('admin.faqs.destroy', id), { preserveScroll: true })
+    router.delete(`/admin/faqs/${id}`, { preserveScroll: true })
 }
 </script>
 
@@ -48,7 +47,7 @@ function destroy(id: number) {
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Faqs</h1>
         <Link
-            :href="route('admin.faqs.create')"
+            href="/admin/faqs/create"
             class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
         >
             New faq
@@ -74,7 +73,7 @@ function destroy(id: number) {
             <tbody class="divide-y divide-gray-100">
                 <tr v-for="row in faqs.data" :key="row.id">
                     <td class="px-4 py-2 text-sm">
-                        <Link :href="route('admin.faqs.edit', row.id)" class="text-indigo-600 hover:underline">
+                        <Link :href="`/admin/faqs/${row.id}/edit`" class="text-indigo-600 hover:underline">
                             {{ row.title }}
                         </Link>
                     </td>

@@ -3,7 +3,6 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
 import { computed } from 'vue'
-import { route } from 'ziggy-js'
 
 import FormShell from '@/Components/Organisms/FormShell.vue'
 import AppFormField from '@/Components/Molecules/AppFormField.vue'
@@ -51,7 +50,7 @@ function toggleTag(id: number) {
     <Head title="Edit Post" />
 
     <div class="mb-6 flex items-center gap-3">
-        <Link :href="route('admin.posts.index')" class="text-gray-500 hover:text-gray-700">&larr;</Link>
+        <Link href="/admin/posts" class="text-gray-500 hover:text-gray-700">&larr;</Link>
         <h1 class="text-2xl font-bold text-gray-900">Edit Post</h1>
         <a
             v-if="previewUrl"
@@ -65,10 +64,10 @@ function toggleTag(id: number) {
 
     <FormShell
         :form="form"
-        :action="route('admin.posts.update', post.id)"
+        :action="`/admin/posts/${post.id}`"
         method="put"
         submit-label="Update Post"
-        :cancel-href="route('admin.posts.index')"
+        cancel-href="/admin/posts"
     >
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">

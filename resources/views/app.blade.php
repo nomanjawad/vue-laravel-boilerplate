@@ -16,10 +16,6 @@ $__customCode = request()->is('admin*')
             <meta name="robots" content="noindex, nofollow">
         @endunless
         <title inertia>{{ config('app.name') }}</title>
-        {{-- Ziggy: emits window.Ziggy for the standalone `route()` import in
-             composables and layouts. Without it, `import { route } from
-             'ziggy-js'` throws "Cannot read properties of undefined". --}}
-        @routes
         @vite(['resources/css/app.css', 'resources/js/app.ts'])
         @inertiaHead
         {!! $__customCode['head'] !!}

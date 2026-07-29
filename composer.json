@@ -20,8 +20,7 @@
         "spatie/laravel-data": "^4.23",
         "spatie/laravel-permission": "^7.4",
         "spatie/laravel-responsecache": "^8.4",
-        "spatie/laravel-typescript-transformer": "^3.3",
-        "tightenco/ziggy": "^2.6"
+        "spatie/laravel-typescript-transformer": "^3.3"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.7",
@@ -75,8 +74,7 @@
             "@php artisan ide-helper:generate",
             "@php artisan ide-helper:models --nowrite",
             "@php artisan ide-helper:meta",
-            "@php artisan typescript:transform",
-            "@php artisan ziggy:generate resources/js/types/ziggy.js --types=resources/js/types/ziggy-routes.d.ts"
+            "@php artisan typescript:transform"
         ],
         "module:enable": [
             "Composer\\Config::disableProcessTimeout",
@@ -92,7 +90,6 @@
             "@php artisan db:seed --class=AdminUserSeeder --force",
             "@php artisan storage:link",
             "@php artisan typescript:transform",
-            "@php artisan ziggy:generate resources/js/types/ziggy.js --types=resources/js/types/ziggy-routes.d.ts",
             "@php artisan optimize",
             "@php artisan responsecache:clear",
             "@php artisan template:doctor --production --exit-zero"

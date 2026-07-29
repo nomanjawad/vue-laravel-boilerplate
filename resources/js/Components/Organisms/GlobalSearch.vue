@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { router } from '@inertiajs/vue3'
-import { route } from 'ziggy-js'
 
 interface Props {
     open?: boolean
@@ -68,7 +67,7 @@ async function runSearch() {
 
     loading.value = true
     try {
-        const url = `${route('admin.search.index')}?${new URLSearchParams({ q })}`
+        const url = `/admin/search?${new URLSearchParams({ q })}`
         const res = await fetch(url, {
             credentials: 'same-origin',
             headers: { Accept: 'application/json' },

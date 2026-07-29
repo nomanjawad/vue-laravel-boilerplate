@@ -26,9 +26,3 @@ declare module '@inertiajs/core' {
         sharedPageProps: SharedPageProps
     }
 }
-
-declare module 'vue' {
-    interface ComponentCustomProperties {
-        route: typeof import('ziggy-js').route
-    }
-}

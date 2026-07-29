@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -455,7 +456,7 @@ class ModuleManager
                 // from the module's manifest (one section per module), not
                 // per nav entry — a nav item can still override it explicitly
                 // if a module ever needs to split across sections.
-                $nav[] = array_merge([
+                $entry = array_merge([
                     'module' => $key,
                     'label' => '',
                     'icon' => 'cube',
@@ -464,6 +465,16 @@ class ModuleManager
                     'permission' => null,
                     'group' => $manifest['nav_group'] ?? 'content',
                 ], $entry);
+                // Manifests declare a route *name*; the browser only ever
+                // receives a resolved href (root-relative so it compares
+                // cleanly against Inertia's page.url). A name that doesn't
+                // resolve — module routes not registered — leaves href null
+                // and the layout drops the entry instead of rendering a
+                // dead link.
+                if (! $entry['href'] && $entry['route'] && Route::has($entry['route'])) {
+                    $entry['href'] = route($entry['route'], absolute: false);
+                }
+                $nav[] = $entry;
             }
         }
 

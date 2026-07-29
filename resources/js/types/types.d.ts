@@ -36,7 +36,6 @@ footer: App.Data.MenuItemData[],
 export type ModuleNavEntry = {
 module: string,
 label: string,
-route: string | null,
 href: string | null,
 icon: string,
 permission: string | null,

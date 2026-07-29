@@ -8,7 +8,7 @@ folder and can be turned on/off from the dashboard.
 ## Stack
 - **Backend:** Laravel 13 (PHP 8.3+), MySQL only (**no SQLite**)
 - **Frontend:** Vue 3 (`<script setup lang="ts">`) + Tailwind CSS v4, Vite 8
-- **Bridge:** Inertia.js v3 + Ziggy (typed routes)
+- **Bridge:** Inertia.js v3 (no Ziggy — frontend uses literal root-relative paths; module nav route names resolve to hrefs server-side in `ModuleManager::navFor()`)
 - **Package managers:** Composer + **pnpm** (never npm)
 - **Key libs:** spatie/laravel-data (DTOs), spatie/laravel-permission (roles), Intervention Image (media)
 
@@ -17,7 +17,7 @@ folder and can be turned on/off from the dashboard.
 - `php artisan serve` + `pnpm run dev` — app + HMR (dev often runs on :8001 if :8000 is taken)
 - `pnpm build` — **runs `vue-tsc --noEmit`** then Vite; the frontend typecheck is CI-enforced
 - `php artisan typescript:transform` — regenerate TS types from `#[TypeScript]` DTOs
-- `composer ide` — regenerate IDE helpers + TS types + Ziggy routes
+- `composer ide` — regenerate IDE helpers + TS types
 - `php artisan optimize` must stay clean (CI gate)
 - `php artisan template:init` — first-run setup (site name, admin user, migrate+seed)
 

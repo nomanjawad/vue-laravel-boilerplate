@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
-import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
@@ -33,7 +32,7 @@ const form = useForm<FaqForm>({
 })
 
 function submit() {
-    form.put(route('admin.faqs.update', props.faq.id))
+    form.put(`/admin/faqs/${props.faq.id}`)
 }
 </script>
 
@@ -68,7 +67,7 @@ function submit() {
             >
                 Save
             </button>
-            <Link :href="route('admin.faqs.index')" class="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700">Cancel</Link>
+            <Link href="/admin/faqs" class="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700">Cancel</Link>
         </div>
     </form>
 </template>

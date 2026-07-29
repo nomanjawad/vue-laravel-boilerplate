@@ -1,8 +1,6 @@
 import '../css/app.css'
 import { createApp, h, type DefineComponent } from 'vue'
 import { createInertiaApp, router } from '@inertiajs/vue3'
-import { ZiggyVue, type Config as ZiggyConfig } from 'ziggy-js'
-import { Ziggy as ZiggyRaw } from './types/ziggy.js'
 
 // Session-expired (419) recovery. Inertia shows a jarring sandboxed-iframe
 // error modal for non-Inertia responses; a 419 CSRF failure is one of them.
@@ -17,11 +15,6 @@ router.on('httpException', (event) => {
         window.location.reload()
     }
 })
-
-// The generated ziggy.js data types HTTP methods as plain `string[]` while
-// ziggy-js's Config expects `("GET"|"HEAD"|...)[]`. The runtime shape is
-// correct; only the compile-time widening needs a cast.
-const Ziggy = ZiggyRaw as unknown as ZiggyConfig
 
 type PageModule = { default: DefineComponent }
 
@@ -67,7 +60,6 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         createApp({ render: () => h(App, props) })
             .use(plugin)
-            .use(ZiggyVue, Ziggy)
             .mount(el)
     },
 })

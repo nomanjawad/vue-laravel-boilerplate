@@ -11,7 +11,9 @@ class ModuleNavEntry extends Data
     public function __construct(
         public string $module,
         public string $label,
-        public ?string $route,
+        // Always a resolved URL — route names from module manifests are
+        // resolved server-side in ModuleManager::navFor(); null means the
+        // entry couldn't resolve and the sidebar skips it.
         public ?string $href,
         public string $icon,
         public ?string $permission,

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { usePage, Link, router } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
-import { route } from 'ziggy-js'
 import type { SharedPageProps } from '@/types/inertia'
 import FlashToaster from '@/Components/Shared/FlashToaster.vue'
 import ConfirmDialog from '@/Components/Shared/ConfirmDialog.vue'
@@ -47,14 +46,15 @@ const menuSections = computed<MenuSection[]>(() => {
     const buckets: Record<string, MenuItem[]> = { content: [], commerce: [], system: [] }
 
     for (const entry of moduleNav.value) {
-        const href = entry.href || (entry.route && route().has(entry.route) ? route(entry.route) : null)
-        if (!href) continue
+        // Route names are resolved to hrefs server-side (ModuleManager::navFor);
+        // an unresolvable entry arrives with a null href and is skipped.
+        if (!entry.href) continue
         const group = buckets[entry.group] ? entry.group : 'content'
-        buckets[group]!.push({ title: entry.label, href, icon: entry.icon })
+        buckets[group]!.push({ title: entry.label, href: entry.href, icon: entry.icon })
     }
 
     if (user.value?.is_super_admin || user.value?.roles?.includes('admin')) {
-        buckets.system!.push({ title: 'Modules', href: route('admin.modules.index'), icon: 'modules' })
+        buckets.system!.push({ title: 'Modules', href: '/admin/modules', icon: 'modules' })
     }
 
     return SECTION_ORDER
@@ -62,16 +62,17 @@ const menuSections = computed<MenuSection[]>(() => {
         .filter((section) => section.items.length > 0)
 })
 
-const dashboardItem: MenuItem = { title: 'Dashboard', href: route('admin.dashboard'), icon: 'dashboard' }
+const dashboardItem: MenuItem = { title: 'Dashboard', href: '/admin', icon: 'dashboard' }
 
 const isActive = (href: string): boolean => {
-    const dashboard = route('admin.dashboard')
-    if (href === dashboard) return page.url === dashboard
+    // The dashboard href is a prefix of every other admin URL, so it only
+    // counts as active on an exact match.
+    if (href === dashboardItem.href) return page.url === dashboardItem.href
     return page.url.startsWith(href)
 }
 
 const logout = () => {
-    router.post(route('logout'))
+    router.post('/logout')
 }
 
 function openGlobalSearch() {
@@ -101,7 +102,7 @@ useShortcuts({
             ]"
         >
             <div class="flex items-center justify-between h-16 px-6 border-b border-gray-800">
-                <Link :href="route('admin.dashboard')" class="text-white text-lg font-bold">Admin Panel</Link>
+                <Link href="/admin" class="text-white text-lg font-bold">Admin Panel</Link>
                 <button @click="sidebarOpen = false" class="lg:hidden text-gray-400 hover:text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -166,7 +167,7 @@ useShortcuts({
                             <span>Search</span>
                             <kbd class="rounded bg-gray-100 px-1 text-[10px] font-mono">/</kbd>
                         </button>
-                        <Link :href="route('home')" class="text-sm text-gray-500 hover:text-gray-700" target="_blank">
+                        <Link href="/" class="text-sm text-gray-500 hover:text-gray-700" target="_blank">
                             View Site
                         </Link>
                         <NotificationBell />

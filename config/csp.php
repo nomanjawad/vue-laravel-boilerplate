@@ -11,7 +11,7 @@
  *
  * Nonce: script-src includes a per-request random nonce (added by the
  * middleware) so inline `<script>` blocks in app.blade.php remain
- * executable. Ziggy's inline script tag is one such block.
+ * executable.
  */
 
 return [

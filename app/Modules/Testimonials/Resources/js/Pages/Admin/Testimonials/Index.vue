@@ -2,7 +2,6 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
-import { route } from 'ziggy-js'
 
 defineOptions({ layout: AdminLayout })
 
@@ -29,7 +28,7 @@ let t: ReturnType<typeof setTimeout> | null = null
 watch(search, (v) => {
     clearTimeout(t ?? undefined)
     t = setTimeout(() => {
-        router.get(route('admin.testimonials.index'), { search: v || undefined }, {
+        router.get('/admin/testimonials', { search: v || undefined }, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -39,7 +38,7 @@ watch(search, (v) => {
 
 function destroy(id: number) {
     if (!confirm('Delete this testimonial?')) return
-    router.delete(route('admin.testimonials.destroy', id), { preserveScroll: true })
+    router.delete(`/admin/testimonials/${id}`, { preserveScroll: true })
 }
 </script>
 
@@ -48,7 +47,7 @@ function destroy(id: number) {
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Testimonials</h1>
         <Link
-            :href="route('admin.testimonials.create')"
+            href="/admin/testimonials/create"
             class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
         >
             New testimonial
@@ -74,7 +73,7 @@ function destroy(id: number) {
             <tbody class="divide-y divide-gray-100">
                 <tr v-for="row in testimonials.data" :key="row.id">
                     <td class="px-4 py-2 text-sm">
-                        <Link :href="route('admin.testimonials.edit', row.id)" class="text-indigo-600 hover:underline">
+                        <Link :href="`/admin/testimonials/${row.id}/edit`" class="text-indigo-600 hover:underline">
                             {{ row.title }}
                         </Link>
                     </td>
