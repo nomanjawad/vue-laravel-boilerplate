@@ -16,6 +16,8 @@ class SettingsData extends Data
     public function __construct(
         public string|Optional|null $site_name = null,
         public string|Optional|null $site_description = null,
+        public string|Optional|null $site_logo = null,
+        public string|Optional|null $site_favicon = null,
         public string|Optional|null $og_image = null,
         public string|Optional|null $contact_email = null,
         public string|Optional|null $contact_phone = null,
@@ -26,6 +28,7 @@ class SettingsData extends Data
         public string|Optional|null $instagram = null,
         public string|Optional|null $linkedin = null,
         public string|Optional|null $youtube = null,
+        public string|Optional|null $shop_location = null,
         public string|Optional|null $shop_currency = null,
         public string|Optional|null $shop_currency_symbol = null,
         public string|Optional|null $ga_measurement_id = null,

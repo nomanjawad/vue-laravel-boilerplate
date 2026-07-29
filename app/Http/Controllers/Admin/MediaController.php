@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Data\MediaData;
 use App\Http\Controllers\Controller;
 use App\Models\Media;
 use App\Services\MediaService;
@@ -48,9 +49,15 @@ class MediaController extends Controller
         ]);
 
         // Images are WebP-converted, resized, and EXIF-stripped by the service.
-        $this->mediaService->upload($request->file('file'), $request->alt_text, auth()->id());
+        $media = $this->mediaService->upload($request->file('file'), $request->alt_text, auth()->id());
 
-        return back()->with('success', 'File uploaded successfully.');
+        // Flash the created row back so AppMediaPicker's onSuccess handler
+        // can pick it up and update its v-model without an extra fetch.
+        // HandleInertiaRequests forwards session('media') into the shared
+        // `flash` prop; AppMediaPicker.vue reads flash.media from there.
+        return back()
+            ->with('success', 'File uploaded successfully.')
+            ->with('media', MediaData::fromModel($media));
     }
 
     public function destroy(Media $media)

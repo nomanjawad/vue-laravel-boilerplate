@@ -39,6 +39,12 @@ const uploadFile = () => {
             form.reset()
             if (fileInput.value) fileInput.value.value = ''
         },
+        // Log to console too — the ONE UI-visible error slot is easy to miss
+        // when the file input is right beside it. Console gives the raw shape.
+        onError: (errors) => {
+            // eslint-disable-next-line no-console
+            console.error('[media upload] server rejected the upload:', errors)
+        },
     })
 }
 
@@ -69,6 +75,9 @@ const formatSize = (bytes: number) => {
             <div class="flex-1 min-w-[200px]">
                 <label class="block text-xs font-medium text-gray-500 mb-1">File</label>
                 <input ref="fileInput" type="file" @change="onFileChange" required class="w-full text-sm" />
+                <p class="mt-1 text-xs text-gray-400">
+                    JPEG, PNG, WebP, GIF, or PDF. Max 10 MB.
+                </p>
             </div>
             <div class="flex-1 min-w-[200px]">
                 <label class="block text-xs font-medium text-gray-500 mb-1">Alt Text</label>
@@ -82,6 +91,20 @@ const formatSize = (bytes: number) => {
             <div class="w-full bg-gray-200 rounded-full h-2">
                 <div class="bg-gray-900 h-2 rounded-full" :style="{ width: form.progress.percentage + '%' }" />
             </div>
+        </div>
+        <!-- Surface every field error the server returned. Without this the
+             upload silently fails (loading bar drops, no message, no new
+             row) — the actual reason was buried in form.errors. -->
+        <div
+            v-if="Object.keys(form.errors).length"
+            class="mt-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
+        >
+            <p class="font-medium">Upload failed:</p>
+            <ul class="mt-1 list-disc pl-5">
+                <li v-for="(msg, field) in form.errors" :key="field">
+                    <span class="font-mono text-xs text-rose-500">{{ field }}:</span> {{ msg }}
+                </li>
+            </ul>
         </div>
     </div>
 

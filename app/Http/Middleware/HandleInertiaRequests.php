@@ -30,6 +30,8 @@ class HandleInertiaRequests extends Middleware
     private const PUBLIC_SETTINGS = [
         'site_name',
         'site_description',
+        'site_logo',
+        'site_favicon',
         'og_image',
         'contact_email',
         'contact_phone',
@@ -40,6 +42,7 @@ class HandleInertiaRequests extends Middleware
         'instagram',
         'linkedin',
         'youtube',
+        'shop_location',
         'shop_currency',
         'shop_currency_symbol',
         // Analytics ids are public by nature (visible in page source).
@@ -99,6 +102,9 @@ class HandleInertiaRequests extends Middleware
             'flash' => fn () => FlashData::from([
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
+                // MediaController::store flashes a MediaData here; without
+                // forwarding it, AppMediaPicker's flash.media read is always null.
+                'media' => $request->session()->get('media'),
             ])->toArray(),
 
             'menus' => fn () => $tablesExist
@@ -161,11 +167,19 @@ class HandleInertiaRequests extends Middleware
             ? $this->seo->getMetaForRoute($routeName)
             : [];
 
+        // og:image must be an absolute URL for social crawlers. Media URLs are
+        // stored root-relative (see Media::getUrlAttribute), so promote a
+        // relative value to absolute here; an already-absolute URL is untouched.
+        $ogImage = $meta['og_image'] ?? $defaultImage;
+        if ($ogImage && ! preg_match('#^https?://#', $ogImage)) {
+            $ogImage = url($ogImage);
+        }
+
         return SeoData::from([
             'site_name' => $siteName,
             'title' => $meta['title'] ?? null,
             'description' => $meta['description'] ?? $defaultDescription,
-            'og_image' => $meta['og_image'] ?? $defaultImage,
+            'og_image' => $ogImage,
             'canonical' => $request->url(),
         ])->toArray();
     }

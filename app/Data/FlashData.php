@@ -14,5 +14,8 @@ class FlashData extends Data
         public string|Optional|null $error = null,
         public string|Optional|null $info = null,
         public string|Optional|null $warning = null,
+        // Set by MediaController::store so AppMediaPicker can update its
+        // v-model from the redirect response without an extra fetch.
+        public MediaData|Optional|null $media = null,
     ) {}
 }
