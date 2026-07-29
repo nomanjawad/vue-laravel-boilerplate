@@ -1,4 +1,9 @@
 {
+    "seo": {
+        "title": "Home",
+        "description": "Welcome to our website.",
+        "og_image": ""
+    },
     "hero": {
         "title": "Build Something Amazing",
         "subtitle": "A modern web template powered by Laravel, Vue, and Inertia.js",

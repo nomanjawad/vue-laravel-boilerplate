@@ -6,7 +6,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\Admin\NotificationsController;
-use App\Http\Controllers\Admin\PageMetaController;
+use App\Http\Controllers\Admin\PageContentController;
 use App\Http\Controllers\Admin\RedirectController;
 use App\Http\Controllers\Admin\SearchController;
 use App\Http\Controllers\Admin\SettingController;
@@ -91,18 +91,14 @@ Route::middleware('can:menus.delete')->group(function () {
     Route::delete('menus/{menu}', [MenuController::class, 'destroy'])->name('menus.destroy');
 });
 
-// Page SEO.
-Route::middleware('can:page_metas.view')->group(function () {
-    Route::get('page-metas', [PageMetaController::class, 'index'])->name('page-metas.index');
+// Page Content (data/*.json editor — replaces the old Page SEO/page_metas module).
+Route::middleware('can:page_content.view')->group(function () {
+    Route::get('page-content', [PageContentController::class, 'index'])->name('page-content.index');
 });
-Route::middleware('can:page_metas.create')->group(function () {
-    Route::post('page-metas', [PageMetaController::class, 'store'])->name('page-metas.store');
-});
-Route::middleware('can:page_metas.update')->group(function () {
-    Route::put('page-metas/{pageMeta}', [PageMetaController::class, 'update'])->name('page-metas.update');
-});
-Route::middleware('can:page_metas.delete')->group(function () {
-    Route::delete('page-metas/{pageMeta}', [PageMetaController::class, 'destroy'])->name('page-metas.destroy');
+Route::middleware('can:page_content.update')->group(function () {
+    Route::put('page-content/{file}', [PageContentController::class, 'update'])
+        ->where('file', 'home|about|contact|header|footer')
+        ->name('page-content.update');
 });
 
 // Redirects.

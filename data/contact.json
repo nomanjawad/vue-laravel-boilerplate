@@ -1,4 +1,9 @@
 {
+    "seo": {
+        "title": "Contact Us",
+        "description": "Get in touch with us.",
+        "og_image": ""
+    },
     "hero": {
         "title": "Contact Us",
         "subtitle": "We'd love to hear from you. Get in touch and let's start a conversation."

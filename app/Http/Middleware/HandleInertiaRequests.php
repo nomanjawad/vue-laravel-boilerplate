@@ -13,6 +13,7 @@ use App\Data\SettingsData;
 use App\Models\Menu;
 use App\Models\Setting;
 use App\Modules\Core\ModuleManager;
+use App\Services\JsonDataService;
 use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -57,7 +58,11 @@ class HandleInertiaRequests extends Middleware
     /** Memoized per-process so we don't hit `information_schema` on every request. */
     private static ?bool $tablesExist = null;
 
-    public function __construct(private SeoService $seo, private ModuleManager $modules) {}
+    public function __construct(
+        private SeoService $seo,
+        private ModuleManager $modules,
+        private JsonDataService $jsonData,
+    ) {}
 
     public function version(Request $request): ?string
     {
@@ -146,9 +151,17 @@ class HandleInertiaRequests extends Middleware
         ];
     }
 
+    /** Route name → data/*.json file, for pages whose SEO block is admin-editable. */
+    private const SEO_PAGE_MAP = [
+        'home' => 'home',
+        'about' => 'about',
+        'contact' => 'contact',
+    ];
+
     /**
-     * Build the SEO meta payload for the current route: per-route overrides
-     * from the page_metas table, falling back to global site settings.
+     * Build the SEO meta payload for the current route: the `seo` block
+     * inside the matching page's data/*.json (edited via the admin Page
+     * Content panel), falling back to global site settings.
      */
     protected function resolveSeo(Request $request, bool $settingsExist): array
     {
@@ -163,22 +176,30 @@ class HandleInertiaRequests extends Middleware
         $defaultImage = $settings->get('og_image');
 
         $routeName = $request->route()?->getName();
-        $meta = ($routeName && Schema::hasTable('page_metas'))
-            ? $this->seo->getMetaForRoute($routeName)
-            : [];
+        $jsonFile = self::SEO_PAGE_MAP[$routeName] ?? null;
+        $meta = $jsonFile ? ($this->jsonData->get($jsonFile)['seo'] ?? []) : [];
+
+        // `?? '' | ?:` in two steps, not a bare `$meta['x'] ?: …`: `??` on the
+        // array read is what avoids an "undefined array key" warning when the
+        // route has no seo block (or the block omits a key); the outer `?:`
+        // then treats an admin-cleared field ("" — the JSON editor writes
+        // empty strings, not null) the same as a missing one.
+        $title = $meta['title'] ?? '';
+        $description = $meta['description'] ?? '';
+        $ogImage = $meta['og_image'] ?? '';
 
         // og:image must be an absolute URL for social crawlers. Media URLs are
         // stored root-relative (see Media::getUrlAttribute), so promote a
         // relative value to absolute here; an already-absolute URL is untouched.
-        $ogImage = $meta['og_image'] ?? $defaultImage;
+        $ogImage = $ogImage ?: $defaultImage;
         if ($ogImage && ! preg_match('#^https?://#', $ogImage)) {
             $ogImage = url($ogImage);
         }
 
         return SeoData::from([
             'site_name' => $siteName,
-            'title' => $meta['title'] ?? null,
-            'description' => $meta['description'] ?? $defaultDescription,
+            'title' => $title ?: null,
+            'description' => $description ?: $defaultDescription,
             'og_image' => $ogImage,
             'canonical' => $request->url(),
         ])->toArray();

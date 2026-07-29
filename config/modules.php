@@ -73,13 +73,13 @@ return [
         ],
     ],
 
-    'page_metas' => [
-        'name' => 'Page SEO',
-        'description' => 'Per-route SEO overrides (title, description, og:image).',
+    'page_content' => [
+        'name' => 'Page Content',
+        'description' => 'Static page content (home/about/contact + header/footer), stored in data/*.json. Each page carries its own SEO block.',
         'core' => true,
-        'permissions' => ['page_metas' => ['view', 'create', 'update', 'delete']],
+        'permissions' => ['page_content' => ['view', 'update']],
         'nav' => [
-            ['label' => 'Page SEO', 'route' => 'admin.page-metas.index', 'icon' => 'magnifying-glass', 'permission' => 'page_metas.view'],
+            ['label' => 'Pages', 'route' => 'admin.page-content.index', 'icon' => 'document-text', 'permission' => 'page_content.view'],
         ],
     ],
 

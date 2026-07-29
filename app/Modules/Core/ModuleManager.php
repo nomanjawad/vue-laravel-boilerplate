@@ -124,7 +124,7 @@ class ModuleManager
 
     /**
      * Toggle a module's nav visibility. Core modules ARE allowed here — the
-     * whole point of the flag is to hide `page_metas` / `menus` / etc. from
+     * whole point of the flag is to hide `menus` / `page_content` / etc. from
      * projects that don't use them, without disabling them.
      */
     public function setNavVisible(string $key, bool $visible): void

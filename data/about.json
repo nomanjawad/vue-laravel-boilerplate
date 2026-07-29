@@ -1,4 +1,9 @@
 {
+    "seo": {
+        "title": "About Us",
+        "description": "Learn more about our company.",
+        "og_image": ""
+    },
     "hero": {
         "title": "About Us",
         "subtitle": "We are a team of passionate developers building modern web solutions."

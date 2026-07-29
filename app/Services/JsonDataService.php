@@ -52,6 +52,37 @@ class JsonDataService
         return json_decode($content, true) ?? [];
     }
 
+    /**
+     * Overwrite `data/{filename}.json` with $data. Used by the admin Page
+     * Content editor — never called from public read paths.
+     *
+     * $filename is restricted to a slug (no `/` or `..`) so a caller can't
+     * escape the `data/` directory. Written atomically (temp file + rename)
+     * so a concurrent request never observes a half-written file. PHP assoc
+     * arrays preserve insertion order on decode/encode, so round-tripping
+     * request JSON through here keeps the original key order.
+     */
+    public function put(string $filename, array $data): void
+    {
+        if (! preg_match('/^[a-z0-9_-]+$/i', $filename)) {
+            throw new \InvalidArgumentException("Invalid data filename: {$filename}");
+        }
+
+        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        if ($json === false) {
+            throw new \RuntimeException("Failed to encode data/{$filename}.json: ".json_last_error_msg());
+        }
+
+        $path = base_path("data/{$filename}.json");
+        $tmpPath = $path.'.tmp-'.uniqid();
+
+        file_put_contents($tmpPath, $json);
+        rename($tmpPath, $path);
+
+        $this->clearCache($filename);
+    }
+
     public function clearCache(string $filename): void
     {
         // Legacy key format kept for backward compat; the current mtime-keyed
