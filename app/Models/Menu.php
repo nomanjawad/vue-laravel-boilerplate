@@ -22,6 +22,23 @@ class Menu extends Model
         ];
     }
 
+    /**
+     * Internal paths saved without a leading slash render fine as link text
+     * but break Inertia's client-side routing/active-state matching. External
+     * URLs and in-page anchors are left untouched. See feedback.md §41.
+     */
+    public static function normalizeUrl(string $url): string
+    {
+        $url = trim($url);
+
+        if ($url === '' || str_starts_with($url, '/') || str_starts_with($url, '#')
+            || preg_match('#^[a-z][a-z0-9+.-]*://#i', $url)) {
+            return $url;
+        }
+
+        return '/'.$url;
+    }
+
     public function parent(): BelongsTo
     {
         return $this->belongsTo(Menu::class, 'parent_id');

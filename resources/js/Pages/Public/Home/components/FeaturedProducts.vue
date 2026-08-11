@@ -40,6 +40,8 @@ const toImageUrl = (path: string | null | undefined): string | undefined => rawT
                             v-if="product.featured_image"
                             :src="toImageUrl(product.featured_image)"
                             :alt="product.name"
+                            loading="lazy"
+                            decoding="async"
                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                     </div>

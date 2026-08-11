@@ -69,7 +69,7 @@ defineProps<Props>()
             </div>
 
             <div v-if="post.featured_image" class="aspect-video bg-gray-100 rounded-lg mb-8 overflow-hidden">
-                <img :src="post.featured_image" :alt="post.title" class="w-full h-full object-cover" />
+                <img :src="post.featured_image" :alt="post.title" loading="eager" fetchpriority="high" decoding="async" class="w-full h-full object-cover" />
             </div>
 
             <div class="prose prose-gray max-w-none" v-html="post.body" />
@@ -88,7 +88,7 @@ defineProps<Props>()
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <Link v-for="rp in relatedPosts" :key="rp.id" :href="`/blog/${rp.slug}`" class="group">
                     <div class="aspect-video bg-gray-100 rounded-lg mb-4 overflow-hidden">
-                        <img v-if="rp.featured_image" :src="rp.featured_image" :alt="rp.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <img v-if="rp.featured_image" :src="rp.featured_image" :alt="rp.title" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     </div>
                     <h3 class="font-semibold text-gray-900 group-hover:text-gray-600">{{ rp.title }}</h3>
                 </Link>

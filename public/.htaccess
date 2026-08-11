@@ -34,15 +34,27 @@
 </IfModule>
 
 # Static asset caching
+#
+# image/webp MUST be in this list: MediaService re-encodes every uploaded
+# image to WebP (see app/Services/MediaService.php), so every content photo
+# on every site built from this template is served as image/webp. Without an
+# ExpiresByType entry for it, Apache sends no caching header at all for any
+# of them — a real production site was measured with cacheLifetimeMs: 0 on
+# every single uploaded image because of exactly this gap (Lighthouse
+# "cache-insight" audit). See agents/skills/launch-readiness/SKILL.md.
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType text/css "access plus 1 year"
     ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
     ExpiresByType image/png "access plus 1 year"
     ExpiresByType image/jpg "access plus 1 year"
     ExpiresByType image/jpeg "access plus 1 year"
     ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/avif "access plus 1 year"
     ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
     ExpiresByType font/woff2 "access plus 1 year"
 </IfModule>
 

@@ -34,6 +34,8 @@ const toImageUrl = (path: string | null | undefined): string | undefined => rawT
                             v-if="post.featured_image"
                             :src="toImageUrl(post.featured_image)"
                             :alt="post.title"
+                            loading="lazy"
+                            decoding="async"
                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                     </div>

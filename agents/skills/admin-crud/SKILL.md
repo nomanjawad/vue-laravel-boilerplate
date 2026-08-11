@@ -101,6 +101,7 @@ Composables: `usePermissions()` (`can()`, `canAny()`, `isSuperAdmin`),
 
 ## Verify before finishing
 
-`pnpm build` must pass (`vue-tsc --noEmit` gates it — CI-enforced) and
-`php artisan optimize` must stay clean. Dev server: `composer dev` (or
+`pnpm build` must pass (`vue-tsc --noEmit` gates it) and `php artisan
+optimize` must stay clean — no CI workflow runs either of these
+automatically, so check both yourself. Dev server: `composer dev` (or
 `php artisan serve` + `pnpm dev`; port 8001 if 8000 is taken).

@@ -36,7 +36,7 @@ Admin: `/admin` with the credentials you set in `template:init`.
 1. `.env` has MySQL creds (MAMP: `DB_PORT=8889`, `DB_USERNAME=root`, `DB_PASSWORD=root`).
 2. `composer ide` — regenerates IDE helper stubs + TypeScript DTOs.
 3. `php artisan template:doctor` — health check (extensions, DB, storage link, queue).
-4. `php artisan optimize` — must pass cleanly (CI enforces this).
+4. `php artisan optimize` — must pass cleanly (no CI enforces this — check it yourself).
 
 ---
 
@@ -357,7 +357,8 @@ health). It runs automatically at the end of the deploy pipeline with
 - **Uploads through `MediaService`** — the controller enforces a MIME whitelist (JPEG/PNG/WebP/GIF/PDF); the service double-checks. SVG excluded deliberately (script tags render inline).
 - **Route keys per route**, never `getRouteKeyName()` on models.
 - **`HandleInertiaRequests::PUBLIC_SETTINGS`** whitelists what's exposed to every visitor.
-- **Anything committed to `main` runs `php artisan optimize` + `pnpm build` clean** — CI enforces this.
+- **Anything committed to `main` must run `php artisan optimize` + `pnpm build` clean** —
+  there's no CI workflow to catch a broken build, so verify both yourself before committing.
 
 ---
 

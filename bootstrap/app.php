@@ -65,6 +65,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // that don't exist any more — exactly the ones redirects are for.
         $middleware->prepend(HandleRedirects::class);
 
+        // Trust the X-Forwarded-* headers from any proxy in front of the app
+        // (cPanel, Cloudflare, a load balancer). Without this, request()->
+        // secure() is false behind TLS-terminating proxies even though the
+        // visitor's connection is HTTPS, which defeats forceScheme() above
+        // and can loop the .htaccess HTTPS redirect. See feedback.md §40.
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             HandleInertiaRequests::class,
             // No-op when CSP_ENABLED=false (default). See config/csp.php.

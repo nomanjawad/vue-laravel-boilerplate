@@ -60,6 +60,21 @@ class MediaController extends Controller
             ->with('media', MediaData::fromModel($media));
     }
 
+    // `media.update` was declared as a permission (config/modules.php) with no
+    // route/controller/UI behind it — alt text could only ever be set at
+    // upload time, with no way to fix a typo or add a description afterward.
+    // See feedback.md §33.
+    public function update(Request $request, Media $media)
+    {
+        $validated = $request->validate([
+            'alt_text' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $media->update($validated);
+
+        return back()->with('success', 'Media updated successfully.');
+    }
+
     public function destroy(Media $media)
     {
         $this->mediaService->delete($media);

@@ -39,6 +39,7 @@ class TemplateDoctor extends Command
         $this->checkPhp($isProd);
         $this->checkExtensions();
         $this->checkEnv();
+        $this->checkIndexability($isProd);
         $this->checkDatabase();
         $this->checkStorage();
         $this->checkViteManifest($isProd);
@@ -98,10 +99,40 @@ class TemplateDoctor extends Command
         }
         $this->ok('.env present');
 
-        foreach (['APP_KEY', 'DB_DATABASE', 'DB_USERNAME'] as $key) {
-            if (! env($key)) {
-                $this->failed("{$key} not set in .env", "Set {$key}=… in .env and run `php artisan config:clear`.");
-            }
+        // Check resolved runtime config, not raw env() reads of the .env file.
+        // A setup using DB_SOCKET (MAMP) or any layout doctor's env() checks
+        // don't anticipate can leave DB_DATABASE/DB_USERNAME "empty" here while
+        // the app connects and migrates fine — checkDatabase()'s live PDO
+        // check below is the real gate. See feedback.md §20.
+        if (! config('app.key')) {
+            $this->failed('APP_KEY not set', 'Run `php artisan key:generate` and `php artisan config:clear`.');
+        }
+    }
+
+    /**
+     * A real production deploy of this template shipped with SEO_INDEXABLE
+     * never flipped to true: PreventSearchIndexing sent `X-Robots-Tag:
+     * noindex, nofollow` on every response and the site was fully deindexed
+     * for its entire time live, with nothing in the deploy pipeline ever
+     * surfacing it (Lighthouse `is-crawlable` audit scored 0, tanking SEO
+     * from ~100 to 69). This is a warning, not a failure — SEO_INDEXABLE=false
+     * is the correct default for staging — but it must be loud and
+     * impossible to miss on every production doctor run.
+     */
+    protected function checkIndexability(bool $isProd): void
+    {
+        if (! $isProd) {
+            return;
+        }
+
+        if (config('template.indexable')) {
+            $this->ok('SEO_INDEXABLE=true — site is crawlable');
+        } else {
+            $this->advisory(
+                'SEO_INDEXABLE is not true — this site is sending noindex/nofollow to every crawler.',
+                'If this deploy is meant to be live, set SEO_INDEXABLE=true in .env, run `php artisan config:cache`, '
+                    .'then verify: `curl -sI https://<domain>/ | grep -i x-robots-tag` should NOT show noindex.',
+            );
         }
     }
 
@@ -239,6 +270,12 @@ class TemplateDoctor extends Command
     }
 
     protected function ok(string $msg): void { $this->line('  <fg=green>✓</> '.$msg); }
+
+    protected function advisory(string $msg, string $note): void
+    {
+        $this->line('  <fg=yellow>!</> '.$msg);
+        $this->line('       <comment>note:</comment> '.$note);
+    }
 
     protected function failed(string $msg, string $fix): void
     {

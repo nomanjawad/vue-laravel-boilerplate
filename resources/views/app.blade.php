@@ -12,6 +12,10 @@ $__customCode = request()->is('admin*')
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        {{-- laravel-vite-plugin's bunny() font helper (vite.config.ts) always loads
+             from this origin — preconnecting saves the DNS+TLS handshake that would
+             otherwise happen mid-render on the critical path. --}}
+        <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
         @unless(config('template.indexable'))
             <meta name="robots" content="noindex, nofollow">
         @endunless

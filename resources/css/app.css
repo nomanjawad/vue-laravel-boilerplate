@@ -5,6 +5,10 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 @source '../**/*.vue';
+/* Physical modules (app/Modules/*) live outside resources/, so the default
+   glob above never reaches them — module page utilities silently never
+   generate without this. See feedback.md §15. */
+@source '../../app/Modules/*/Resources/js/**/*.vue';
 
 /* Admin design system (dark shell) — see comments in the file. */
 @import './admin.css';

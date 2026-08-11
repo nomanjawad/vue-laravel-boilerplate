@@ -9,10 +9,11 @@ description: Commands, build gates, caching layers, and repo-wide guardrails for
 
 - `composer dev` — serve + queue + logs (pail) + Vite together (dev often on
   :8001 if :8000 is taken).
-- `pnpm build` — runs `vue-tsc --noEmit` THEN `vite build`; the typecheck is
-  the CI gate. Always run before declaring frontend work done.
+- `pnpm build` — runs `vue-tsc --noEmit` THEN `vite build`. There is no CI
+  workflow in this repo to catch a skipped typecheck — always run this
+  yourself before declaring frontend work done.
 - `php artisan optimize` must stay clean (duplicate route names / view
-  compile errors fail it).
+  compile errors fail it) — also unenforced by any CI, run it yourself.
 - `composer ide` — ide-helpers + `php artisan typescript:transform` (DTO →
   `resources/js/types/types.d.ts`). Run after changing any `#[TypeScript]`
   DTO in `app/Data` or a module's `Data/`.

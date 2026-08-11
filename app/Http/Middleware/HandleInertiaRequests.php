@@ -207,7 +207,12 @@ class HandleInertiaRequests extends Middleware
             'description' => $description ?: $defaultDescription,
             'og_image' => $ogImage,
             'canonical' => $request->url(),
-            'noindex' => $siteNoindex || (bool) ($meta['noindex'] ?? false),
+            // Sitewide indexable flag must gate this the same way it gates
+            // PreventSearchIndexing's X-Robots-Tag header — otherwise a
+            // staging build (SEO_INDEXABLE=false) sends the noindex header
+            // but still renders <meta name="robots" content="index,follow">
+            // client-side. See feedback.md §43.
+            'noindex' => ! config('template.indexable') || $siteNoindex || (bool) ($meta['noindex'] ?? false),
             'json_ld' => $jsonLd !== '' ? $jsonLd : null,
         ])->toArray();
     }

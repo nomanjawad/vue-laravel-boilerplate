@@ -152,6 +152,9 @@ Route::middleware('can:media.view')->group(function () {
 Route::middleware('can:media.create')->group(function () {
     Route::post('media', [MediaController::class, 'store'])->name('media.store');
 });
+Route::middleware('can:media.update')->group(function () {
+    Route::put('media/{media}', [MediaController::class, 'update'])->name('media.update');
+});
 Route::middleware('can:media.delete')->group(function () {
     Route::delete('media/{media}', [MediaController::class, 'destroy'])->name('media.destroy');
 });

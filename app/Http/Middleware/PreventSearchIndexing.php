@@ -20,7 +20,11 @@ class PreventSearchIndexing
     {
         $response = $next($request);
 
-        if (! config('template.indexable')) {
+        // The admin panel is never a page search engines should see, whether
+        // or not the public site is indexable — the sitewide check below only
+        // fires while SEO_INDEXABLE=false, so it silently stops covering
+        // /admin the moment a project goes live. See feedback.md §31.
+        if (! config('template.indexable') || $request->is('admin', 'admin/*')) {
             $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
         }
 

@@ -51,14 +51,26 @@ const editForm = useForm<EditMenuForm>({
     is_active: true,
 })
 
+// v-model.number leaves a non-numeric value (e.g. a cleared field) as an
+// empty string instead of coercing it, which fails the backend's `integer`
+// rule with no visible feedback unless the error box below is rendered.
+// See feedback.md §34.
+const normalizeSortOrder = (value: unknown): number | null => {
+    if (value === '' || value === null || value === undefined) return null
+    const n = Number(value)
+    return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : null
+}
+
 const addMenu = () => {
-    newForm.post('/admin/menus', {
-        onSuccess: () => newForm.reset('title', 'url'),
-    })
+    newForm.transform((data) => ({ ...data, sort_order: normalizeSortOrder(data.sort_order) ?? 0 }))
+        .post('/admin/menus', {
+            onSuccess: () => newForm.reset('title', 'url'),
+        })
 }
 
 const startEdit = (item: MenuItem) => {
     editingId.value = item.id
+    editForm.clearErrors()
     editForm.title = item.title
     editForm.url = item.url
     editForm.sort_order = item.sort_order
@@ -66,9 +78,10 @@ const startEdit = (item: MenuItem) => {
 }
 
 const saveEdit = (id: number) => {
-    editForm.put(`/admin/menus/${id}`, {
-        onSuccess: () => { editingId.value = null },
-    })
+    editForm.transform((data) => ({ ...data, sort_order: normalizeSortOrder(data.sort_order) }))
+        .put(`/admin/menus/${id}`, {
+            onSuccess: () => { editingId.value = null },
+        })
 }
 
 const deleteMenu = (id: number) => {
@@ -109,6 +122,9 @@ const deleteMenu = (id: number) => {
                 Add
             </button>
         </form>
+        <div v-if="Object.keys(newForm.errors).length" class="mt-3 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+            <p v-for="(error, field) in newForm.errors" :key="field">{{ error }}</p>
+        </div>
     </div>
 
     <!-- Header menus -->
@@ -117,12 +133,19 @@ const deleteMenu = (id: number) => {
         <div class="divide-y">
             <div v-for="item in headerMenus" :key="item.id" class="px-6 py-3 flex items-center justify-between">
                 <template v-if="editingId === item.id">
-                    <div class="flex gap-2 flex-1 items-center">
-                        <input v-model="editForm.title" class="rounded-md border border-gray-300 px-2 py-1 text-sm flex-1" />
-                        <input v-model="editForm.url" class="rounded-md border border-gray-300 px-2 py-1 text-sm flex-1" />
-                        <input v-model.number="editForm.sort_order" type="number" class="rounded-md border border-gray-300 px-2 py-1 text-sm w-16" />
-                        <button @click="saveEdit(item.id)" class="text-sm text-green-600 hover:text-green-800">Save</button>
-                        <button @click="editingId = null" class="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                    <div class="flex-1">
+                        <div class="flex gap-2 items-center">
+                            <input v-model="editForm.title" class="rounded-md border border-gray-300 px-2 py-1 text-sm flex-1" />
+                            <input v-model="editForm.url" class="rounded-md border border-gray-300 px-2 py-1 text-sm flex-1" />
+                            <input v-model.number="editForm.sort_order" type="number" class="rounded-md border border-gray-300 px-2 py-1 text-sm w-16" />
+                            <button @click="saveEdit(item.id)" class="text-sm text-green-600 hover:text-green-800">Save</button>
+                            <button @click="editingId = null" class="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                        </div>
+                        <!-- A failed PUT (e.g. a bad sort_order) used to fail 422 with
+                             zero admin feedback — see feedback.md §34. -->
+                        <div v-if="Object.keys(editForm.errors).length" class="mt-2 rounded-md bg-red-50 border border-red-200 px-3 py-1.5 text-xs text-red-700">
+                            <p v-for="(error, field) in editForm.errors" :key="field">{{ error }}</p>
+                        </div>
                     </div>
                 </template>
                 <template v-else>
@@ -147,12 +170,19 @@ const deleteMenu = (id: number) => {
         <div class="divide-y">
             <div v-for="item in footerMenus" :key="item.id" class="px-6 py-3 flex items-center justify-between">
                 <template v-if="editingId === item.id">
-                    <div class="flex gap-2 flex-1 items-center">
-                        <input v-model="editForm.title" class="rounded-md border border-gray-300 px-2 py-1 text-sm flex-1" />
-                        <input v-model="editForm.url" class="rounded-md border border-gray-300 px-2 py-1 text-sm flex-1" />
-                        <input v-model.number="editForm.sort_order" type="number" class="rounded-md border border-gray-300 px-2 py-1 text-sm w-16" />
-                        <button @click="saveEdit(item.id)" class="text-sm text-green-600 hover:text-green-800">Save</button>
-                        <button @click="editingId = null" class="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                    <div class="flex-1">
+                        <div class="flex gap-2 items-center">
+                            <input v-model="editForm.title" class="rounded-md border border-gray-300 px-2 py-1 text-sm flex-1" />
+                            <input v-model="editForm.url" class="rounded-md border border-gray-300 px-2 py-1 text-sm flex-1" />
+                            <input v-model.number="editForm.sort_order" type="number" class="rounded-md border border-gray-300 px-2 py-1 text-sm w-16" />
+                            <button @click="saveEdit(item.id)" class="text-sm text-green-600 hover:text-green-800">Save</button>
+                            <button @click="editingId = null" class="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                        </div>
+                        <!-- A failed PUT (e.g. a bad sort_order) used to fail 422 with
+                             zero admin feedback — see feedback.md §34. -->
+                        <div v-if="Object.keys(editForm.errors).length" class="mt-2 rounded-md bg-red-50 border border-red-200 px-3 py-1.5 text-xs text-red-700">
+                            <p v-for="(error, field) in editForm.errors" :key="field">{{ error }}</p>
+                        </div>
                     </div>
                 </template>
                 <template v-else>

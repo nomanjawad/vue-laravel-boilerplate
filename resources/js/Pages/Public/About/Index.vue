@@ -96,7 +96,7 @@ defineProps<Props>()
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 <div v-for="member in teamMembers" :key="member.id" class="text-center">
                     <div class="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-4 overflow-hidden">
-                        <img v-if="member.photo" :src="member.photo" :alt="member.name" class="w-full h-full object-cover" />
+                        <img v-if="member.photo" :src="member.photo" :alt="member.name" loading="lazy" decoding="async" class="w-full h-full object-cover" />
                     </div>
                     <h3 class="font-semibold text-gray-900">{{ member.name }}</h3>
                     <p class="text-sm text-gray-500">{{ member.position }}</p>

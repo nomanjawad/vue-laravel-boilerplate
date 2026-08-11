@@ -36,7 +36,18 @@ jobs:
           node-version: '22'
 
       - name: Build frontend assets
+        env:
+          # VITE_APP_NAME is inlined into the JS bundle at build time — the
+          # server's .env is irrelevant here since this runner never sees it.
+          # Without it, resources/js/app.ts throws in every visitor's browser
+          # (blank page), not at build time. Set this once in repo Settings →
+          # Secrets and variables → Actions → Variables. See feedback.md §24.
+          VITE_APP_NAME: ${{ vars.VITE_APP_NAME }}
         run: |
+          if [ -z "$VITE_APP_NAME" ]; then
+            echo "::error::VITE_APP_NAME repo variable is not set — the built bundle would throw at runtime for every visitor. Set it in Settings → Secrets and variables → Actions → Variables."
+            exit 1
+          fi
           pnpm install --frozen-lockfile
           pnpm run build
 
@@ -95,6 +106,14 @@ jobs:
             --exclude='/data/' \
             --exclude='*.sql' \
             --exclude='__MACOSX/' \
+            --exclude='/agents/' \
+            --exclude='/.claude/' \
+            --exclude='/AGENTS.md' \
+            --exclude='/CLAUDE.md' \
+            --exclude='/feedback.md' \
+            --exclude='/_referance/' \
+            --exclude='/.cursor/' \
+            --exclude='/.codex/' \
             -e "ssh -p ${{ secrets.SSH_PORT }}" \
             ./ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
 
@@ -104,6 +123,7 @@ jobs:
             "set -e && cd ${{ secrets.DEPLOY_PATH }} && \
              mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs storage/app/public bootstrap/cache && \
              chmod -R ug+rwx storage bootstrap/cache && \
+             find bootstrap/cache -mindepth 1 -name '*.php' -delete && \
              php artisan migrate --force && \
              php artisan db:seed --class=RoleAndPermissionSeeder --force && \
              php artisan db:seed --class=AdminUserSeeder --force && \
@@ -117,6 +137,10 @@ jobs:
              php artisan template:doctor --production --exit-zero && \
              echo 'Deploy finished successfully.'"
         # Ordering notes (feedback.md §6):
+        #   - bootstrap/cache is excluded from rsync (server-local, see below),
+        #     so a stale compiled provider/package list from a removed
+        #     dependency can survive indefinitely and crash `migrate` before
+        #     any cache-clearing command gets to run. Wipe it first. (§25)
         #   - migrate FIRST so `Schema::hasTable('migrations')` and other
         #     doctor checks have real state to inspect.
         #   - Recurring seeders: only RoleAndPermissionSeeder + AdminUserSeeder,

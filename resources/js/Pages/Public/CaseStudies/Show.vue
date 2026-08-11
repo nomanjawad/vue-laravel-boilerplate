@@ -43,7 +43,7 @@ defineProps<Props>()
 
             <!-- Featured Image -->
             <div v-if="caseStudy.featured_image" class="aspect-video bg-gray-100 rounded-lg mb-8 overflow-hidden">
-                <img :src="caseStudy.featured_image" :alt="caseStudy.title" class="w-full h-full object-cover" />
+                <img :src="caseStudy.featured_image" :alt="caseStudy.title" loading="eager" fetchpriority="high" decoding="async" class="w-full h-full object-cover" />
             </div>
 
             <!-- Body -->

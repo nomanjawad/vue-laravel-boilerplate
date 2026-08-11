@@ -65,7 +65,7 @@ watch([search, category], () => {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <Link v-for="post in posts.data" :key="post.id" :href="`/blog/${post.slug}`" class="group">
                     <div class="aspect-video bg-gray-100 rounded-lg mb-4 overflow-hidden">
-                        <img v-if="post.featured_image" :src="post.featured_image" :alt="post.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <img v-if="post.featured_image" :src="post.featured_image" :alt="post.title" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     </div>
                     <div class="flex items-center text-xs text-gray-500 mb-2 space-x-2">
                         <span v-if="post.category">{{ post.category.name }}</span>

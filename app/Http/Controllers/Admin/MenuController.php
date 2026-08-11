@@ -19,13 +19,20 @@ class MenuController extends Controller
 
     public function store(Request $request)
     {
+        // sort_order is nullable: the admin form binds a number input via
+        // Vue's `.number` modifier, which emits an empty string (not 0 or
+        // null) once the field is cleared — a bare `integer` rule 422s that
+        // silently, with no error shown. See feedback.md §34.
         $validated = $request->validate([
             'location' => ['required', 'in:header,footer'],
             'title' => ['required', 'string', 'max:255'],
             'url' => ['required', 'string', 'max:255'],
-            'sort_order' => ['integer', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['boolean'],
         ]);
+
+        $validated['url'] = Menu::normalizeUrl($validated['url']);
+        $validated['sort_order'] ??= 0;
 
         Menu::create($validated);
 
@@ -37,9 +44,15 @@ class MenuController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'url' => ['required', 'string', 'max:255'],
-            'sort_order' => ['integer', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['boolean'],
         ]);
+
+        $validated['url'] = Menu::normalizeUrl($validated['url']);
+        // A cleared order field means "leave it as-is", not "reset to null".
+        if (! array_key_exists('sort_order', $validated) || $validated['sort_order'] === null) {
+            unset($validated['sort_order']);
+        }
 
         $menu->update($validated);
 

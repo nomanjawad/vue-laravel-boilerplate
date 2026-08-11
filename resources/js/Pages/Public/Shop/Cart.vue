@@ -71,7 +71,7 @@ const decrement = (item: CartItem): void => {
                                 <td class="px-6 py-4">
                                     <div class="flex items-center">
                                         <div v-if="item.featured_image" class="flex-shrink-0 h-12 w-12 mr-4">
-                                            <img :src="item.featured_image" :alt="item.name" class="h-12 w-12 rounded object-cover" />
+                                            <img :src="item.featured_image" :alt="item.name" loading="lazy" decoding="async" class="h-12 w-12 rounded object-cover" />
                                         </div>
                                         <div>
                                             <Link :href="`/shop/${item.slug}`" class="text-sm font-medium text-gray-900 hover:text-gray-600">{{ item.name }}</Link>
