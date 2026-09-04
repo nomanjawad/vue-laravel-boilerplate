@@ -5,7 +5,7 @@ Guide for any AI agent working in this repo (Claude Code reads it via the
 
 Laravel 13 + Vue 3 + Inertia + Tailwind v4 boilerplate for small-to-medium
 websites. Ships an admin panel, a public site, and a **toggleable module
-system** — every feature (blog, shop, testimonials, events, …) lives in its own
+system** — every feature (blog, testimonials, events, …) lives in its own
 folder and can be turned on/off from the dashboard.
 
 ## Stack
@@ -31,14 +31,15 @@ folder and can be turned on/off from the dashboard.
 Task-focused guides live in `agents/skills/` (each is a `SKILL.md` with
 name/description frontmatter): `create-module`, `admin-crud`, `page-content`,
 `blog`, `modules-reference`, `settings-and-media`, `dev-workflow`,
-`launch-readiness`. Claude Code auto-loads them via the `.claude/skills`
+`launch-readiness`, `seo`. Claude Code auto-loads them via the `.claude/skills`
 symlink; other agents should read the relevant skill before working in that
 area. Prefer consulting them over re-deriving conventions from the code.
 **Read `launch-readiness` before adding any public-facing image or
 third-party script, and before telling anyone a site is ready to launch** —
 it's derived from a real production Lighthouse audit and covers the SEO
 indexability gate, image sizing/caching/loading rules, and third-party embed
-trade-offs.
+trade-offs. **Read `seo` for canonical/OG/title-template/schema/sitemap
+behavior.**
 
 ## Architecture & conventions (the non-obvious rules)
 - **Module system.** Physical modules live in `app/Modules/{Name}/` (with `rescue()`
@@ -62,22 +63,21 @@ trade-offs.
   `Media::url` returns a **root-relative** path for app-origin assets (works on any
   host/port + CSP `img-src 'self'`); external CDN/S3 URLs stay absolute. Consumers that
   need an absolute URL (og:image, sitemap) promote via `url()`.
-- **JSON content pages.** Static pages read `data/*.json` through `App\Services\JsonDataService`
-  (no cache in debug; mtime-keyed cache in prod). Currently: `home`, `about`, `contact`,
-  `header`, `footer`. Public controllers pass `data` to the Inertia page; SEO is resolved
-  globally in `HandleInertiaRequests::resolveSeo()` → shared `seo` prop → `PublicLayout` `<Head>`.
+- **JSON content pages.** Static pages live in `data/pages/{slug}.json` (widget
+  editor); `header.json`/`footer.json` are layout-only. SEO is resolved globally
+  in `HandleInertiaRequests::resolveSeo()` (title template, canonical, OG
+  overrides, post/page meta) → shared `seo` prop → `PublicLayout` `<Head>`.
+  See `agents/skills/seo/SKILL.md` for the RankMath-parity contract.
 - **Settings** live in the `site_settings` table (grouped), edited via the tabbed
-  `Admin/Settings/Index.vue`. `SettingService::update()` only UPDATEs existing rows
-  (whitelist-by-existence) — new keys need a seeded/migrated row or the save no-ops.
-
----
-
-## TODO
-
-### 1. Wire logo/favicon into the public site  ← next up
-`site_logo` / `site_favicon` are now stored + exposed via `PUBLIC_SETTINGS`, but nothing
-renders them. Add `<link rel="icon">` (favicon) and use `site_logo` in `PublicLayout.vue`
-header. (Flagged during the Settings work; not yet done.)
+  `Admin/Settings/Index.vue`. Tabs are driven from the DB `group` column + a
+  server-side field-meta map in `SettingController` (`SettingGroupData` DTO) —
+  a new group appears as a new tab automatically. Theme tab is a Phase-8
+  placeholder. SEO tab shows a read-only `SEO_INDEXABLE` banner when false.
+  `SettingService::update()` only UPDATEs existing rows (whitelist-by-existence)
+  — new keys need a seeded/migrated row or the save no-ops.
+- **Cache panel** at `/admin/system/cache` clears per layer (pages / sitemap /
+  settings / modules / redirects / views / all) — never `Cache::flush()`.
+  Dashboard button is "Clear page cache" only.
 
 ---
 
@@ -99,7 +99,7 @@ header. (Flagged during the Settings work; not yet done.)
     `robots.txt`) — nothing in the deploy pipeline had ever surfaced this.
   - `resources/views/app.blade.php` — `<link rel="preconnect" href="https://fonts.bunny.net">`
     (the font origin `laravel-vite-plugin`'s `bunny()` helper always loads from).
-  - Stock public pages (`Blog`, `Shop`, `CaseStudies`, `About`, `Home` featured-* components)
+  - Stock public pages (`Blog`, `CaseStudies`, `About`, `Home` featured-* components)
     — added `loading="lazy" decoding="async"` to grid/list images, and
     `loading="eager" fetchpriority="high"` to the one above-the-fold featured image on each
     `*/Show.vue` detail page (previously none of these had any loading discipline at all).
@@ -171,8 +171,8 @@ header. (Flagged during the Settings work; not yet done.)
     ("Type instantiation is excessively deep"); the form's generic is kept as
     `Record<string, any>` and helper functions cast to the recursive `JsonObject` type at
     the point of use.
-- **Tabbed Site Settings** (`Admin/Settings/Index.vue`): General / Contact / Social / Shop /
-  SEO & Analytics; added `site_logo`, `site_favicon`, `shop_location`; tagline reuses
+- **Tabbed Site Settings** (`Admin/Settings/Index.vue`): General / Contact / Social /
+  SEO & Analytics; added `site_logo`, `site_favicon`; tagline reuses
   `site_description`; WhatsApp moved to Social; migration + seeder backfill.
 - **Media-picker contract fix:** `MediaData` DTO flashed from `MediaController::store`,
   forwarded through `HandleInertiaRequests` + `FlashData` so `AppMediaPicker` updates its

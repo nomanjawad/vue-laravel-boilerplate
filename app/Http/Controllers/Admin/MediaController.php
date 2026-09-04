@@ -15,20 +15,34 @@ class MediaController extends Controller
 
     public function index(Request $request)
     {
+        $query = Media::with('user:id,name')
+            ->latest()
+            ->when($request->search, function ($q, string $s) {
+                $q->where(function ($inner) use ($s) {
+                    $inner->where('filename', 'like', "%{$s}%")
+                        ->orWhere('alt_text', 'like', "%{$s}%");
+                });
+            })
+            ->when($request->type, function ($q, string $type) {
+                match ($type) {
+                    'image' => $q->where('mime_type', 'like', 'image/%'),
+                    'pdf' => $q->where('mime_type', 'application/pdf'),
+                    default => null,
+                };
+            });
+
+        $paginator = $query->paginate(24)->withQueryString()->through(
+            fn (Media $item) => $this->serialize($item)
+        );
+
+        // JSON browse mode for AppMediaPicker's library overlay.
+        if ($request->wantsJson() || $request->query('format') === 'json') {
+            return response()->json($paginator);
+        }
+
         return Inertia::render('Admin/Media/Index', [
-            'media' => Media::with('user:id,name')
-                ->latest()
-                ->paginate(24)
-                ->through(fn ($item) => [
-                    'id' => $item->id,
-                    'filename' => $item->filename,
-                    'url' => $item->url,
-                    'mime_type' => $item->mime_type,
-                    'size' => $item->size,
-                    'alt_text' => $item->alt_text,
-                    'user' => $item->user?->name,
-                    'created_at' => $item->created_at->format('M d, Y'),
-                ]),
+            'media' => $paginator,
+            'filters' => $request->only('search', 'type'),
         ]);
     }
 
@@ -80,5 +94,39 @@ class MediaController extends Controller
         $this->mediaService->delete($media);
 
         return back()->with('success', 'File deleted successfully.');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:media,id'],
+        ]);
+
+        $count = 0;
+        Media::whereIn('id', $validated['ids'])->each(function (Media $media) use (&$count) {
+            $this->mediaService->delete($media);
+            $count++;
+        });
+
+        return back()->with('success', "{$count} file(s) deleted.");
+    }
+
+    /** @return array<string, mixed> */
+    private function serialize(Media $item): array
+    {
+        return [
+            'id' => $item->id,
+            'filename' => $item->filename,
+            'url' => $item->url,
+            'variants' => $item->variants,
+            'mime_type' => $item->mime_type,
+            'size' => $item->size,
+            'width' => $item->width,
+            'height' => $item->height,
+            'alt_text' => $item->alt_text,
+            'user' => $item->user?->name,
+            'created_at' => $item->created_at?->format('M d, Y'),
+        ];
     }
 }

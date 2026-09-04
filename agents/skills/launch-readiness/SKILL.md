@@ -1,6 +1,6 @@
 ---
 name: launch-readiness
-description: Pre-launch and Lighthouse/PageSpeed rules for sites built on this boilerplate — the SEO indexability gate, image sizing/caching/loading discipline, third-party embed tradeoffs, and how to run a Lighthouse audit without false positives. Derived from a real production Lighthouse audit (skyhealthpro.com, 2026-08-11: Performance 82-88, Best Practices 58, SEO 69, Accessibility 91). Use before declaring any site "done"/"live", when adding images or third-party scripts to public pages, and when a client asks to "fix the Lighthouse score".
+description: Pre-launch and Lighthouse/PageSpeed rules for sites built on this boilerplate — the SEO indexability gate, AppImage/srcset discipline, gzip + media dimensions, LCP preload, third-party embed tradeoffs, and how to run a Lighthouse audit without false positives. Derived from a real production Lighthouse audit (skyhealthpro.com, 2026-08-11: Performance 82-88, Best Practices 58, SEO 69, Accessibility 91). Use before declaring any site "done"/"live", when adding images or third-party scripts to public pages, and when a client asks to "fix the Lighthouse score".
 ---
 
 # Launch readiness & Lighthouse
@@ -14,6 +14,10 @@ or `<head>`/Custom Code content, and before telling anyone a site is ready
 to launch.
 
 ## 1. The SEO gate — check this before anything else
+
+> On-page SEO (canonical, OG, title templates, schema, sitemap images/noindex)
+> lives in the **`seo` skill** (Phase 7.5 pack). This section is only the
+> go-live **indexability** gate.
 
 **Finding:** the live site scored 0/100 on `is-crawlable` (SEO weight 4×
 every other check — this alone dropped the category from ~100 to 69). Three
@@ -46,75 +50,93 @@ flipping: set it in `.env`, `php artisan config:cache`, then re-check. Do
 this on every go-live, not just the first one — a staging→production config
 copy can silently re-disable it.
 
-## 2. Images — the single biggest cluster of findings
+## 2. Images — use `AppImage`, not ad-hoc `<img>`
 
 Every non-third-party Performance finding on the audited site traced back to
-images. In order of how much they cost:
+images. Phase 10 folded the fixes into one component + the media pipeline.
 
-### a. Serve at display size, not upload size
-A 2317×488px logo was displayed at 161×34 (57 KB wasted). A 512×512 favicon
-was reused as a 22×22 inline icon (32 KB wasted). Photos uploaded at
-1090×990 were shown at 651×460.
-- **Anything uploaded through Admin → Media already avoids this** —
-  `MediaService` caps originals at 2000px and generates `md` (1200px) /
-  `thumb` (400px) WebP variants (`app/Services/MediaService.php`). Use those
-  variants, not the original, for anything smaller than full-width.
-- **Anything you drop directly into `public/images/`** (logos, favicons,
-  OG-image defaults, hero photos copied from a design export) bypasses that
-  pipeline entirely — nothing resizes it. If you write a one-off import
-  script (e.g. cloning an existing site's images during a rebuild), route
-  every file through `MediaService::importFromContents()` or resize with
-  Intervention Image yourself before it touches `public/`. **Never** copy
-  files into `public/` verbatim from a scraped/exported source.
-- Export/crop static assets (logo, favicon, default OG image) close to their
-  actual maximum display size (2× for retina) before adding them to the
-  repo — don't drop a raw multi-thousand-pixel export in unresized.
+### a. `AppImage.vue` — the single discipline point
 
-### b. Cache headers for images — fixed in the boilerplate, know why
-`public/.htaccess`'s `ExpiresByType` list was missing `image/webp`. Since
-**every** image `MediaService` produces is WebP, this meant every uploaded
-image on every site built from this template was served with **zero**
-cache lifetime (measured: `cacheLifetimeMs: 0` on every content image on the
-live site, while the Vite JS/CSS bundles cached fine). Fixed by adding
-`image/webp`, `image/avif`, and `font/woff` to the list. If you ever touch
-`.htaccess`'s caching block again, remember: whatever `MediaService` encodes
-to *must* have a matching `ExpiresByType` entry, or the whole cache story is
-silently broken for every image on the site.
+**Use `resources/js/Components/Atoms/AppImage.vue` for every public/widget
+image.** Do not hand-roll `<img>` tags on public pages (oversized originals,
+missing `width`/`height`, wrong `loading`/`fetchpriority` — the same bugs
+keep getting reintroduced).
 
-### c. `loading`/`decoding`/`fetchpriority` — know which image is the LCP element
-The hero image on the audited page had `loading="lazy"` — Lighthouse's
-`lcp-discovery-insight` flagged this directly (LCP resources must not be
-lazy-loaded, and should get `fetchpriority="high"`).
-- **The one largest above-the-fold image per page** (hero photo, a detail
-  page's featured image) → `loading="eager" fetchpriority="high"
-  decoding="async"`. This boilerplate's own `CaseStudies/Show.vue`,
-  `Blog/Show.vue`, and `Shop/Show.vue` featured images now follow this
-  pattern — copy it for any new detail/hero page.
-- **Every other image** (grid/list thumbnails, related-content cards, team
-  photos, cart line items) → `loading="lazy" decoding="async"`. All of this
-  boilerplate's stock Index/grid pages now do this by default.
-- There's no reusable `<AppImage>`/`<SiteImage>` component in this
-  boilerplate — multiple client projects have hand-rolled one and hit the
-  same bugs each time (oversized `fill` z-index stacking, `height: 100%`
-  leaving a gap inside a `min-height` wrapper, missing explicit
-  `width`/`height` attributes). If a project needs one, give it explicit
-  `width`/`height` HTML attributes (not just CSS `aspect-ratio` — Lighthouse
-  checks the attributes, not computed layout) and a `priority`/`eager` prop
-  for exactly the one-hero-image-per-page case above.
+What it does:
+- **`srcset` / `sizes`** from media `variants` — `thumb` (400w), `md`
+  (1200w), original (≤2000w). Pass a MediaData-like object
+  `{ url, variants, width, height, alt_text }` (what the page editor stores
+  for widget image fields) or a plain URL string (falls back to a single
+  `src`, no srcset).
+- **`width` / `height` attributes** from media dimensions (CLS). Override
+  via props when needed.
+- **Lazy by default** (`loading="lazy" decoding="async"`). Pass
+  **`eager`** for the one above-the-fold / LCP image — that also sets
+  `fetchpriority="high"`.
+- Override `sizes` per layout (gallery tiles ≈ `33vw`, hero ≈ `100vw`).
 
-### d. Explicit `width`/`height` attributes
-Two images on the audited page had no `width`/`height` at all — one had an
-empty `src` (a footer logo bound to a not-yet-loaded settings value, worth
-guarding with `v-if` so the browser never renders a zero-size `<img>`).
-Missing dimensions cause layout shift as images load. Set literal
-`width`/`height` attributes whenever the source's natural size is known
-(e.g. a fixed-size logo or icon); for responsive/cropped photos, pair a CSS
-`aspect-ratio` on the wrapper with `object-fit: cover` on the `<img>` **and**
-still set `width`/`height` on the `<img>` tag to the aspect ratio's ratio
-(e.g. `width="16" height="9"`) so Lighthouse and the browser agree before
-any CSS loads.
+Phase-4 widgets (`Hero`, `Image`, `Gallery`, `Team`, `LatestPosts`) already
+render through it. Hero uses `:eager` on its background image.
 
-## 3. Third-party embeds have a real, unavoidable cost — plan for it
+### b. Serve at display size (pipeline already does this)
+`MediaService` caps originals at 2000px and generates `md` (1200) /
+`thumb` (400) WebP variants. **Anything dropped into `public/images/`**
+bypasses that — route imports through `MediaService::importFromContents()`
+or resize yourself. Export logos/favicons close to their max display size
+(2× for retina).
+
+### c. Media dimensions (width/height columns + variant dims)
+`media.width` / `media.height` are recorded at upload; each variants JSON
+entry is `{ path, width, height }` (legacy string paths still work —
+`Media::variantPath()` / JS `variantPath()` unwrap both). Backfill existing
+rows after migrate:
+```bash
+php artisan migrate
+php artisan media:backfill-dimensions
+```
+Without dimensions, AppImage cannot emit HTML `width`/`height` and
+Lighthouse flags `unsized-images`.
+
+### d. Cache headers for images — already fixed
+`public/.htaccess` `ExpiresByType` includes `image/webp` (+ avif, woff).
+Every `MediaService` image is WebP — without that entry, content photos
+get `cacheLifetimeMs: 0`. If you touch the caching block, keep WebP listed.
+
+### e. LCP preload on dynamic pages
+`DynamicPageController` resolves the first visible `hero` / `image`
+widget's media (prefers the `md` variant) and passes `lcpPreload`.
+`DynamicPage.vue` emits `<link rel="preload" as="image" href="…">` via
+Inertia `<Head>`. The matching `<AppImage eager>` must **not** be
+`loading="lazy"` (Hero already passes `eager`).
+
+### f. Explicit `width`/`height` (when not using AppImage)
+If you must use a raw `<img>` (e.g. logo in `PublicLayout`), set literal
+`width`/`height` attributes. Guard empty settings URLs with `v-if` so the
+browser never renders a zero-size `<img>`.
+
+## 3. Compression (Gzip + Brotli)
+
+`public/.htaccess` enables:
+- **`mod_deflate`** — Gzip for HTML/CSS/JS/JSON/SVG/fonts
+- **`mod_brotli`** — Brotli for the same types when the host has it
+  (`IfModule` — no-op when absent)
+
+Confirm on a live Apache host:
+```bash
+curl -sI -H 'Accept-Encoding: gzip, br' https://<domain>/ | grep -i content-encoding
+```
+Expect `br` or `gzip`. Nginx hosts configure this outside `.htaccess`
+(`gzip on;` / `brotli on;`) — the `.htaccess` block is Apache-only.
+
+## 4. Lazy iframes / map embeds
+
+Contact map embed and Custom HTML widgets auto-inject `loading="lazy"` on
+`<iframe>` tags that omit it. Still paste embeds **with**
+`loading="lazy"` in the snippet (widget field placeholders show this).
+Don't eagerly load third-party maps/videos above the fold unless they
+*are* the LCP element (rare).
+
+## 5. Third-party embeds have a real, unavoidable cost — plan for it
 
 The audited site embeds a LeadConnector chat widget via the Custom Code
 admin module. It alone caused:
@@ -142,7 +164,7 @@ heavy third-party marketing tool. Before adding one via Admin → Custom Code:
 - Don't spend time trying to "fix" a `bf-cache`/`third-party-cookies`
   finding whose failing resource is a third-party origin you don't control.
 
-## 4. Run Lighthouse correctly, or you'll chase phantom bugs
+## 6. Run Lighthouse correctly, or you'll chase phantom bugs
 
 On the audited report, `deprecations` (best-practices weight 5/26),
 `unminified-javascript`, and most of `unused-javascript` were **entirely
@@ -157,11 +179,10 @@ enabled (or via `https://pagespeed.web.dev/`, or the Lighthouse CLI with
 ran, check whether a failing audit's `details.items[].url` points at
 `chrome-extension://` before treating it as a real site defect. Cross-check
 against `unused-javascript`/`unminified-javascript`: if the *first-party*
-`skyhealthpro.com`/`<yourdomain>` bundle entries show real wasted-byte
-numbers, that's real (see §5); if every entry is a `chrome-extension://`
-URL, it's audit noise.
+bundle entries show real wasted-byte numbers, that's real (see §7); if every
+entry is a `chrome-extension://` URL, it's audit noise.
 
-## 5. First-party JS/CSS bundle — know the shape of this boilerplate's trade-off
+## 7. First-party JS/CSS bundle — know the shape of this boilerplate's trade-off
 
 This boilerplate ships **one** JS entry (`resources/js/app.ts`) and **one**
 global CSS bundle (`resources/css/app.css`) for the whole app — admin panel,
@@ -177,7 +198,7 @@ the fix is route-level code-splitting via dynamic `import()` in the page
 resolver — that's a deliberate architecture change, not something to
 attempt as a quick "green the report" patch.
 
-## 6. Accessibility patterns worth getting right the first time
+## 8. Accessibility patterns worth getting right the first time
 
 Found on the audited page (all fixable in the Vue markup, not boilerplate
 issues, but easy to reintroduce on any new page):
@@ -205,10 +226,16 @@ php artisan template:doctor --production   # look for the SEO_INDEXABLE line
 curl -sI https://<domain>/ | grep -i x-robots-tag   # must be absent
 curl -s  https://<domain>/robots.txt
 
-# 2. Run Lighthouse clean (see §4)
+# 2. Compression (see §3)
+curl -sI -H 'Accept-Encoding: gzip, br' https://<domain>/ | grep -i content-encoding
+
+# 3. Media dims backfilled after deploy/migrate (see §2c)
+php artisan media:backfill-dimensions
+
+# 4. Run Lighthouse clean (see §6)
 #    Incognito Chrome, or https://pagespeed.web.dev/, not your daily-driver profile.
 
-# 3. Skim the report for first-party (not chrome-extension://, not third-party
+# 5. Skim the report for first-party (not chrome-extension://, not third-party
 #    widget domain) entries in: is-crawlable, cache-insight, image-delivery-
 #    insight, unsized-images, lcp-discovery-insight, color-contrast,
 #    heading-order, aria-*.

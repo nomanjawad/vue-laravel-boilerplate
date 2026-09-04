@@ -52,8 +52,10 @@ return [
         'permissions' => ['settings' => ['view', 'update']],
         'nav' => [
             ['label' => 'Settings', 'route' => 'admin.settings.index', 'icon' => 'cog-6-tooth', 'permission' => 'settings.view'],
+            ['label' => 'Cache', 'route' => 'admin.cache.index', 'icon' => 'bolt', 'permission' => 'settings.update'],
         ],
     ],
+
 
     'media' => [
         'name' => 'Media',
@@ -70,7 +72,7 @@ return [
         'name' => 'Menus',
         'description' => 'Header & footer navigation builder.',
         'core' => true,
-        'nav_group' => 'content',
+        'nav_group' => 'appearance',
         'permissions' => ['menus' => ['view', 'create', 'update', 'delete']],
         'nav' => [
             ['label' => 'Menus', 'route' => 'admin.menus.index', 'icon' => 'bars-3', 'permission' => 'menus.view'],
@@ -78,14 +80,15 @@ return [
     ],
 
     'page_content' => [
-        'name' => 'Page Content',
-        'description' => 'Static page content (home/about/contact + header/footer), stored in data/*.json. Each page carries its own SEO block.',
+        'name' => 'Pages',
+        'description' => 'JSON-backed pages with a widget editor (data/pages/{slug}.json) plus header/footer layout files.',
         'core' => true,
         'nav_group' => 'content',
-        'permissions' => ['page_content' => ['view', 'update']],
+        'permissions' => ['page_content' => ['view', 'create', 'update', 'delete']],
         'nav' => [
-            ['label' => 'Pages', 'route' => 'admin.page-content.index', 'icon' => 'document-text', 'permission' => 'page_content.view'],
-            ['label' => 'Header / Footer', 'route' => 'admin.page-content.layout', 'icon' => 'bars-3', 'permission' => 'page_content.view'],
+            ['label' => 'Pages', 'route' => 'admin.pages.index', 'icon' => 'document-text', 'permission' => 'page_content.view'],
+            // Override group: Header/Footer live under Appearance (WP-style).
+            ['label' => 'Header & Footer', 'route' => 'admin.page-content.layout', 'icon' => 'bars-3', 'permission' => 'page_content.view', 'group' => 'appearance'],
         ],
     ],
 
@@ -111,14 +114,37 @@ return [
         ],
     ],
 
+    'enquiries' => [
+        'name' => 'Enquiries',
+        'description' => 'Contact-form leads with read/unread tracking.',
+        'nav_group' => 'inbox',
+        'feature_flag_fallback' => 'contact_form',
+        'permissions' => ['enquiries' => ['view', 'update', 'delete']],
+        'nav' => [
+            [
+                'label' => 'Enquiries',
+                'route' => 'admin.enquiries.index',
+                'icon' => 'inbox',
+                'permission' => 'enquiries.view',
+                'badge' => \App\Support\NavBadges\UnreadEnquiries::class,
+            ],
+        ],
+    ],
+
     'subscribers' => [
         'name' => 'Newsletter',
         'description' => 'Email subscribers + CSV export.',
         'core' => true,
-        'nav_group' => 'system',
+        'nav_group' => 'inbox',
         'permissions' => ['subscribers' => ['view', 'delete']],
         'nav' => [
-            ['label' => 'Subscribers', 'route' => 'admin.subscribers.index', 'icon' => 'envelope', 'permission' => 'subscribers.view'],
+            [
+                'label' => 'Subscribers',
+                'route' => 'admin.subscribers.index',
+                'icon' => 'envelope',
+                'permission' => 'subscribers.view',
+                'badge' => \App\Support\NavBadges\UnseenSubscribers::class,
+            ],
         ],
     ],
 
@@ -153,33 +179,11 @@ return [
         ],
     ],
 
-    'shop' => [
-        'name' => 'Shop',
-        'description' => 'Products, orders, cart, currency settings.',
-        'dependencies' => ['media'],
-        'nav_group' => 'commerce',
-        'feature_flag_fallback' => 'shop',
-        'permissions' => [
-            'products' => ['view', 'create', 'update', 'delete'],
-            'orders' => ['view', 'update', 'delete'],
-        ],
-        'nav' => [
-            ['label' => 'Products', 'route' => 'admin.products.index', 'icon' => 'shopping-bag', 'permission' => 'products.view'],
-            ['label' => 'Orders', 'route' => 'admin.orders.index', 'icon' => 'receipt-percent', 'permission' => 'orders.view'],
-        ],
-        'admin_route_file' => 'admin-shop.php',
-        'public_route_file' => 'public-shop.php',
-        'searchable' => [
-            \App\Models\Product::class => ['name', 'description'],
-            \App\Models\Order::class => ['order_number', 'customer_email'],
-        ],
-    ],
-
     'careers' => [
         'name' => 'Careers',
         'description' => 'Job listings with JobPosting JSON-LD.',
         'dependencies' => [],
-        'nav_group' => 'content',
+        'nav_group' => 'collections',
         'feature_flag_fallback' => 'careers',
         'permissions' => ['careers' => ['view', 'create', 'update', 'delete']],
         'nav' => [
@@ -196,7 +200,7 @@ return [
         'name' => 'Case Studies',
         'description' => 'Portfolio entries.',
         'dependencies' => ['media'],
-        'nav_group' => 'content',
+        'nav_group' => 'collections',
         'feature_flag_fallback' => 'case_studies',
         'permissions' => ['case_studies' => ['view', 'create', 'update', 'delete']],
         'nav' => [
@@ -213,7 +217,7 @@ return [
         'name' => 'Team',
         'description' => 'Team member directory.',
         'dependencies' => ['media'],
-        'nav_group' => 'content',
+        'nav_group' => 'collections',
         'feature_flag_fallback' => 'teams',
         'permissions' => ['teams' => ['view', 'create', 'update', 'delete']],
         'nav' => [

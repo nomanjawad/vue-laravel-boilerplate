@@ -25,14 +25,19 @@
 |
 | BRAND TOKEN CONTRAST WARNING
 | ----------------------------
-| The brand token (`--color-brand-*` in app.css) is used for admin links,
-| buttons, gradients, and focus rings on this dark shell. If a project
-| retunes it to a very DARK color (e.g. navy `hsl(220 55% 20%)`), all
-| `text-indigo-*` links become invisible against `--admin-surface`. Keep
-| the brand's 500/400 steps above ~L 45 for legibility on dark, or point
-| admin-specific tokens to a lighter variant.
+| The brand token (`--color-brand-*` in app.css / Theme settings override) is
+| used for admin links, buttons, gradients, and focus rings on this dark shell.
+| If a project retunes it to a very DARK color (e.g. navy `hsl(220 55% 20%)`),
+| all brand-colored links become invisible against `--admin-surface`.
 |
-| Tokens live in app.css (@theme). Adjust colors there, not here.
+| Theme settings (Settings → Theme) generate the 7-step palette via
+| App\Support\BrandPalette and **clamp** the 300 and 500 steps' lightness
+| (≈ L ≥ 55% / L ≥ 45%) so brand text stays legible here. Manual @theme edits
+| in app.css are not clamped — keep 500/400-equivalent steps above ~L 45, or
+| point admin-specific tokens to a lighter variant.
+|
+| Tokens default in app.css (@theme); Theme settings emit overrides in
+| app.blade.php after @vite. Adjust via Settings → Theme for live sites.
 */
 
 /* --- Semantic tokens (dark) --------------------------------------- */

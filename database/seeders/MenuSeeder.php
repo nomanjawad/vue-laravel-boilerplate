@@ -13,8 +13,7 @@ class MenuSeeder extends Seeder
             ['title' => 'Home', 'url' => '/', 'sort_order' => 1],
             ['title' => 'About', 'url' => '/about', 'sort_order' => 2],
             ['title' => 'Blog', 'url' => '/blog', 'sort_order' => 3],
-            ['title' => 'Shop', 'url' => '/shop', 'sort_order' => 4],
-            ['title' => 'Contact', 'url' => '/contact', 'sort_order' => 5],
+            ['title' => 'Contact', 'url' => '/contact', 'sort_order' => 4],
         ];
 
         foreach ($headerMenus as $menu) {
@@ -28,8 +27,8 @@ class MenuSeeder extends Seeder
             ['title' => 'About', 'url' => '/about', 'sort_order' => 1],
             ['title' => 'Blog', 'url' => '/blog', 'sort_order' => 2],
             ['title' => 'Contact', 'url' => '/contact', 'sort_order' => 3],
-            ['title' => 'Privacy Policy', 'url' => '/page/privacy-policy', 'sort_order' => 4],
-            ['title' => 'Terms of Service', 'url' => '/page/terms-of-service', 'sort_order' => 5],
+            ['title' => 'Privacy Policy', 'url' => '/privacy-policy', 'sort_order' => 4],
+            ['title' => 'Terms of Service', 'url' => '/terms-of-service', 'sort_order' => 5],
         ];
 
         foreach ($footerMenus as $menu) {

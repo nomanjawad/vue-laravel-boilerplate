@@ -78,6 +78,9 @@ jobs:
         run: ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy via rsync
+        # Excludes (inode / host-local hygiene): node_modules/, .git/, and the
+        # entire storage/ tree (covers storage/framework/cache/data — never
+        # ship file-cache inodes or wipe server sessions/logs/uploads).
         run: |
           rsync -avz --delete \
             --exclude='/.git/' \

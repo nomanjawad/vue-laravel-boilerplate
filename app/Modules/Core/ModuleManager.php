@@ -246,6 +246,7 @@ class ModuleManager
         );
 
         $this->forgetCache();
+        Cache::forget('sitemap.xml');
 
         // Migrations run outside a wrapping transaction (Artisan manages its
         // own), so we can't roll back on partial failure. Instead, catch any
@@ -296,6 +297,7 @@ class ModuleManager
         );
 
         $this->forgetCache();
+        Cache::forget('sitemap.xml');
         rescue(fn () => Artisan::call('responsecache:clear'), report: false);
     }
 
@@ -464,6 +466,7 @@ class ModuleManager
                     'href' => null,
                     'permission' => null,
                     'group' => $manifest['nav_group'] ?? 'content',
+                    'badge' => null,
                 ], $entry);
                 // Manifests declare a route *name*; the browser only ever
                 // receives a resolved href (root-relative so it compares
@@ -473,6 +476,17 @@ class ModuleManager
                 // dead link.
                 if (! $entry['href'] && $entry['route'] && Route::has($entry['route'])) {
                     $entry['href'] = route($entry['route'], absolute: false);
+                }
+                // Badge is a class-string of an invokable (must stay
+                // serializable — no closures in config/modules.php). Resolve
+                // via the container; each resolver should be cheap (COUNT +
+                // short Cache::remember).
+                $badge = $entry['badge'] ?? null;
+                if (is_string($badge) && class_exists($badge)) {
+                    $count = (int) app($badge)();
+                    $entry['badge'] = $count > 0 ? $count : null;
+                } else {
+                    $entry['badge'] = null;
                 }
                 $nav[] = $entry;
             }

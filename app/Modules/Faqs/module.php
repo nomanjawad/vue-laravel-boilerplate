@@ -13,10 +13,10 @@
 return [
     'key'          => 'faqs',
     'name'         => 'FAQs',
-    'description'  => 'Frequently asked questions grouped by category.',
+    'description'  => 'Page-wise and global frequently asked questions.',
     'version'      => '1.0.0',
     'dependencies' => [],
-    'nav_group'    => 'content',
+    'nav_group'    => 'collections',
     'permissions'  => [
         'faqs' => ['view', 'create', 'update', 'delete'],
     ],

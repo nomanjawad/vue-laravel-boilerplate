@@ -51,15 +51,21 @@ class MediaService
         }
 
         $dir = 'media/'.date('Y/m');
+        $width = null;
+        $height = null;
 
         if (in_array($mime, self::OPTIMIZABLE, true)) {
-            [$path, $size, $variants] = $this->storeOptimizedImage($file, $dir);
+            [$path, $size, $variants, $width, $height] = $this->storeOptimizedImage($file, $dir);
             $mime = 'image/webp';
         } else {
-            // Non-optimizable uploads (SVG, GIF, PDF, ...) are stored as-is.
+            // Non-optimizable uploads (GIF, PDF, ...) are stored as-is.
             $path = $file->store($dir, 'public');
             $size = $file->getSize();
             $variants = null;
+
+            if (str_starts_with((string) $mime, 'image/')) {
+                [$width, $height] = $this->readDimensions($file->getRealPath());
+            }
         }
 
         return Media::create([
@@ -68,6 +74,8 @@ class MediaService
             'path' => $path,
             'mime_type' => $mime,
             'size' => $size,
+            'width' => $width,
+            'height' => $height,
             'alt_text' => $altText,
             'variants' => $variants,
         ]);
@@ -78,7 +86,7 @@ class MediaService
         $disk = Storage::disk($media->disk);
         $disk->delete($media->path);
 
-        foreach ($media->variants ?? [] as $variantPath) {
+        foreach ($media->variantPaths() as $variantPath) {
             $disk->delete($variantPath);
         }
 
@@ -103,7 +111,68 @@ class MediaService
         }
     }
 
-    /** @return array{0: string, 1: int, 2: array<string, string>} [path, size, variants] */
+    /**
+     * Read width/height for an existing Media row (backfill / repair).
+     * Updates the model in place; returns true when something changed.
+     */
+    public function backfillDimensions(Media $media): bool
+    {
+        if (! str_starts_with((string) $media->mime_type, 'image/')) {
+            return false;
+        }
+
+        $disk = Storage::disk($media->disk);
+        $changed = false;
+
+        $fullPath = $disk->path($media->path);
+        if (is_file($fullPath)) {
+            [$w, $h] = $this->readDimensions($fullPath);
+            if ($w && $h && ($media->width !== $w || $media->height !== $h)) {
+                $media->width = $w;
+                $media->height = $h;
+                $changed = true;
+            }
+        }
+
+        $variants = $media->variants ?? [];
+        $newVariants = [];
+        foreach ($variants as $name => $entry) {
+            $path = Media::variantPath($entry);
+            if ($path === null) {
+                $newVariants[$name] = $entry;
+
+                continue;
+            }
+
+            $meta = is_array($entry) ? $entry : ['path' => $path];
+            $variantFull = $disk->path($path);
+            if (is_file($variantFull) && (empty($meta['width']) || empty($meta['height']))) {
+                [$vw, $vh] = $this->readDimensions($variantFull);
+                if ($vw && $vh) {
+                    $meta['width'] = $vw;
+                    $meta['height'] = $vh;
+                    $changed = true;
+                }
+            }
+            $meta['path'] = $path;
+            $newVariants[$name] = $meta;
+        }
+
+        if ($newVariants !== $variants) {
+            $media->variants = $newVariants === [] ? null : $newVariants;
+            $changed = true;
+        }
+
+        if ($changed) {
+            $media->save();
+        }
+
+        return $changed;
+    }
+
+    /**
+     * @return array{0: string, 1: int, 2: array<string, array{path: string, width: int, height: int}>, 3: int, 4: int}
+     */
     private function storeOptimizedImage(UploadedFile $file, string $dir): array
     {
         $manager = new ImageManager(new Driver);
@@ -117,10 +186,13 @@ class MediaService
         $path = "{$dir}/{$base}.webp";
         $disk->put($path, (string) $image->encode(new WebpEncoder(quality: 82)));
 
+        $origWidth = $image->width();
+        $origHeight = $image->height();
+
         $variants = [];
         foreach (self::VARIANTS as $name => $width) {
-            if ($image->width() <= $width) {
-                continue; // don't upscale; imageUrl falls back to the original
+            if ($origWidth <= $width) {
+                continue; // don't upscale; AppImage falls back to the original
             }
 
             $variant = $manager->decodePath($file->getRealPath());
@@ -128,9 +200,26 @@ class MediaService
 
             $variantPath = "{$dir}/{$base}-{$name}.webp";
             $disk->put($variantPath, (string) $variant->encode(new WebpEncoder(quality: 80)));
-            $variants[$name] = $variantPath;
+            $variants[$name] = [
+                'path' => $variantPath,
+                'width' => $variant->width(),
+                'height' => $variant->height(),
+            ];
         }
 
-        return [$path, $disk->size($path), $variants];
+        return [$path, $disk->size($path), $variants, $origWidth, $origHeight];
+    }
+
+    /** @return array{0: int|null, 1: int|null} */
+    private function readDimensions(string $absolutePath): array
+    {
+        try {
+            $manager = new ImageManager(new Driver);
+            $image = $manager->decodePath($absolutePath);
+
+            return [$image->width(), $image->height()];
+        } catch (\Throwable) {
+            return [null, null];
+        }
     }
 }

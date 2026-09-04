@@ -13,7 +13,7 @@ use Spatie\Activitylog\Models\Activity;
  *
  * Sources:
  *   - App\Models\Concerns\LogsContentActivity on every content model
- *     (create/update/delete on Post, Product, Testimonial, …).
+ *     (create/update/delete on Post, Testimonial, …).
  *   - App\Listeners\LogAuthenticationActivity for login / logout / failed.
  *
  * Permission-gated by `audit_log.view` (declared in the core manifest so

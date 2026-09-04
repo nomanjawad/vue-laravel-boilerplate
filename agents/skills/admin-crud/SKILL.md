@@ -28,6 +28,10 @@ live in `resources/js/Pages/Admin/…`; module pages in
   (types land in `resources/js/types/types.d.ts` as `App.Data.*`).
 - Brand color utilities come from `@theme` in `resources/css/app.css` —
   available steps are brand-{50,100,300,500,600,700,900} only (no 400!).
+  Live sites override them via Settings → Theme (`App\Support\BrandPalette`
+  + emit in `app.blade.php`). Dark-shell legibility: 300/500 lightness is
+  clamped automatically; see the warning block in `resources/css/admin.css`.
+  Prefer Theme settings over hand-editing `@theme` for client sites.
 
 ## The form pattern (design-system exemplar: `Pages/Admin/Settings/Index.vue`)
 
@@ -70,13 +74,22 @@ Molecules: `AppCard` (title/padded, header/footer slots), `AppEmptyState`,
 Organisms: `DataTable` (columns/rows/sort — sortable headers do
 `router.get` with preserveState; slots `cell:{key}`, `actions`, `empty`;
 paginates automatically), `FormShell`, `AppMediaPicker` (see settings-and-media
-skill), `JsonContentEditor` (recursive JSON editor), `GlobalSearch`,
-`NotificationBell`, `BlogTabs` (Posts/Categories/Tags tab bar).
+skill), `AppBlockEditor` (TipTap slash-menu / drag handles / media image
+blocks — stores HTML; used on posts + page richtext widget fields),
+`JsonContentEditor` (recursive JSON editor — still used for header/footer
+layout), `GlobalSearch`, `NotificationBell`, `BlogTabs`
+(Posts/Categories/Tags tab bar), `SeoSerpPreview`, `SeoContentChecklist`.
+
+Molecules (notable): `AppFloatingSave` — fixed bottom-right Save with dirty
+indicator + saving spinner; used on Pages Edit and Posts Create/Edit.
 
 Shared: `Can` (`<Can permission="posts.create">` or `:any="[…]"`, fallback
 slot), `ConfirmDialog` + `useConfirm()` (`await confirm({title, confirmTone:
 'danger'})` returns Promise<boolean>), `FlashToaster` (flash.success/error
-auto-toast), `BrandLogo`.
+auto-toast).
+
+Atoms (images): `AppImage` — public/widget image discipline (srcset, dims,
+lazy/eager); see launch-readiness.
 
 Composables: `usePermissions()` (`can()`, `canAny()`, `isSuperAdmin`),
 `useImageUrl()` (`toImageUrl` — mirrors backend `Controller::imageUrl`),
@@ -97,7 +110,12 @@ Composables: `usePermissions()` (`can()`, `canAny()`, `isSuperAdmin`),
 - Flash messages: `back()->with('success', …)` / `'error'` → `FlashData` →
   `FlashToaster` renders them automatically.
 - Sidebar entries come from module manifests (see create-module skill) — never
-  hardcode nav in `AdminLayout.vue`.
+  hardcode nav in `AdminLayout.vue`. Groups: content / collections / inbox /
+  appearance / system. Optional `badge` on a nav entry (class-string
+  invokable → number) renders a pill next to the label in `AdminLayout`.
+- **Page widget field rendering** lives inline in `Admin/Pages/Edit.vue`
+  (maps registry `type` → atoms). Prefer extending that map over a one-off
+  control when adding field types; see the **widgets** skill.
 
 ## Verify before finishing
 

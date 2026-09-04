@@ -42,6 +42,7 @@ class TemplateDoctor extends Command
         $this->checkIndexability($isProd);
         $this->checkDatabase();
         $this->checkStorage();
+        $this->checkCacheInodes();
         $this->checkViteManifest($isProd);
         $this->checkQueue($isProd);
         $this->checkScheduler();
@@ -169,6 +170,56 @@ class TemplateDoctor extends Command
             $this->ok('public/storage symlink present');
         } else {
             $this->failed('public/storage symlink missing', 'Run `php artisan storage:link`.');
+        }
+    }
+
+    /**
+     * File-driver response cache (and CACHE_STORE=file) write nested files under
+     * storage/framework/cache/data and never reclaim them until read/clear —
+     * the main inode burner on shared hosting. Warn when the tree is large so
+     * a misconfigured RESPONSE_CACHE_DRIVER=file on a live server is visible.
+     */
+    protected function checkCacheInodes(): void
+    {
+        $dir = storage_path('framework/cache/data');
+        $threshold = 100;
+
+        if (! is_dir($dir)) {
+            $this->ok('file cache data dir absent');
+
+            return;
+        }
+
+        $count = 0;
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
+            );
+            foreach ($iterator as $file) {
+                if (! $file->isFile()) {
+                    continue;
+                }
+                $count++;
+                if ($count > $threshold) {
+                    break;
+                }
+            }
+        } catch (Throwable $e) {
+            $this->warn('  file cache inode check skipped: '.$e->getMessage());
+
+            return;
+        }
+
+        if ($count > $threshold) {
+            $store = (string) config('responsecache.cache.store', 'database');
+            $this->advisory(
+                "storage/framework/cache/data has >{$threshold} files (inode risk)",
+                'Set RESPONSE_CACHE_DRIVER=database in .env (currently responsecache store="'.$store.'"), '
+                    .'run `php artisan responsecache:clear`, then delete leftover files under '
+                    .'storage/framework/cache/data to reclaim inodes.',
+            );
+        } else {
+            $this->ok("file cache inode count OK ({$count} ≤ {$threshold})");
         }
     }
 

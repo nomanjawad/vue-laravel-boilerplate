@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\Category;
-use App\Models\Page;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\JsonDataService;
 use App\Services\MediaService;
 use App\Services\SlugService;
 use Illuminate\Console\Command;
@@ -33,7 +33,7 @@ class ImportWordPress extends Command
     /** Map of original attachment URL => new local URL, used to rewrite bodies. */
     private array $mediaMap = [];
 
-    public function handle(MediaService $media, SlugService $slugs): int
+    public function handle(MediaService $media, SlugService $slugs, JsonDataService $jsonData): int
     {
         $file = $this->argument('file');
 
@@ -129,18 +129,19 @@ class ImportWordPress extends Command
                     continue;
                 }
 
-                $categoryId = null;
+                $categoryIds = [];
                 foreach ($item->category ?? [] as $cat) {
                     if ((string) $cat['domain'] === 'category') {
-                        $categoryId = Category::where('slug', (string) $cat['nicename'])->value('id');
-                        break;
+                        $id = Category::where('slug', (string) $cat['nicename'])->value('id');
+                        if ($id) {
+                            $categoryIds[] = $id;
+                        }
                     }
                 }
 
                 $post = new Post;
                 $post->fill([
                     'user_id' => $userId,
-                    'category_id' => $categoryId,
                     'title' => $title,
                     'slug' => $slugs->generate($post, $slugSource),
                     'excerpt' => trim((string) $item->children('excerpt', true)->encoded) ?: null,
@@ -148,6 +149,10 @@ class ImportWordPress extends Command
                     'status' => $status,
                     'published_at' => $status === 'published' && $publishedAt && $publishedAt !== '0000-00-00 00:00:00' ? $publishedAt : null,
                 ])->save();
+
+                $post->categories()->sync(
+                    $categoryIds !== [] ? array_values(array_unique($categoryIds)) : [Category::uncategorized()->id]
+                );
             } else {
                 $stats['pages']++;
 
@@ -155,13 +160,39 @@ class ImportWordPress extends Command
                     continue;
                 }
 
-                $page = new Page;
-                $page->fill([
+                $baseSlug = Str::slug($slugSource) ?: 'page';
+                $pageSlug = $baseSlug;
+                $i = 2;
+                $existing = $jsonData->list('pages');
+                while (in_array($pageSlug, $existing, true) || in_array($pageSlug, ['admin', 'blog', 'login'], true)) {
+                    $pageSlug = "{$baseSlug}-".$i++;
+                }
+
+                $jsonData->put("pages/{$pageSlug}", [
                     'title' => $title,
-                    'slug' => $slugs->generate($page, $slugSource),
-                    'body' => $body,
-                    'is_published' => $status === 'published',
-                ])->save();
+                    'status' => $status,
+                    'seo' => [
+                        'title' => $title,
+                        'description' => '',
+                        'og_image' => '',
+                        'og_title' => '',
+                        'og_description' => '',
+                        'canonical' => '',
+                        'noindex' => false,
+                        'json_ld' => '',
+                    ],
+                    'widgets' => [
+                        [
+                            'id' => 'w_'.Str::lower(Str::random(8)),
+                            'type' => 'rich_text',
+                            'visible' => true,
+                            'data' => [
+                                'title' => $title,
+                                'body' => $body,
+                            ],
+                        ],
+                    ],
+                ]);
             }
         }
 

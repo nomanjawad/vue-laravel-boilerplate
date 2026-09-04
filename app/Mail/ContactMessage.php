@@ -34,6 +34,7 @@ class ContactMessage extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
+            html: 'emails.contact-received',
             text: 'emails.contact',
         );
     }

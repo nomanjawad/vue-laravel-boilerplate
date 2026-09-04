@@ -40,7 +40,15 @@ if (!APP_NAME || APP_NAME.trim() === '') {
 }
 
 createInertiaApp({
-    title: (title) => title ? `${title} - ${APP_NAME}` : APP_NAME,
+    // PublicLayout passes a fully-resolved seo.title (template already applied).
+    // Admin pages pass short labels — append the site name unless already present.
+    title: (title) => {
+        if (!title) return APP_NAME
+        if (title === APP_NAME || title.endsWith(` — ${APP_NAME}`) || title.endsWith(` - ${APP_NAME}`)) {
+            return title
+        }
+        return `${title} — ${APP_NAME}`
+    },
     resolve: (name) => {
         const coreKey = `./Pages/${name}.vue`
         const core = corePages[coreKey]

@@ -7,9 +7,7 @@ use App\Data\SearchResultData;
 use App\Models\Career;
 use App\Models\CaseStudy;
 use App\Models\Category;
-use App\Models\Order;
 use App\Models\Post;
-use App\Models\Product;
 use App\Models\Tag;
 use App\Models\Team;
 use App\Models\User;
@@ -37,7 +35,7 @@ class AdminSearchService
         Category::class => [
             'label' => 'Categories',
             'permission' => 'categories.view',
-            'route' => 'admin.categories.edit',
+            'route' => 'admin.categories.index',
             'title' => 'name',
         ],
         Tag::class => [
@@ -45,18 +43,6 @@ class AdminSearchService
             'permission' => 'tags.view',
             'route' => 'admin.tags.index',
             'title' => 'name',
-        ],
-        Product::class => [
-            'label' => 'Products',
-            'permission' => 'products.view',
-            'route' => 'admin.products.edit',
-            'title' => 'name',
-        ],
-        Order::class => [
-            'label' => 'Orders',
-            'permission' => 'orders.view',
-            'route' => 'admin.orders.show',
-            'title' => 'order_number',
         ],
         Career::class => [
             'label' => 'Careers',
@@ -229,8 +215,6 @@ class AdminSearchService
     {
         return match ($modelClass) {
             Post::class => $record->getAttribute('status') ? Str::title((string) $record->getAttribute('status')) : null,
-            Product::class => $record->getAttribute('price') !== null ? (string) $record->getAttribute('price') : null,
-            Order::class => $record->getAttribute('customer_email') ? (string) $record->getAttribute('customer_email') : null,
             Team::class => $record->getAttribute('position') ? (string) $record->getAttribute('position') : null,
             Category::class, Tag::class => null,
             default => null,
@@ -239,6 +223,12 @@ class AdminSearchService
 
     private function hrefFor(Model $record, string $routeName): string
     {
+        // Index-only screens (categories, tags) have no edit route — don't
+        // append the record id as a stray query param.
+        if (str_ends_with($routeName, '.index')) {
+            return route($routeName);
+        }
+
         return route($routeName, $record->getKey());
     }
 }

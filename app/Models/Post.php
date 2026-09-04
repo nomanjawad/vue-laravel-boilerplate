@@ -16,9 +16,10 @@ class Post extends Model
     use LogsContentActivity;
 
     protected $fillable = [
-        'user_id', 'category_id', 'title', 'slug', 'excerpt', 'body',
+        'user_id', 'title', 'slug', 'excerpt', 'body',
         'featured_image', 'status', 'published_at', 'meta_title',
-        'meta_description', 'og_image', 'noindex',
+        'meta_description', 'og_image', 'canonical_url', 'og_title',
+        'og_description', 'focus_keyword', 'noindex',
     ];
 
     protected function casts(): array
@@ -34,9 +35,9 @@ class Post extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function category(): BelongsTo
+    public function categories(): BelongsToMany
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsToMany(Category::class);
     }
 
     public function tags(): BelongsToMany

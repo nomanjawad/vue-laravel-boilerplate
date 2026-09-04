@@ -13,11 +13,26 @@ export interface SharedPageProps {
     modules: App.Data.ModulesSharedData
     flash: App.Data.FlashData
     menus: App.Data.MenusData
+    /** header.json + footer.json; null on admin routes. */
+    layout: {
+        header: {
+            logo?: string
+            logo_alt?: string
+            show_cta_button?: boolean
+            cta_text?: string
+            cta_url?: string
+        }
+        footer: {
+            columns?: Array<{ title: string; type: string }>
+            copyright?: string
+            show_social_icons?: boolean
+        }
+    } | null
     settings: App.Data.SettingsData
     enabledFeatures: Record<string, boolean>
-    cartCount: number
     seo: App.Data.SeoData
     organizationJsonLd: Record<string, unknown> | null
+    localBusinessJsonLd: Record<string, unknown> | null
     [key: string]: unknown
 }
 

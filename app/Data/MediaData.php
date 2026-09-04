@@ -10,7 +10,11 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 class MediaData extends Data
 {
     /**
-     * @param  array<string, string>|null  $variants
+     * Variants map: name → storage path string (legacy) or
+     * `{path, width, height}` (Phase 10). Frontend uses
+     * `variantPath()` / `useImageUrl` to resolve.
+     *
+     * @param  array<string, mixed>|null  $variants
      */
     public function __construct(
         public int $id,
@@ -20,6 +24,8 @@ class MediaData extends Data
         public string $filename,
         public string $mime_type,
         public int $size,
+        public ?int $width = null,
+        public ?int $height = null,
     ) {}
 
     public static function fromModel(Media $media): self
@@ -32,6 +38,8 @@ class MediaData extends Data
             filename: $media->filename,
             mime_type: $media->mime_type,
             size: $media->size,
+            width: $media->width,
+            height: $media->height,
         );
     }
 }

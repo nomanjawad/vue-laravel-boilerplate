@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ClearsResponseCache;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,9 +10,13 @@ use Illuminate\Support\Facades\Storage;
 
 class Media extends Model
 {
+    use ClearsResponseCache;
     use HasFactory;
 
-    protected $fillable = ['user_id', 'filename', 'path', 'mime_type', 'size', 'alt_text', 'disk', 'variants'];
+    protected $fillable = [
+        'user_id', 'filename', 'path', 'mime_type', 'size',
+        'width', 'height', 'alt_text', 'disk', 'variants',
+    ];
 
     public function user(): BelongsTo
     {
@@ -43,10 +48,46 @@ class Media extends Model
         return $url;
     }
 
+    /**
+     * Extract a storage path from a variants JSON entry.
+     * Supports legacy string paths and the Phase-10 shape
+     * `{path, width, height}`.
+     */
+    public static function variantPath(mixed $entry): ?string
+    {
+        if (is_string($entry) && $entry !== '') {
+            return $entry;
+        }
+
+        if (is_array($entry) && isset($entry['path']) && is_string($entry['path']) && $entry['path'] !== '') {
+            return $entry['path'];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function variantPaths(): array
+    {
+        $paths = [];
+        foreach ($this->variants ?? [] as $entry) {
+            $path = self::variantPath($entry);
+            if ($path !== null) {
+                $paths[] = $path;
+            }
+        }
+
+        return $paths;
+    }
+
     protected function casts(): array
     {
         return [
             'size' => 'integer',
+            'width' => 'integer',
+            'height' => 'integer',
             'variants' => 'array',
         ];
     }

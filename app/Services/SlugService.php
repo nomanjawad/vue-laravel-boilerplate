@@ -34,7 +34,7 @@ class SlugService
      * Call after changing a published model's slug: creates a 301 from the old
      * public URL to the new one so existing links and rankings survive.
      *
-     * $publicPrefix is the public route segment, e.g. 'blog', 'shop', 'page'.
+     * $publicPrefix is the public route segment, e.g. 'blog', 'page'.
      */
     public function redirectOldSlug(string $publicPrefix, string $oldSlug, string $newSlug): void
     {

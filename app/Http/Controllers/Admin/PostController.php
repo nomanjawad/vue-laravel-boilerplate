@@ -22,7 +22,7 @@ class PostController extends Controller
     public function index(Request $request)
     {
         return Inertia::render('Admin/Posts/Index', [
-            'posts' => Post::with(['user:id,name', 'category:id,name'])
+            'posts' => Post::with(['user:id,name', 'categories:id,name'])
                 ->when($request->search, fn ($q, $s) => $q->where('title', 'like', "%{$s}%"))
                 ->when($request->status, fn ($q, $s) => $q->where('status', $s))
                 ->latest()
@@ -36,9 +36,7 @@ class PostController extends Controller
     public function create()
     {
         return Inertia::render('Admin/Posts/Create', [
-            'categories' => CategorySummaryData::collect(
-                Category::orderBy('name')->get(['id', 'name'])
-            ),
+            'categories' => $this->categoryOptions(),
             'tags' => TagSummaryData::collect(
                 Tag::orderBy('name')->get(['id', 'name', 'slug'])
             ),
@@ -52,11 +50,17 @@ class PostController extends Controller
             'slug' => ['nullable', 'string', 'max:255', 'unique:posts'],
             'excerpt' => ['nullable', 'string'],
             'body' => ['required', 'string'],
-            'category_id' => ['nullable', 'exists:categories,id'],
+            'categories' => ['nullable', 'array'],
+            'categories.*' => ['exists:categories,id'],
             'status' => ['required', 'in:draft,published,archived'],
             'featured_image' => ['nullable', 'string', 'max:255'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
+            'og_image' => ['nullable', 'string', 'max:255'],
+            'canonical_url' => ['nullable', 'string', 'max:500'],
+            'og_title' => ['nullable', 'string', 'max:255'],
+            'og_description' => ['nullable', 'string', 'max:500'],
+            'focus_keyword' => ['nullable', 'string', 'max:191'],
             'noindex' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['exists:tags,id'],
@@ -74,10 +78,12 @@ class PostController extends Controller
         }
 
         $tags = $validated['tags'] ?? [];
-        unset($validated['tags']);
+        $categories = $validated['categories'] ?? [];
+        unset($validated['tags'], $validated['categories']);
 
         $post = Post::create($validated);
         $post->tags()->sync($tags);
+        $this->syncCategories($post, $categories);
 
         return redirect()->route('admin.posts.index')->with('success', 'Post created successfully.');
     }
@@ -85,14 +91,12 @@ class PostController extends Controller
     public function edit(Post $post)
     {
         return Inertia::render('Admin/Posts/Edit', [
-            'post' => PostData::fromModel($post->load('tags:id,name,slug')),
+            'post' => PostData::fromModel($post->load(['tags:id,name,slug', 'categories:id,name,slug,parent_id'])),
             // Signed link lets clients view drafts before publishing (valid 7 days).
             'previewUrl' => $this->modules->enabled('blog')
                 ? URL::temporarySignedRoute('blog.show', now()->addDays(7), ['post' => $post->slug])
                 : null,
-            'categories' => CategorySummaryData::collect(
-                Category::orderBy('name')->get(['id', 'name'])
-            ),
+            'categories' => $this->categoryOptions(),
             'tags' => TagSummaryData::collect(
                 Tag::orderBy('name')->get(['id', 'name', 'slug'])
             ),
@@ -106,11 +110,17 @@ class PostController extends Controller
             'slug' => ['nullable', 'string', 'max:255', 'unique:posts,slug,'.$post->id],
             'excerpt' => ['nullable', 'string'],
             'body' => ['required', 'string'],
-            'category_id' => ['nullable', 'exists:categories,id'],
+            'categories' => ['nullable', 'array'],
+            'categories.*' => ['exists:categories,id'],
             'status' => ['required', 'in:draft,published,archived'],
             'featured_image' => ['nullable', 'string', 'max:255'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
+            'og_image' => ['nullable', 'string', 'max:255'],
+            'canonical_url' => ['nullable', 'string', 'max:500'],
+            'og_title' => ['nullable', 'string', 'max:255'],
+            'og_description' => ['nullable', 'string', 'max:500'],
+            'focus_keyword' => ['nullable', 'string', 'max:191'],
             'noindex' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['exists:tags,id'],
@@ -123,7 +133,8 @@ class PostController extends Controller
         }
 
         $tags = $validated['tags'] ?? [];
-        unset($validated['tags']);
+        $categories = $validated['categories'] ?? [];
+        unset($validated['tags'], $validated['categories']);
 
         // Changing a slug breaks published links — auto-create a 301 from the old URL.
         $oldSlug = $post->slug;
@@ -135,6 +146,7 @@ class PostController extends Controller
             $this->slugs->redirectOldSlug('blog', $oldSlug, $post->slug);
         }
         $post->tags()->sync($tags);
+        $this->syncCategories($post, $categories);
 
         return redirect()->route('admin.posts.index')->with('success', 'Post updated successfully.');
     }
@@ -144,5 +156,25 @@ class PostController extends Controller
         $post->delete();
 
         return redirect()->route('admin.posts.index')->with('success', 'Post deleted successfully.');
+    }
+
+    /**
+     * @param  array<int, int|string>  $categoryIds
+     */
+    private function syncCategories(Post $post, array $categoryIds): void
+    {
+        $ids = array_values(array_unique(array_map('intval', $categoryIds)));
+        if ($ids === []) {
+            $ids = [Category::uncategorized()->id];
+        }
+        $post->categories()->sync($ids);
+    }
+
+    /** @return \Illuminate\Support\Collection<int, CategorySummaryData> */
+    private function categoryOptions()
+    {
+        return CategorySummaryData::collect(
+            Category::orderBy('sort_order')->orderBy('name')->get(['id', 'name', 'slug', 'parent_id'])
+        );
     }
 }

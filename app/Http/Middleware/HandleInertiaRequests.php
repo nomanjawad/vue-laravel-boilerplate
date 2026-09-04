@@ -10,7 +10,9 @@ use App\Data\ModuleNavEntry;
 use App\Data\ModulesSharedData;
 use App\Data\SeoData;
 use App\Data\SettingsData;
+use App\Models\Category;
 use App\Models\Menu;
+use App\Models\Post;
 use App\Models\Setting;
 use App\Modules\Core\ModuleManager;
 use App\Services\JsonDataService;
@@ -43,9 +45,6 @@ class HandleInertiaRequests extends Middleware
         'instagram',
         'linkedin',
         'youtube',
-        'shop_location',
-        'shop_currency',
-        'shop_currency_symbol',
         // Analytics ids are public by nature (visible in page source).
         'ga_measurement_id',
         'gtm_container_id',
@@ -114,24 +113,18 @@ class HandleInertiaRequests extends Middleware
 
             'menus' => fn () => $tablesExist
                 ? MenusData::from([
-                    'header' => Menu::where('location', 'header')
-                        ->where('is_active', true)
-                        ->whereNull('parent_id')
-                        ->orderBy('sort_order')
-                        ->get(['id', 'title', 'url', 'sort_order'])
-                        ->map(fn (Menu $menu) => MenuItemData::from($menu))
-                        ->values()
-                        ->all(),
-                    'footer' => Menu::where('location', 'footer')
-                        ->where('is_active', true)
-                        ->whereNull('parent_id')
-                        ->orderBy('sort_order')
-                        ->get(['id', 'title', 'url', 'sort_order'])
-                        ->map(fn (Menu $menu) => MenuItemData::from($menu))
-                        ->values()
-                        ->all(),
+                    'header' => $this->menuTree('header'),
+                    'footer' => $this->menuTree('footer'),
                 ])->toArray()
                 : MenusData::from(['header' => [], 'footer' => []])->toArray(),
+
+            // header.json + footer.json — public pages only (admin has its own editor).
+            'layout' => fn () => $request->is('admin', 'admin/*')
+                ? null
+                : [
+                    'header' => $this->jsonData->get('header'),
+                    'footer' => $this->jsonData->get('footer'),
+                ],
 
             'settings' => fn () => $tablesExist
                 ? SettingsData::from(
@@ -141,32 +134,53 @@ class HandleInertiaRequests extends Middleware
 
             'enabledFeatures' => config('template.features'),
 
-            'cartCount' => fn () => count($request->session()->get('cart', [])),
-
             'seo' => fn () => $this->resolveSeo($request, $tablesExist),
 
-            // Organization JSON-LD on every page; pages add their own schemas
-            // (Article, JobPosting, breadcrumbs) via a `jsonLd` prop.
+            // Organization (+ optional LocalBusiness) JSON-LD on every page;
+            // pages add their own schemas (BlogPosting, FAQPage, breadcrumbs,
+            // JobPosting) via a `jsonLd` prop.
             'organizationJsonLd' => fn () => $tablesExist ? $this->seo->organization() : null,
+            'localBusinessJsonLd' => fn () => $tablesExist ? $this->seo->localBusiness() : null,
         ];
     }
 
-    /** Route name → data/*.json file, for pages whose SEO block is admin-editable. */
-    private const SEO_PAGE_MAP = [
-        'home' => 'home',
-        'about' => 'about',
-        'contact' => 'contact',
-    ];
+    /**
+     * Active roots for a menu location, each with active children (depth ≤ 2).
+     *
+     * @return list<MenuItemData>
+     */
+    protected function menuTree(string $location): array
+    {
+        return Menu::where('location', $location)
+            ->where('is_active', true)
+            ->whereNull('parent_id')
+            ->with(['children' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
+            ->orderBy('sort_order')
+            ->get(['id', 'title', 'url', 'sort_order', 'parent_id'])
+            ->map(fn (Menu $menu) => MenuItemData::fromMenu($menu))
+            ->values()
+            ->all();
+    }
 
     /**
-     * Build the SEO meta payload for the current route: the `seo` block
-     * inside the matching page's data/*.json (edited via the admin Page
-     * Content panel), falling back to global site settings.
+     * Build the SEO meta payload for the current route.
+     *
+     * Sources (in priority order for content):
+     * - JSON page `seo` block (home / dynamic pages)
+     * - Post columns (blog.show)
+     * - Category name/description (blog.category)
+     * - Fallback content titles for index routes (Blog, Careers, …)
+     *
+     * Title template (`seo_title_template`, default `%title% — %site_name%`)
+     * applies only when the page/post has no explicit meta title. Canonical is
+     * always absolute via `url()`; an optional override field wins when set.
      */
     protected function resolveSeo(Request $request, bool $settingsExist): array
     {
         $settings = $settingsExist
-            ? Setting::whereIn('key', ['site_name', 'site_description', 'og_image', 'site_noindex'])->pluck('value', 'key')
+            ? Setting::whereIn('key', [
+                'site_name', 'site_description', 'og_image', 'site_noindex', 'seo_title_template',
+            ])->pluck('value', 'key')
             : collect();
         // No literal brand fallback — an empty site_name + empty APP_NAME
         // should surface as an obvious blank in the tab title so the project
@@ -174,39 +188,120 @@ class HandleInertiaRequests extends Middleware
         $siteName = $settings->get('site_name') ?: (string) config('app.name');
         $defaultDescription = $settings->get('site_description') ?: '';
         $defaultImage = $settings->get('og_image');
+        $titleTemplate = $settings->get('seo_title_template') ?: '%title% — %site_name%';
         // Sitewide kill switch (Admin > Settings > SEO & Analytics) — forces
         // noindex on every route, composed with (never overridden by) a
         // page's own noindex below.
         $siteNoindex = $settings->get('site_noindex') === '1';
 
         $routeName = $request->route()?->getName();
-        $jsonFile = self::SEO_PAGE_MAP[$routeName] ?? null;
-        $meta = $jsonFile ? ($this->jsonData->get($jsonFile)['seo'] ?? []) : [];
+        $meta = [];
+        $contentTitle = '';
+        $ogType = 'website';
+        $articlePublished = null;
+        $articleModified = null;
+
+        $slug = match ($routeName) {
+            'home' => 'home',
+            'page.show' => $request->route('slug'),
+            default => null,
+        };
+
+        if (is_string($slug) && $slug !== '') {
+            $page = $this->jsonData->get("pages/{$slug}");
+            $meta = is_array($page['seo'] ?? null) ? $page['seo'] : [];
+            $contentTitle = (string) ($page['title'] ?? $slug);
+        }
+
+        if ($routeName === 'blog.show') {
+            $post = $request->route('post');
+            if ($post instanceof Post) {
+                $meta = [
+                    'title' => $post->meta_title ?: '',
+                    'description' => $post->meta_description ?: ($post->excerpt ?: ''),
+                    'og_image' => $post->og_image ?: ($post->featured_image ?: ''),
+                    'og_title' => $post->og_title ?: '',
+                    'og_description' => $post->og_description ?: '',
+                    'canonical' => $post->canonical_url ?: '',
+                    'noindex' => (bool) $post->noindex,
+                ];
+                $contentTitle = $post->title;
+                $ogType = 'article';
+                $articlePublished = $post->published_at?->toAtomString();
+                $articleModified = $post->updated_at?->toAtomString();
+            }
+        }
+
+        if ($routeName === 'blog.category') {
+            $category = $request->route('category');
+            if ($category instanceof Category) {
+                $meta = [
+                    'title' => '',
+                    'description' => $category->description ?: '',
+                ];
+                $contentTitle = $category->name;
+            }
+        }
+
+        if ($routeName === 'blog.index') {
+            $contentTitle = 'Blog';
+        }
+
+        if (in_array($routeName, ['careers.index', 'careers.show'], true)) {
+            $career = $request->route('career');
+            $contentTitle = is_object($career) && isset($career->title)
+                ? (string) $career->title
+                : 'Careers';
+        }
+
+        if (in_array($routeName, ['case-studies.index', 'case-studies.show'], true)) {
+            $study = $request->route('caseStudy') ?? $request->route('case_study');
+            $contentTitle = is_object($study) && isset($study->title)
+                ? (string) $study->title
+                : 'Case Studies';
+        }
 
         // `?? '' | ?:` in two steps, not a bare `$meta['x'] ?: …`: `??` on the
         // array read is what avoids an "undefined array key" warning when the
         // route has no seo block (or the block omits a key); the outer `?:`
         // then treats an admin-cleared field ("" — the JSON editor writes
         // empty strings, not null) the same as a missing one.
-        $title = $meta['title'] ?? '';
-        $description = $meta['description'] ?? '';
-        $ogImage = $meta['og_image'] ?? '';
-        $jsonLd = $meta['json_ld'] ?? '';
+        $metaTitle = (string) ($meta['title'] ?? '');
+        $description = (string) ($meta['description'] ?? '');
+        $ogImage = (string) ($meta['og_image'] ?? '');
+        $ogTitle = (string) ($meta['og_title'] ?? '');
+        $ogDescription = (string) ($meta['og_description'] ?? '');
+        $canonicalOverride = (string) ($meta['canonical'] ?? '');
+        $jsonLd = (string) ($meta['json_ld'] ?? '');
+
+        $resolvedTitle = $this->seo->applyTitleTemplate(
+            $metaTitle,
+            $contentTitle !== '' ? $contentTitle : $siteName,
+            $siteName,
+            $titleTemplate,
+        );
 
         // og:image must be an absolute URL for social crawlers. Media URLs are
         // stored root-relative (see Media::getUrlAttribute), so promote a
         // relative value to absolute here; an already-absolute URL is untouched.
-        $ogImage = $ogImage ?: $defaultImage;
-        if ($ogImage && ! preg_match('#^https?://#', $ogImage)) {
-            $ogImage = url($ogImage);
-        }
+        $ogImage = $this->seo->absoluteUrl($ogImage ?: $defaultImage);
+
+        $canonical = $canonicalOverride !== ''
+            ? ($this->seo->absoluteUrl($canonicalOverride) ?: url($canonicalOverride))
+            : $request->url();
 
         return SeoData::from([
             'site_name' => $siteName,
-            'title' => $title ?: null,
-            'description' => $description ?: $defaultDescription,
+            'title' => $resolvedTitle !== '' ? $resolvedTitle : null,
+            'description' => $description !== '' ? $description : $defaultDescription,
             'og_image' => $ogImage,
-            'canonical' => $request->url(),
+            'og_title' => $ogTitle !== '' ? $ogTitle : null,
+            'og_description' => $ogDescription !== '' ? $ogDescription : null,
+            'og_type' => $ogType,
+            'twitter_card' => 'summary_large_image',
+            'article_published_time' => $articlePublished,
+            'article_modified_time' => $articleModified,
+            'canonical' => $canonical,
             // Sitewide indexable flag must gate this the same way it gates
             // PreventSearchIndexing's X-Robots-Tag header — otherwise a
             // staging build (SEO_INDEXABLE=false) sends the noindex header

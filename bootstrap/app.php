@@ -38,7 +38,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(function () {
                     require base_path('routes/admin.php');
                     rescue(fn () => require base_path('routes/admin-blog.php'));
-                    rescue(fn () => require base_path('routes/admin-shop.php'));
                     rescue(fn () => require base_path('routes/admin-optional.php'));
                 });
 
@@ -46,16 +45,19 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(function () {
                     require base_path('routes/public.php');
                     rescue(fn () => require base_path('routes/public-blog.php'));
-                    rescue(fn () => require base_path('routes/public-shop.php'));
                     rescue(fn () => require base_path('routes/public-optional.php'));
 
                     // Next.js-style file-system routing: for every
                     // resources/js/Pages/Public/{Folder}/Index.vue without a
                     // matching explicit route above, auto-register GET /kebab.
                     // Explicit routes always win, so all DB-bound pages
-                    // (Home, About, Blog, Shop, etc.) keep their controllers.
+                    // (Blog, Careers, etc.) keep their controllers.
                     // See App\Support\FileSystemPageRouter.
                     app(\App\Support\FileSystemPageRouter::class)->register(app('router'));
+
+                    // JSON-backed pages last: `/` + `/{slug}` catch-all.
+                    // Explicit + auto-router routes win; missing/draft JSON → 404.
+                    require base_path('routes/public-pages.php');
                 });
         },
     )
@@ -84,7 +86,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => AdminMiddleware::class,
             // Full-response cache for static public pages (spatie/laravel-responsecache).
-            // Never apply to pages that render session data (cart, auth, forms with errors).
+            // Never apply to pages that render session data (auth, forms with errors).
             'responsecache' => CacheResponse::class,
             'doNotCacheResponse' => DoNotCacheResponse::class,
         ]);

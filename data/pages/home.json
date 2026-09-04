@@ -1,0 +1,90 @@
+{
+    "title": "Home",
+    "status": "published",
+    "seo": {
+        "title": "Home",
+        "description": "Welcome to our website.",
+        "og_image": "",
+        "noindex": false,
+        "json_ld": ""
+    },
+    "widgets": [
+        {
+            "id": "w_home_hero",
+            "type": "hero",
+            "visible": true,
+            "data": {
+                "title": "Build Something Amazing",
+                "subtitle": "A modern web template powered by Laravel, Vue, and Inertia.js",
+                "image": "",
+                "cta_text": "Get Started",
+                "cta_url": "/contact",
+                "secondary_cta_text": "Learn More",
+                "secondary_cta_url": "/about"
+            }
+        },
+        {
+            "id": "w_home_features",
+            "type": "feature_grid",
+            "visible": true,
+            "data": {
+                "title": "",
+                "items": [
+                    {
+                        "title": "Modern Stack",
+                        "description": "Built with Laravel 11, Vue 3, and Inertia.js for a seamless development experience.",
+                        "icon": "code"
+                    },
+                    {
+                        "title": "Shared Hosting Ready",
+                        "description": "Deploy to any cPanel, SiteGround, or Hostinger server with a single script.",
+                        "icon": "server"
+                    },
+                    {
+                        "title": "Modular Features",
+                        "description": "Enable or disable blog, careers, team, and more with simple config flags.",
+                        "icon": "puzzle"
+                    }
+                ]
+            }
+        },
+        {
+            "id": "w_home_stats",
+            "type": "stats",
+            "visible": true,
+            "data": {
+                "title": "",
+                "items": [
+                    { "value": "99%", "label": "Uptime" },
+                    { "value": "50+", "label": "Projects" },
+                    { "value": "24/7", "label": "Support" },
+                    { "value": "100%", "label": "Satisfaction" }
+                ]
+            }
+        },
+        {
+            "id": "w_home_posts",
+            "type": "latest_posts",
+            "visible": true,
+            "data": {
+                "title": "Latest Posts",
+                "collection": {
+                    "mode": "latest",
+                    "ids": [],
+                    "limit": 3
+                }
+            }
+        },
+        {
+            "id": "w_home_cta",
+            "type": "cta",
+            "visible": true,
+            "data": {
+                "title": "Ready to get started?",
+                "description": "Contact us today and let's build something great together.",
+                "button_text": "Contact Us",
+                "button_url": "/contact"
+            }
+        }
+    ]
+}

@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
+import AppMediaPicker from '@/Components/Organisms/AppMediaPicker.vue'
+import AppBlockEditor from '@/Components/Organisms/AppBlockEditor.vue'
+import AppFloatingSave from '@/Components/Molecules/AppFloatingSave.vue'
+import PostCategoriesField from '@/Components/Molecules/PostCategoriesField.vue'
+import SeoSerpPreview from '@/Components/Molecules/SeoSerpPreview.vue'
+import SeoContentChecklist from '@/Components/Molecules/SeoContentChecklist.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -16,11 +22,16 @@ interface PostForm {
     slug: string
     excerpt: string
     body: string
-    category_id: number | string
+    categories: number[]
     status: string
     featured_image: string
     meta_title: string
     meta_description: string
+    og_image: string
+    canonical_url: string
+    og_title: string
+    og_description: string
+    focus_keyword: string
     noindex: boolean
     tags: number[]
 }
@@ -30,14 +41,29 @@ const form = useForm<PostForm>({
     slug: '',
     excerpt: '',
     body: '',
-    category_id: '',
+    categories: [],
     status: 'draft',
     featured_image: '',
     meta_title: '',
     meta_description: '',
+    og_image: '',
+    canonical_url: '',
+    og_title: '',
+    og_description: '',
+    focus_keyword: '',
     noindex: false,
     tags: [],
 })
+
+type PickerMedia = { id: number | string; url?: string | null; variants?: Record<string, import('@/Composables/useImageUrl').VariantEntry> | null }
+
+function urlAsMedia(url: string): PickerMedia | null {
+    return url ? { id: 0, url } : null
+}
+
+function setUrlFromMedia(field: 'featured_image' | 'og_image', media: PickerMedia | null) {
+    form[field] = media?.url ?? ''
+}
 
 const submit = () => {
     form.post('/admin/posts')
@@ -68,8 +94,8 @@ const submit = () => {
                     <textarea v-model="form.excerpt" rows="2" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Body</label>
-                    <textarea v-model="form.body" rows="15" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 font-mono text-sm" />
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Body</label>
+                    <AppBlockEditor v-model="form.body" placeholder="Write your post… Type / for blocks" />
                     <p v-if="form.errors.body" class="mt-1 text-sm text-red-600">{{ form.errors.body }}</p>
                 </div>
             </div>
@@ -77,13 +103,50 @@ const submit = () => {
             <!-- SEO -->
             <div class="bg-white rounded-lg shadow p-6 space-y-4">
                 <h3 class="text-lg font-semibold text-gray-900">SEO</h3>
+                <SeoSerpPreview
+                    :title="form.meta_title || form.title"
+                    :description="form.meta_description"
+                    :url="`https://example.com/blog/${form.slug || 'post-slug'}`"
+                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Focus keyword</label>
+                    <input v-model="form.focus_keyword" type="text" placeholder="e.g. dental implants" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                </div>
+                <SeoContentChecklist
+                    :focus-keyword="form.focus_keyword"
+                    :title="form.title"
+                    :slug="form.slug"
+                    :meta-title="form.meta_title"
+                    :meta-description="form.meta_description"
+                    :body-html="form.body"
+                />
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Meta Title</label>
-                    <input v-model="form.meta_title" type="text" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                    <input v-model="form.meta_title" type="text" placeholder="Falls back to title template" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Meta Description</label>
-                    <textarea v-model="form.meta_description" rows="2" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                    <textarea v-model="form.meta_description" rows="2" placeholder="Aim for 50–160 characters" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Canonical URL</label>
+                    <input v-model="form.canonical_url" type="text" placeholder="https://example.com/blog/… (optional)" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">OG Title</label>
+                    <input v-model="form.og_title" type="text" placeholder="Optional social title" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">OG Description</label>
+                    <textarea v-model="form.og_description" rows="2" placeholder="Optional social description" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Social share image</label>
+                    <AppMediaPicker
+                        label="OG image"
+                        :model-value="urlAsMedia(form.og_image)"
+                        @update:model-value="(m) => setUrlFromMedia('og_image', m)"
+                    />
                 </div>
                 <label class="flex items-center gap-2">
                     <input v-model="form.noindex" type="checkbox" class="rounded border-gray-300 text-gray-900 focus:ring-gray-500" />
@@ -103,16 +166,14 @@ const submit = () => {
                         <option value="archived">Archived</option>
                     </select>
                 </div>
+                <PostCategoriesField v-model="form.categories" :categories="categories" />
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Category</label>
-                    <select v-model="form.category_id" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500">
-                        <option value="">None</option>
-                        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Featured Image URL</label>
-                    <input v-model="form.featured_image" type="text" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Featured image</label>
+                    <AppMediaPicker
+                        label="Featured image"
+                        :model-value="urlAsMedia(form.featured_image)"
+                        @update:model-value="(m) => setUrlFromMedia('featured_image', m)"
+                    />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
@@ -124,12 +185,14 @@ const submit = () => {
                     </div>
                 </div>
             </div>
-            <div class="flex justify-end space-x-3">
-                <Link href="/admin/posts" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900">Cancel</Link>
-                <button type="submit" :disabled="form.processing" class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 disabled:opacity-50">
-                    Create Post
-                </button>
-            </div>
         </div>
     </form>
+
+    <AppFloatingSave
+        :dirty="form.isDirty"
+        :processing="form.processing"
+        dirty-label="Create post"
+        label="Create post"
+        @save="submit"
+    />
 </template>

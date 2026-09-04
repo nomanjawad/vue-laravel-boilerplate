@@ -4,14 +4,15 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import type { SharedPageProps } from '@/types/inertia'
 import AppIcon from '@/Components/Atoms/AppIcon.vue'
+import { usePermissions } from '@/Composables/usePermissions'
 
 defineOptions({ layout: AdminLayout })
+
+const { can } = usePermissions()
 
 interface DashboardStats {
     users?: number
     posts?: number
-    products?: number
-    orders?: number
 }
 
 interface NotFoundLog {
@@ -36,8 +37,6 @@ const firstName = computed(() => (page.props.auth?.user?.name ?? '').split(' ')[
 const statCards = computed(() => [
     { label: 'Total users', value: props.stats.users ?? 0, icon: 'users', href: '/admin/users' },
     { label: 'Total posts', value: props.stats.posts ?? 0, icon: 'document-text', href: '/admin/posts' },
-    { label: 'Total products', value: props.stats.products ?? 0, icon: 'shopping-bag', href: '/admin/products' },
-    { label: 'Total orders', value: props.stats.orders ?? 0, icon: 'receipt-percent', href: '/admin/orders' },
 ])
 
 const quickActions = [
@@ -49,9 +48,9 @@ const quickActions = [
 
 const clearing = ref(false)
 
-function clearCache() {
+function clearPageCache() {
     clearing.value = true
-    router.post('/admin/cache/clear', {}, {
+    router.post('/admin/system/cache/pages', {}, {
         preserveScroll: true,
         onFinish: () => (clearing.value = false),
     })
@@ -70,13 +69,14 @@ function clearCache() {
                 </p>
             </div>
             <button
+                v-if="can('settings.update')"
                 type="button"
                 :disabled="clearing"
                 class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
-                @click="clearCache"
+                @click="clearPageCache"
             >
                 <AppIcon name="arrow-path-rounded-square" :size="16" />
-                {{ clearing ? 'Clearing…' : 'Clear cache' }}
+                {{ clearing ? 'Clearing…' : 'Clear page cache' }}
             </button>
         </div>
 

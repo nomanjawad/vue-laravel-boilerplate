@@ -20,5 +20,7 @@ class ModuleNavEntry extends Data
         // Sidebar section this entry renders under — see ModuleManager::navFor()
         // and AdminLayout.vue's fixed section order.
         public string $group,
+        // Optional unread/count pill; null when zero or unset.
+        public ?int $badge = null,
     ) {}
 }

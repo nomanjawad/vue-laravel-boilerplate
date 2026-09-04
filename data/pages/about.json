@@ -1,0 +1,88 @@
+{
+    "title": "About Us",
+    "status": "published",
+    "seo": {
+        "title": "About Us",
+        "description": "Learn more about our company.",
+        "og_image": "",
+        "noindex": false,
+        "json_ld": ""
+    },
+    "widgets": [
+        {
+            "id": "w_about_hero",
+            "type": "hero",
+            "visible": true,
+            "data": {
+                "title": "About Us",
+                "subtitle": "We are a team of passionate developers building modern web solutions.",
+                "image": "",
+                "cta_text": "",
+                "cta_url": "",
+                "secondary_cta_text": "",
+                "secondary_cta_url": ""
+            }
+        },
+        {
+            "id": "w_about_mission",
+            "type": "rich_text",
+            "visible": true,
+            "data": {
+                "title": "Our Mission",
+                "body": "<p>To deliver high-quality, scalable web solutions that help businesses grow and succeed in the digital world.</p>"
+            }
+        },
+        {
+            "id": "w_about_values",
+            "type": "feature_grid",
+            "visible": true,
+            "data": {
+                "title": "Our Values",
+                "items": [
+                    {
+                        "title": "Quality First",
+                        "description": "We never compromise on quality. Every line of code is crafted with care.",
+                        "icon": ""
+                    },
+                    {
+                        "title": "Innovation",
+                        "description": "We stay ahead of the curve by adopting the latest technologies and best practices.",
+                        "icon": ""
+                    },
+                    {
+                        "title": "Client Focus",
+                        "description": "Your success is our success. We work closely with you to understand and meet your needs.",
+                        "icon": ""
+                    },
+                    {
+                        "title": "Transparency",
+                        "description": "Open communication and honest feedback are at the core of how we work.",
+                        "icon": ""
+                    }
+                ]
+            }
+        },
+        {
+            "id": "w_about_story",
+            "type": "rich_text",
+            "visible": true,
+            "data": {
+                "title": "Our Story",
+                "body": "<p>Founded with a vision to make professional web development accessible to businesses of all sizes.</p><p>We specialize in building custom websites that are not only beautiful but also performant and easy to manage.</p><p>Our team brings together years of experience in web development, design, and digital strategy.</p>"
+            }
+        },
+        {
+            "id": "w_about_team",
+            "type": "team",
+            "visible": true,
+            "data": {
+                "title": "Our Team",
+                "collection": {
+                    "mode": "latest",
+                    "ids": [],
+                    "limit": 8
+                }
+            }
+        }
+    ]
+}

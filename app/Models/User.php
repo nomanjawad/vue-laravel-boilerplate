@@ -41,11 +41,6 @@ class User extends Authenticatable
         return $this->hasMany(Post::class);
     }
 
-    public function orders(): HasMany
-    {
-        return $this->hasMany(Order::class);
-    }
-
     public function media(): HasMany
     {
         return $this->hasMany(Media::class);

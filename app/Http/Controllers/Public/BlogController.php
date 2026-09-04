@@ -17,14 +17,44 @@ class BlogController extends Controller
     {
         return Inertia::render('Public/Blog/Index', [
             'posts' => Post::published()
-                ->with(['user:id,name', 'category:id,name,slug'])
+                ->with(['user:id,name', 'categories:id,name,slug'])
                 ->when($request->search, fn ($q, $s) => $q->where('title', 'like', "%{$s}%"))
-                ->when($request->category, fn ($q, $c) => $q->whereHas('category', fn ($cq) => $cq->where('slug', $c)))
+                ->when($request->category, fn ($q, $c) => $q->whereHas('categories', fn ($cq) => $cq->where('slug', $c)))
                 ->latest('published_at')
                 ->paginate(12)
                 ->withQueryString(),
-            'categories' => Category::withCount(['posts' => fn ($q) => $q->published()])->orderBy('name')->get(['id', 'name', 'slug']),
+            'categories' => Category::withCount(['posts' => fn ($q) => $q->published()])
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug']),
             'filters' => $request->only('search', 'category'),
+            'archive' => null,
+        ]);
+    }
+
+    public function category(Request $request, Category $category)
+    {
+        $ids = $category->selfAndDescendantIds();
+
+        return Inertia::render('Public/Blog/Index', [
+            'posts' => Post::published()
+                ->with(['user:id,name', 'categories:id,name,slug'])
+                ->when($request->search, fn ($q, $s) => $q->where('title', 'like', "%{$s}%"))
+                ->whereHas('categories', fn ($q) => $q->whereIn('categories.id', $ids))
+                ->latest('published_at')
+                ->paginate(12)
+                ->withQueryString(),
+            'categories' => Category::withCount(['posts' => fn ($q) => $q->published()])
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug']),
+            'filters' => [
+                'search' => $request->search,
+                'category' => $category->slug,
+            ],
+            'archive' => [
+                'name' => $category->name,
+                'description' => $category->description,
+                'slug' => $category->slug,
+            ],
         ]);
     }
 
@@ -36,20 +66,31 @@ class BlogController extends Controller
             abort(404);
         }
 
+        $post->load(['user:id,name', 'categories:id,name,slug', 'tags:id,name,slug']);
+        $categoryIds = $post->categories->pluck('id');
+
         return Inertia::render('Public/Blog/Show', [
-            'post' => $post->load(['user:id,name', 'category:id,name,slug', 'tags:id,name,slug']),
+            'post' => $post,
             'isPreview' => $post->status !== 'published',
             'jsonLd' => [
-                $this->seo->article($post),
+                $this->seo->blogPosting($post),
                 $this->seo->breadcrumbs([
                     ['name' => 'Home', 'url' => '/'],
                     ['name' => 'Blog', 'url' => '/blog'],
                     ['name' => $post->title, 'url' => "/blog/{$post->slug}"],
                 ]),
             ],
+            'breadcrumbs' => [
+                ['name' => 'Home', 'url' => '/'],
+                ['name' => 'Blog', 'url' => '/blog'],
+                ['name' => $post->title, 'url' => "/blog/{$post->slug}"],
+            ],
             'relatedPosts' => Post::published()
                 ->where('id', '!=', $post->id)
-                ->when($post->category_id, fn ($q) => $q->where('category_id', $post->category_id))
+                ->when(
+                    $categoryIds->isNotEmpty(),
+                    fn ($q) => $q->whereHas('categories', fn ($cq) => $cq->whereIn('categories.id', $categoryIds))
+                )
                 ->latest('published_at')
                 ->take(3)
                 ->get(['id', 'title', 'slug', 'excerpt', 'featured_image', 'published_at']),

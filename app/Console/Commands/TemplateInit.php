@@ -33,7 +33,6 @@ class TemplateInit extends Command
 
     private const FEATURES = [
         'FEATURE_BLOG' => 'Blog (posts, categories, tags)',
-        'FEATURE_SHOP' => 'Shop (products, cart, checkout)',
         'FEATURE_TEAMS' => 'Team members',
         'FEATURE_CONTACT_FORM' => 'Contact form',
         'FEATURE_CAREERS' => 'Careers / job listings',
@@ -77,7 +76,7 @@ class TemplateInit extends Command
         Artisan::call('migrate', ['--force' => true], $this->output);
         Artisan::call('db:seed', ['--force' => true], $this->output);
 
-        if ($this->option('demo') || confirm('Seed realistic demo content (posts, products, team)?', default: true)) {
+        if ($this->option('demo') || confirm('Seed realistic demo content (posts, team)?', default: true)) {
             Artisan::call('db:seed', ['--class' => 'DemoSeeder', '--force' => true], $this->output);
         }
 

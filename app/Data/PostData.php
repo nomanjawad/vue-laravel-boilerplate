@@ -10,6 +10,7 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 class PostData extends Data
 {
     /**
+     * @param  array<int, CategorySummaryData>  $categories
      * @param  array<int, TagSummaryData>  $tags
      */
     public function __construct(
@@ -18,14 +19,18 @@ class PostData extends Data
         public string $slug,
         public ?string $excerpt,
         public string $body,
-        public ?int $category_id,
         public string $status,
         public ?string $featured_image,
         public ?string $meta_title,
         public ?string $meta_description,
+        public ?string $og_image,
+        public ?string $canonical_url,
+        public ?string $og_title,
+        public ?string $og_description,
+        public ?string $focus_keyword,
         public bool $noindex,
-        public ?CategorySummaryData $category = null,
         public ?UserSummaryData $user = null,
+        public array $categories = [],
         public array $tags = [],
     ) {}
 
@@ -37,18 +42,22 @@ class PostData extends Data
             slug: $post->slug,
             excerpt: $post->excerpt,
             body: $post->body,
-            category_id: $post->category_id,
             status: $post->status,
             featured_image: $post->featured_image,
             meta_title: $post->meta_title,
             meta_description: $post->meta_description,
+            og_image: $post->og_image,
+            canonical_url: $post->canonical_url,
+            og_title: $post->og_title,
+            og_description: $post->og_description,
+            focus_keyword: $post->focus_keyword,
             noindex: $post->noindex,
-            category: $post->relationLoaded('category') && $post->category
-                ? CategorySummaryData::fromModel($post->category)
-                : null,
             user: $post->relationLoaded('user') && $post->user
                 ? UserSummaryData::fromModel($post->user)
                 : null,
+            categories: $post->relationLoaded('categories')
+                ? $post->categories->map(fn ($cat) => CategorySummaryData::fromModel($cat))->values()->all()
+                : [],
             tags: $post->relationLoaded('tags')
                 ? $post->tags->map(fn ($tag) => TagSummaryData::fromModel($tag))->values()->all()
                 : [],

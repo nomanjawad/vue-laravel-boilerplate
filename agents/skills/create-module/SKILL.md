@@ -10,7 +10,7 @@ Every feature is a module. Two kinds:
 - **Physical** — self-contained folder in `app/Modules/{Name}/` (Testimonials,
   Faqs, Events). This is the pattern for ALL new features.
 - **Virtual** — declared in `config/modules.php`, using legacy `routes/*.php`
-  files and core `resources/js/Pages` (blog, shop, users, settings, media, …).
+  files and core `resources/js/Pages` (blog, users, settings, media, …).
   Don't create new virtual modules; they exist for v2 compatibility.
 
 The kernel is `App\Modules\Core\ModuleManager` (singleton). Providers are
@@ -50,7 +50,9 @@ return [
     'description'  => '…',              // shown on /admin/modules
     'version'      => '1.0.0',
     'dependencies' => ['media'],        // must be enabled first; blocks disable of deps
-    'nav_group'    => 'content',        // sidebar section: content | commerce | system
+    'nav_group'    => 'content',        // content | collections | inbox | appearance | system
+    // Optional: 'badge' => \App\Support\NavBadges\UnseenSubscribers::class
+    // (class-string invokable; must stay serializable — no closures)
     'permissions'  => ['testimonials' => ['view','create','update','delete']],
     'nav'          => [[
         'label' => 'Testimonials',
@@ -115,8 +117,10 @@ core-module resources. Uninstall drops the module's permission rows.
 ## Gotchas
 
 - MySQL only, and unique-indexed strings must be `varchar(191)`.
-- Sidebar section order is fixed (Content → Commerce → System) in
-  `AdminLayout.vue`; unknown `nav_group` falls back to content.
+- Sidebar section order is fixed in `AdminLayout.vue`: Content → Collections
+  → Inbox → Appearance → System. Unknown `nav_group` falls back to content.
+  Optional `badge` key = class-string invokable (e.g. unread counts) — must
+  stay serializable (no closures) so `optimize` passes.
 - Nav `icon` names must exist in `resources/js/Components/Atoms/AppIcon.vue`
   (Heroicons-style names like `cog-6-tooth`, `photo`; unknown names render the
   fallback cube). Add the SVG path there for a new icon.

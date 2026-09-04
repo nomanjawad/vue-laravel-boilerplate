@@ -13,6 +13,7 @@ interface MenuItem {
     title: string
     href: string
     icon: string
+    badge?: number | null
 }
 
 interface MenuSection {
@@ -27,7 +28,9 @@ interface MenuSection {
 // from the sidebar.
 const SECTION_ORDER: { key: string; label: string }[] = [
     { key: 'content', label: 'Content' },
-    { key: 'commerce', label: 'Commerce' },
+    { key: 'collections', label: 'Collections' },
+    { key: 'inbox', label: 'Inbox' },
+    { key: 'appearance', label: 'Appearance' },
     { key: 'system', label: 'System' },
 ]
 
@@ -62,14 +65,25 @@ const userRole = computed(() => {
 const moduleNav = computed<App.Data.ModuleNavEntry[]>(() => page.props.modules?.nav ?? [])
 
 const menuSections = computed<MenuSection[]>(() => {
-    const buckets: Record<string, MenuItem[]> = { content: [], commerce: [], system: [] }
+    const buckets: Record<string, MenuItem[]> = {
+        content: [],
+        collections: [],
+        inbox: [],
+        appearance: [],
+        system: [],
+    }
 
     for (const entry of moduleNav.value) {
         // Route names are resolved to hrefs server-side (ModuleManager::navFor);
         // an unresolvable entry arrives with a null href and is skipped.
         if (!entry.href) continue
         const group = buckets[entry.group] ? entry.group : 'content'
-        buckets[group]!.push({ title: entry.label, href: entry.href, icon: entry.icon })
+        buckets[group]!.push({
+            title: entry.label,
+            href: entry.href,
+            icon: entry.icon,
+            badge: entry.badge ?? null,
+        })
     }
 
     if (user.value?.is_super_admin || user.value?.roles?.includes('admin')) {
@@ -191,7 +205,13 @@ useShortcuts({
                                 :size="18"
                                 :class="isActive(item.href) ? 'text-brand-300' : 'text-gray-500 group-hover:text-gray-300'"
                             />
-                            <span class="truncate">{{ item.title }}</span>
+                            <span class="min-w-0 flex-1 truncate">{{ item.title }}</span>
+                            <span
+                                v-if="item.badge"
+                                class="ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
+                            >
+                                {{ item.badge > 99 ? '99+' : item.badge }}
+                            </span>
                         </Link>
                     </div>
                 </div>

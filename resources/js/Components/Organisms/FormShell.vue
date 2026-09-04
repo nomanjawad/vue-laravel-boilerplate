@@ -23,12 +23,15 @@ interface Props {
     method?: HttpMethod
     submitLabel?: string
     cancelHref?: string | null
+    /** When true, omit the bottom Cancel/Save bar (use AppFloatingSave instead). */
+    hideActions?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
     method: 'post',
     submitLabel: 'Save',
     cancelHref: null,
+    hideActions: false,
 })
 
 provide('form', props.form)
@@ -53,7 +56,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', guard))
     <form class="space-y-6" @submit.prevent="submit">
         <slot />
 
-        <div class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4">
+        <div v-if="!hideActions" class="flex items-center justify-end gap-2 border-t border-gray-100 pt-4">
             <Link
                 v-if="cancelHref"
                 :href="cancelHref"

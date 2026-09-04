@@ -1,0 +1,39 @@
+{
+    "title": "Contact Us",
+    "status": "published",
+    "seo": {
+        "title": "Contact Us",
+        "description": "Get in touch with us.",
+        "og_image": "",
+        "noindex": false,
+        "json_ld": ""
+    },
+    "widgets": [
+        {
+            "id": "w_contact_hero",
+            "type": "hero",
+            "visible": true,
+            "data": {
+                "title": "Contact Us",
+                "subtitle": "We'd love to hear from you. Get in touch and let's start a conversation.",
+                "image": "",
+                "cta_text": "",
+                "cta_url": "",
+                "secondary_cta_text": "",
+                "secondary_cta_url": ""
+            }
+        },
+        {
+            "id": "w_contact_form",
+            "type": "contact_form",
+            "visible": true,
+            "data": {
+                "heading": "Send us a message",
+                "info_heading": "Get in touch",
+                "office_hours": "Monday - Friday: 9:00 AM - 6:00 PM",
+                "map_embed": "",
+                "show_contact_info": true
+            }
+        }
+    ]
+}

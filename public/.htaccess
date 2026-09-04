@@ -58,7 +58,13 @@
     ExpiresByType font/woff2 "access plus 1 year"
 </IfModule>
 
-# Gzip compression
+# Compression — Gzip/Deflate (mod_deflate is near-universal on shared hosts).
+# See agents/skills/launch-readiness/SKILL.md § Performance.
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml font/woff font/woff2
+</IfModule>
+
+# Brotli when the host has mod_brotli (optional; ignored when absent).
+<IfModule mod_brotli.c>
+    AddOutputFilterByType BROTLI_COMPRESS text/html text/css application/javascript application/json image/svg+xml font/woff font/woff2
 </IfModule>

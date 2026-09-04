@@ -4,10 +4,12 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CacheController;
 use App\Http\Controllers\Admin\CustomCodeController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\EnquiryController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\Admin\NotificationsController;
 use App\Http\Controllers\Admin\PageContentController;
+use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\RedirectController;
 use App\Http\Controllers\Admin\SearchController;
 use App\Http\Controllers\Admin\SettingController;
@@ -35,10 +37,14 @@ Route::get('audit-log', [AuditLogController::class, 'index'])
     ->middleware('can:audit_log.view')
     ->name('audit-log.index');
 
-// Cache controls — admins only.
-Route::post('cache/clear', [CacheController::class, 'clear'])
-    ->middleware('can:settings.update')
-    ->name('cache.clear');
+// Cache panel — per-layer clears (never Cache::flush). Dashboard shortcut
+// posts to system/cache/pages; the full UI lives at GET system/cache.
+Route::middleware('can:settings.update')->group(function () {
+    Route::get('system/cache', [CacheController::class, 'index'])->name('cache.index');
+    Route::post('system/cache/{layer}', [CacheController::class, 'clear'])
+        ->where('layer', 'pages|sitemap|settings|modules|redirects|views|all')
+        ->name('cache.clear');
+});
 
 // Module management — gated by a dedicated permission so non-admin roles
 // (e.g. editor) can't accidentally toggle features off.
@@ -86,22 +92,40 @@ Route::middleware('can:menus.create')->group(function () {
     Route::post('menus', [MenuController::class, 'store'])->name('menus.store');
 });
 Route::middleware('can:menus.update')->group(function () {
+    // reorder before {menu} so "reorder" is not captured as an id.
+    Route::put('menus/reorder', [MenuController::class, 'reorder'])->name('menus.reorder');
     Route::put('menus/{menu}', [MenuController::class, 'update'])->name('menus.update');
 });
 Route::middleware('can:menus.delete')->group(function () {
     Route::delete('menus/{menu}', [MenuController::class, 'destroy'])->name('menus.destroy');
 });
 
-// Page Content (data/*.json editor — replaces the old Page SEO/page_metas module).
-// Pages and Header/Footer are separate sidebar entries, not tabs on one screen.
+// Pages (data/pages/{slug}.json) + Header/Footer layout (data/header.json, footer.json).
 Route::middleware('can:page_content.view')->group(function () {
-    Route::get('page-content', [PageContentController::class, 'index'])->name('page-content.index');
+    Route::get('pages', [PageController::class, 'index'])->name('pages.index');
     Route::get('page-content/layout', [PageContentController::class, 'layout'])->name('page-content.layout');
 });
+Route::middleware('can:page_content.create')->group(function () {
+    Route::get('pages/create', [PageController::class, 'create'])->name('pages.create');
+    Route::post('pages', [PageController::class, 'store'])->name('pages.store');
+});
+Route::middleware('can:page_content.view')->group(function () {
+    Route::get('pages/{slug}/edit', [PageController::class, 'edit'])
+        ->where('slug', '[a-z0-9-]+')
+        ->name('pages.edit');
+});
 Route::middleware('can:page_content.update')->group(function () {
+    Route::put('pages/{slug}', [PageController::class, 'update'])
+        ->where('slug', '[a-z0-9-]+')
+        ->name('pages.update');
     Route::put('page-content/{file}', [PageContentController::class, 'update'])
-        ->where('file', 'home|about|contact|header|footer')
+        ->where('file', 'header|footer')
         ->name('page-content.update');
+});
+Route::middleware('can:page_content.delete')->group(function () {
+    Route::delete('pages/{slug}', [PageController::class, 'destroy'])
+        ->where('slug', '[a-z0-9-]+')
+        ->name('pages.destroy');
 });
 
 // Redirects.
@@ -136,6 +160,19 @@ Route::middleware('can:custom_code.delete')->group(function () {
     Route::delete('custom-code/{customCode}', [CustomCodeController::class, 'destroy'])->name('custom-code.destroy');
 });
 
+// Enquiries (contact-form leads).
+Route::middleware('can:enquiries.view')->group(function () {
+    Route::get('enquiries', [EnquiryController::class, 'index'])->name('enquiries.index');
+});
+Route::middleware('can:enquiries.update')->group(function () {
+    Route::post('enquiries/{enquiry}/read', [EnquiryController::class, 'markRead'])->name('enquiries.read');
+    Route::post('enquiries/{enquiry}/unread', [EnquiryController::class, 'markUnread'])->name('enquiries.unread');
+    Route::post('enquiries/bulk-read', [EnquiryController::class, 'bulkMarkRead'])->name('enquiries.bulk-read');
+});
+Route::middleware('can:enquiries.delete')->group(function () {
+    Route::delete('enquiries/{enquiry}', [EnquiryController::class, 'destroy'])->name('enquiries.destroy');
+});
+
 // Subscribers.
 Route::middleware('can:subscribers.view')->group(function () {
     Route::get('subscribers', [SubscriberController::class, 'index'])->name('subscribers.index');
@@ -157,4 +194,5 @@ Route::middleware('can:media.update')->group(function () {
 });
 Route::middleware('can:media.delete')->group(function () {
     Route::delete('media/{media}', [MediaController::class, 'destroy'])->name('media.destroy');
+    Route::post('media/bulk-destroy', [MediaController::class, 'bulkDestroy'])->name('media.bulk-destroy');
 });

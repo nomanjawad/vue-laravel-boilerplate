@@ -1,26 +1,72 @@
 <script setup lang="ts">
 import { usePage, Link, Head } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { SharedPageProps } from '@/types/inertia'
 import CookieConsent from '@/Components/Shared/CookieConsent.vue'
 import NewsletterSignup from '@/Components/Shared/NewsletterSignup.vue'
 import FlashToaster from '@/Components/Shared/FlashToaster.vue'
 
 const page = usePage<SharedPageProps>()
+const navOpen = ref(false)
 
 const headerMenus = computed(() => page.props.menus?.header || [])
 const footerMenus = computed(() => page.props.menus?.footer || [])
 const settings = computed<Partial<App.Data.SettingsData>>(() => page.props.settings || {})
+const layout = computed(() => page.props.layout)
 const appName = computed(() => settings.value.site_name ?? '')
 
-const seo = computed<Partial<App.Data.SeoData>>(() => page.props.seo || {})
-const ogTitle = computed(() => seo.value.title || seo.value.site_name || appName.value)
+function toImageUrl(raw: string | null | undefined): string | null {
+    if (!raw || typeof raw !== 'string') return null
+    if (/^(https?:)?\/\//.test(raw) || raw.startsWith('/')) return raw
+    if (raw.startsWith('uploads/')) return `/${raw}`
+    return `/storage/${raw}`
+}
 
-// JSON-LD structured data: Organization on every page (shared prop) plus any
-// page-specific schemas passed by controllers as a `jsonLd` prop.
+// site_logo wins; fall back to header.json logo.
+const siteLogo = computed(() => {
+    return toImageUrl(settings.value.site_logo)
+        || toImageUrl(layout.value?.header?.logo)
+})
+
+const logoAlt = computed(() => layout.value?.header?.logo_alt || appName.value || 'Logo')
+
+const showCta = computed(() => Boolean(layout.value?.header?.show_cta_button))
+const ctaText = computed(() => layout.value?.header?.cta_text || 'Get Quote')
+const ctaUrl = computed(() => layout.value?.header?.cta_url || '/contact')
+
+const footerColumns = computed(() => layout.value?.footer?.columns ?? [])
+const showSocialIcons = computed(() => layout.value?.footer?.show_social_icons !== false)
+
+const copyrightText = computed(() => {
+    const template = layout.value?.footer?.copyright
+        || '© {year} {site_name}. All rights reserved.'
+    return template
+        .replaceAll('{year}', String(new Date().getFullYear()))
+        .replaceAll('{site_name}', appName.value || '')
+})
+
+const socialLinks = computed(() => {
+    const keys = ['facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'whatsapp'] as const
+    const out: { key: (typeof keys)[number]; href: string; label: string }[] = []
+    for (const key of keys) {
+        const href = settings.value[key]
+        if (!href || typeof href !== 'string') continue
+        out.push({ key, href, label: key.charAt(0).toUpperCase() + key.slice(1) })
+    }
+    return out
+})
+
+const hasSocialColumn = computed(() => footerColumns.value.some((c) => c.type === 'social'))
+
+const seo = computed<Partial<App.Data.SeoData>>(() => page.props.seo || {})
+const ogTitle = computed(() => seo.value.og_title || seo.value.title || seo.value.site_name || appName.value)
+const ogDescription = computed(() => seo.value.og_description || seo.value.description || '')
+const twitterCard = computed(() => seo.value.twitter_card || (seo.value.og_image ? 'summary_large_image' : 'summary'))
+
 const jsonLdBlocks = computed<unknown[]>(() => {
     const blocks: unknown[] = []
     if (page.props.organizationJsonLd) blocks.push(page.props.organizationJsonLd)
+    if (page.props.localBusinessJsonLd) blocks.push(page.props.localBusinessJsonLd)
     const pageSchemas = page.props.jsonLd
     if (Array.isArray(pageSchemas)) blocks.push(...pageSchemas)
     else if (pageSchemas) blocks.push(pageSchemas)
@@ -29,27 +75,25 @@ const jsonLdBlocks = computed<unknown[]>(() => {
 </script>
 
 <template>
-    <Head>
+    <Head :title="seo.title || seo.site_name || appName || undefined">
         <meta v-if="seo.description" head-key="description" name="description" :content="seo.description" />
         <link v-if="seo.canonical" head-key="canonical" rel="canonical" :href="seo.canonical" />
-        <!-- Page Content panel's per-page "No-index" toggle. -->
         <meta v-if="seo.noindex" head-key="robots" name="robots" content="noindex, nofollow" />
 
-        <!-- Open Graph -->
-        <meta head-key="og:type" property="og:type" content="website" />
+        <meta head-key="og:type" property="og:type" :content="seo.og_type || 'website'" />
         <meta head-key="og:site_name" property="og:site_name" :content="seo.site_name || appName" />
         <meta head-key="og:title" property="og:title" :content="ogTitle" />
-        <meta v-if="seo.description" head-key="og:description" property="og:description" :content="seo.description" />
+        <meta v-if="ogDescription" head-key="og:description" property="og:description" :content="ogDescription" />
         <meta v-if="seo.canonical" head-key="og:url" property="og:url" :content="seo.canonical" />
         <meta v-if="seo.og_image" head-key="og:image" property="og:image" :content="seo.og_image" />
+        <meta v-if="seo.article_published_time" head-key="article:published_time" property="article:published_time" :content="seo.article_published_time" />
+        <meta v-if="seo.article_modified_time" head-key="article:modified_time" property="article:modified_time" :content="seo.article_modified_time" />
 
-        <!-- Twitter -->
-        <meta head-key="twitter:card" name="twitter:card" :content="seo.og_image ? 'summary_large_image' : 'summary'" />
+        <meta head-key="twitter:card" name="twitter:card" :content="twitterCard" />
         <meta head-key="twitter:title" name="twitter:title" :content="ogTitle" />
-        <meta v-if="seo.description" head-key="twitter:description" name="twitter:description" :content="seo.description" />
+        <meta v-if="ogDescription" head-key="twitter:description" name="twitter:description" :content="ogDescription" />
         <meta v-if="seo.og_image" head-key="twitter:image" name="twitter:image" :content="seo.og_image" />
 
-        <!-- JSON-LD structured data -->
         <component
             :is="'script'"
             v-for="(block, i) in jsonLdBlocks"
@@ -61,10 +105,6 @@ const jsonLdBlocks = computed<unknown[]>(() => {
     </Head>
 
     <div class="min-h-screen flex flex-col bg-white">
-        <!-- Page Content panel's per-page JSON-LD schema field: written verbatim
-             (not JSON.stringify'd — it's already raw JSON text from the admin
-             textarea) as the first thing in the body, not hoisted to <head>
-             like jsonLdBlocks above. -->
         <component
             v-if="seo.json_ld"
             :is="'script'"
@@ -72,24 +112,68 @@ const jsonLdBlocks = computed<unknown[]>(() => {
             v-text="seo.json_ld"
         />
 
-        <!-- Header -->
         <header class="bg-white border-b border-gray-200">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">
-                    <Link href="/" class="text-xl font-bold text-gray-900">
-                        {{ appName }}
+                <div class="flex justify-between items-center h-16 gap-4">
+                    <Link href="/" class="flex items-center gap-2 text-xl font-bold text-gray-900 shrink-0">
+                        <img
+                            v-if="siteLogo"
+                            :src="siteLogo"
+                            :alt="logoAlt"
+                            class="h-8 w-auto"
+                            loading="eager"
+                            decoding="async"
+                        >
+                        <span v-else>{{ appName }}</span>
                     </Link>
-                    <nav class="hidden md:flex items-center space-x-8">
-                        <Link
+
+                    <nav class="hidden md:flex items-center gap-6 lg:gap-8">
+                        <div
                             v-for="item in headerMenus"
                             :key="item.id"
-                            :href="item.url"
-                            class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                            class="relative group"
                         >
-                            {{ item.title }}
-                        </Link>
+                            <Link
+                                :href="item.url"
+                                class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors inline-flex items-center gap-1"
+                            >
+                                {{ item.title }}
+                                <svg
+                                    v-if="item.children?.length"
+                                    class="h-3.5 w-3.5 text-gray-400"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                    aria-hidden="true"
+                                >
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            </Link>
+                            <div
+                                v-if="item.children?.length"
+                                class="invisible absolute left-0 top-full z-20 min-w-[12rem] pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+                            >
+                                <ul class="rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+                                    <li v-for="child in item.children" :key="child.id">
+                                        <Link
+                                            :href="child.url"
+                                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                                        >
+                                            {{ child.title }}
+                                        </Link>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </nav>
-                    <div class="flex items-center space-x-4">
+
+                    <div class="flex items-center gap-3 shrink-0">
+                        <Link
+                            v-if="showCta"
+                            :href="ctaUrl"
+                            class="hidden sm:inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
+                        >
+                            {{ ctaText }}
+                        </Link>
                         <template v-if="page.props.auth?.user">
                             <Link href="/profile" class="text-sm text-gray-700 hover:text-gray-900">
                                 {{ page.props.auth.user.name }}
@@ -103,57 +187,125 @@ const jsonLdBlocks = computed<unknown[]>(() => {
                                 Logout
                             </Link>
                         </template>
-                        <template v-else>
-                            <Link href="/login" class="text-sm text-gray-700 hover:text-gray-900">
-                                Login
-                            </Link>
-                            <Link href="/register" class="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors">
-                                Register
-                            </Link>
-                        </template>
+                        <button
+                            type="button"
+                            class="md:hidden inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100"
+                            :aria-expanded="navOpen"
+                            aria-label="Toggle menu"
+                            @click="navOpen = !navOpen"
+                        >
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path v-if="!navOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
+                </div>
+
+                <div v-if="navOpen" class="md:hidden border-t border-gray-100 py-3 space-y-1">
+                    <template v-for="item in headerMenus" :key="item.id">
+                        <Link
+                            :href="item.url"
+                            class="block px-2 py-2 text-sm font-medium text-gray-800"
+                            @click="navOpen = false"
+                        >
+                            {{ item.title }}
+                        </Link>
+                        <Link
+                            v-for="child in item.children || []"
+                            :key="child.id"
+                            :href="child.url"
+                            class="block px-5 py-1.5 text-sm text-gray-600"
+                            @click="navOpen = false"
+                        >
+                            {{ child.title }}
+                        </Link>
+                    </template>
+                    <Link
+                        v-if="showCta"
+                        :href="ctaUrl"
+                        class="mt-2 inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md"
+                        @click="navOpen = false"
+                    >
+                        {{ ctaText }}
+                    </Link>
                 </div>
             </div>
         </header>
 
-        <!-- Toast notifications (replaces hand-coded flash divs) -->
         <FlashToaster />
 
-        <!-- Main Content -->
         <main class="flex-1">
             <slot />
         </main>
 
-        <!-- Footer -->
         <footer class="bg-gray-900 text-white">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                     <div>
                         <h3 class="text-lg font-semibold mb-4">{{ appName }}</h3>
-                        <p class="text-gray-400 text-sm">{{ settings.site_description || 'Building amazing websites.' }}</p>
+                        <p class="text-gray-400 text-sm">{{ settings.site_description || '' }}</p>
                     </div>
-                    <div>
-                        <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
-                        <ul class="space-y-2">
-                            <li v-for="item in footerMenus" :key="item.id">
-                                <Link :href="item.url" class="text-gray-400 hover:text-white text-sm transition-colors">
-                                    {{ item.title }}
-                                </Link>
-                            </li>
+
+                    <div v-for="(col, i) in footerColumns" :key="i">
+                        <h3 class="text-lg font-semibold mb-4">{{ col.title }}</h3>
+
+                        <ul v-if="col.type === 'menu'" class="space-y-2">
+                            <template v-for="item in footerMenus" :key="item.id">
+                                <li>
+                                    <Link :href="item.url" class="text-gray-400 hover:text-white text-sm transition-colors">
+                                        {{ item.title }}
+                                    </Link>
+                                </li>
+                                <li v-for="child in item.children || []" :key="child.id" class="pl-3">
+                                    <Link :href="child.url" class="text-gray-500 hover:text-white text-sm transition-colors">
+                                        {{ child.title }}
+                                    </Link>
+                                </li>
+                            </template>
                         </ul>
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-semibold mb-4">Contact</h3>
-                        <ul class="space-y-2 text-gray-400 text-sm">
+
+                        <ul v-else-if="col.type === 'contact_info'" class="space-y-2 text-gray-400 text-sm">
                             <li v-if="settings.contact_email">{{ settings.contact_email }}</li>
                             <li v-if="settings.contact_phone">{{ settings.contact_phone }}</li>
                             <li v-if="settings.address">{{ settings.address }}</li>
                         </ul>
+
+                        <ul v-else-if="col.type === 'social' && showSocialIcons" class="flex flex-wrap gap-3">
+                            <li v-for="link in socialLinks" :key="link.key">
+                                <a
+                                    :href="link.href"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="text-gray-400 hover:text-white text-sm transition-colors"
+                                >
+                                    {{ link.label }}
+                                </a>
+                            </li>
+                        </ul>
                     </div>
+
                     <NewsletterSignup />
                 </div>
+
+                <div
+                    v-if="showSocialIcons && !hasSocialColumn && socialLinks.length"
+                    class="mt-8 flex flex-wrap justify-center gap-4"
+                >
+                    <a
+                        v-for="link in socialLinks"
+                        :key="link.key"
+                        :href="link.href"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-gray-400 hover:text-white text-sm"
+                    >
+                        {{ link.label }}
+                    </a>
+                </div>
+
                 <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-                    &copy; {{ new Date().getFullYear() }} {{ appName }}. All rights reserved.
+                    {{ copyrightText }}
                 </div>
             </div>
         </footer>

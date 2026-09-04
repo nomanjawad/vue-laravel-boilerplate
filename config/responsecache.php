@@ -17,7 +17,9 @@ return [
          * to store requests. This can be the name of any store
          * that is configured in your app's cache.php config
          */
-        'store' => env('RESPONSE_CACHE_DRIVER', 'file'),
+        // Default database — file store creates unbounded inodes under
+        // storage/framework/cache/data (shared-hosting limits). See Phase 9.
+        'store' => env('RESPONSE_CACHE_DRIVER', 'database'),
 
         /*
          * The default number of seconds responses will be cached

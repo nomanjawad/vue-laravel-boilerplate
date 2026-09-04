@@ -11,13 +11,17 @@ Virtual module `blog` (config/modules.php), depends on `media`, feature flag
 
 ## Data model
 
-- `Post` (`app/Models/Post.php`): `user_id, category_id, title, slug (unique),
-  excerpt, body (longText), featured_image, status (draft|published|archived),
-  published_at, meta_title, meta_description (500), og_image, noindex (bool)`.
-  Relations: user, category, tags (belongsToMany, pivot `post_tag`).
+- `Post` (`app/Models/Post.php`): `user_id, title, slug (unique), excerpt,
+  body (longText), featured_image, status (draft|published|archived),
+  published_at, meta_title, meta_description (500), og_image, canonical_url,
+  og_title, og_description, focus_keyword, noindex (bool)`.
+  Relations: user, **categories** (belongsToMany, pivot `category_post`),
+  tags (belongsToMany, pivot `post_tag`).
   `scopePublished()` = status published AND `published_at <= now()`.
 - `Category`: name, slug, description, `parent_id` (self-referencing),
-  sort_order. `Tag`: name, slug only.
+  sort_order. Posts are many-to-many. Reserved slug `uncategorized` is the
+  WP-style default (auto-attached when a post has zero categories; undeletable;
+  children re-parent one level up on delete). `Tag`: name, slug only.
 - Route binding is per-route: `{post:slug}` public, `{post:id}` admin — never
   add `getRouteKeyName()`.
 
@@ -32,32 +36,42 @@ Virtual module `blog` (config/modules.php), depends on `media`, feature flag
   `URL::temporarySignedRoute('blog.show', …)` link; `Public\BlogController::show`
   404s non-published posts unless the signature is valid.
 - **Slug changes auto-create 301s**: updating a published post's slug calls
-  `SlugService::redirectOldSlug('blog', $old, $new)` (same for products/careers).
+  `SlugService::redirectOldSlug('blog', $old, $new)` (same for careers).
   Empty slug on update keeps the old one; on create it's generated from title.
-- Categories: `update` blocks choosing itself OR any descendant as parent
-  (cycle guard — walks the tree). Tags are inline CRUD on the index (no
-  create/edit pages, name-only, slug always regenerated).
+- **Categories**: single WP-style Index (add form left + hierarchy table right,
+  edit via slide-over). No Create/Edit GET pages. Post editor uses a hierarchical
+  checkbox tree (`PostCategoriesField`) + inline "+ Add New Category" that posts
+  to `admin.categories.store` and partial-reloads `categories`. `update` blocks
+  choosing itself OR any descendant as parent (cycle guard).
+- Tags are inline CRUD on the index (no create/edit pages, name-only, slug
+  always regenerated).
 - Boolean switches: controllers re-read with `$request->boolean('noindex')`
   because an off switch may omit the key entirely.
 
 ## Public rendering
 
 - `GET /blog` (`blog.index`) — published posts, `?search=` (title LIKE),
-  `?category={slug}`, 12/page; passes categories with published counts.
+  12/page; passes categories with published counts.
+- `GET /blog/category/{category:slug}` (`blog.category`) — archive of posts in
+  that category **including descendants**; reuses `Public/Blog/Index` with an
+  `archive` header; SEO title/description from the category.
 - `GET /blog/{post:slug}` (`blog.show`) — draft-gated (see above), loads
-  user/category/tags, builds `jsonLd` via `SeoService::article()` +
-  breadcrumbs, and up to 3 related posts (same category, excluding self).
-- Both routes use `responsecache`; saving a Post busts it automatically via
-  the `ClearsResponseCache` trait.
-- Per-post `noindex` drives the robots meta on the show page; the site-wide
-  `site_noindex` setting composes with it (OR, never overridden).
+  user/categories/tags, builds `jsonLd` via `SeoService::blogPosting()` +
+  breadcrumbs (+ `PublicBreadcrumbs` UI), and up to 3 related posts (sharing
+  any category, excluding self). Category chips link to `/blog/category/{slug}`.
+  Document title / canonical / OG / noindex come from shared `seo`
+  (`resolveSeo()`), not a page-local `<Head>`.
+- Routes use `responsecache`; saving a Post/Category busts it via
+  `ClearsResponseCache`. Sitemap emits category archive URLs + featured
+  images; noindex posts are excluded.
+- Per-post SEO fields: `meta_title`, `meta_description`, `og_image`,
+  `canonical_url`, `og_title`, `og_description`, `focus_keyword`, `noindex`.
+  Editors show SERP preview + content checklist (see `seo` skill).
+- Per-post `noindex` composes with site-wide `site_noindex` / `SEO_INDEXABLE`
+  (OR, never overridden).
 
 ## Known quirks (don't "fix" silently — flag to the user)
 
-- `@tiptap/*` packages are installed but **not wired up anywhere** — the post
-  body is a plain `AppTextarea`. If a task says "the rich text editor", it
-  doesn't exist yet.
-- `featured_image` is a plain URL text input, not `AppMediaPicker`.
-- The Post model has an `og_image` column the admin form doesn't expose.
-- Posts Create/Edit use the older raw-`<form>` style rather than
-  FormShell/AppFormField (see admin-crud skill for the preferred pattern).
+- Post body uses `AppBlockEditor` (TipTap). Featured/OG images use `AppMediaPicker`.
+- Saving a post with zero categories auto-attaches Uncategorized (server-side).
+- Title template (`seo_title_template`) applies only when `meta_title` is empty.

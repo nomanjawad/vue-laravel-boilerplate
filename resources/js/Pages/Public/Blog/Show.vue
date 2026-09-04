@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
-import { Head, Link } from '@inertiajs/vue3'
+import PublicBreadcrumbs from '@/Components/Molecules/PublicBreadcrumbs.vue'
+import { Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
@@ -23,10 +24,8 @@ interface BlogPost {
     body: string
     excerpt?: string | null
     featured_image?: string | null
-    meta_title?: string | null
-    noindex?: boolean
     published_at: string
-    category?: BlogPostCategory | null
+    categories?: BlogPostCategory[]
     user?: { id: number; name: string } | null
     tags?: BlogPostTag[]
 }
@@ -38,28 +37,41 @@ interface RelatedPost {
     featured_image?: string | null
 }
 
+interface BreadcrumbItem {
+    name: string
+    url: string
+}
+
 interface Props {
     post: BlogPost
     relatedPosts?: RelatedPost[] | null
+    breadcrumbs?: BreadcrumbItem[]
 }
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+    relatedPosts: null,
+    breadcrumbs: () => [],
+})
 </script>
 
 <template>
-    <Head>
-        <title>{{ post.meta_title || post.title }}</title>
-        <!-- Per-post override (Admin > Posts > Edit); independent of the
-             sitewide `seo.noindex` PublicLayout already renders. -->
-        <meta v-if="post.noindex" name="robots" content="noindex, nofollow" />
-    </Head>
+    <PublicBreadcrumbs :items="breadcrumbs" />
 
     <article class="py-12">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="mb-8">
-                <div class="flex items-center text-sm text-gray-500 mb-4 space-x-2">
-                    <Link v-if="post.category" :href="`/blog?category=${post.category.slug}`" class="hover:text-gray-700">{{ post.category.name }}</Link>
-                    <span>&middot;</span>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500 mb-4">
+                    <template v-if="post.categories?.length">
+                        <Link
+                            v-for="cat in post.categories"
+                            :key="cat.id"
+                            :href="`/blog/category/${cat.slug}`"
+                            class="hover:text-gray-700"
+                        >
+                            {{ cat.name }}
+                        </Link>
+                        <span>&middot;</span>
+                    </template>
                     <span>{{ new Date(post.published_at).toLocaleDateString() }}</span>
                     <span>&middot;</span>
                     <span>{{ post.user?.name }}</span>

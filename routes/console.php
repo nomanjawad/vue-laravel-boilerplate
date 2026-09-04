@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -34,3 +35,10 @@ Schedule::command('queue:work --queue=default --stop-when-empty --tries=3 --max-
 
 // Prune stale failed jobs every Sunday.
 Schedule::command('queue:prune-failed --hours=336')->weekly()->sundays()->at('04:00');
+
+// Laravel's database cache store does not self-prune expired rows. Response
+// cache (RESPONSE_CACHE_DRIVER=database) and CACHE_STORE=database both write
+// here — without this, the `cache` table grows forever.
+Schedule::call(static function (): void {
+    DB::table('cache')->where('expiration', '<', now()->timestamp)->delete();
+})->weekly()->sundays()->at('04:30')->name('cache-prune-expired');

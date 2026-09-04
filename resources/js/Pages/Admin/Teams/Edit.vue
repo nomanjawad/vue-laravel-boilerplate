@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
+import AppMediaPicker from '@/Components/Organisms/AppMediaPicker.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -53,6 +54,12 @@ const form = useForm<TeamMemberForm>({
     sort_order: props.member.sort_order || 0,
     is_active: props.member.is_active,
 })
+
+type PickerMedia = { id: number | string; url?: string | null }
+
+function urlAsMedia(url: string): PickerMedia | null {
+    return url ? { id: 0, url } : null
+}
 
 const submit = () => {
     form.put(`/admin/teams/${props.member.id}`)
@@ -115,12 +122,13 @@ const submit = () => {
         <div class="space-y-6">
             <div class="bg-white rounded-lg shadow p-6 space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Photo URL</label>
-                    <input v-model="form.photo" type="text" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Photo</label>
+                    <AppMediaPicker
+                        label="Team photo"
+                        :model-value="urlAsMedia(form.photo)"
+                        @update:model-value="(m) => form.photo = m?.url ?? ''"
+                    />
                     <p v-if="form.errors.photo" class="mt-1 text-sm text-red-600">{{ form.errors.photo }}</p>
-                    <div v-if="form.photo" class="mt-2">
-                        <img :src="form.photo" alt="Preview" class="w-full h-40 object-cover rounded" />
-                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Sort Order</label>

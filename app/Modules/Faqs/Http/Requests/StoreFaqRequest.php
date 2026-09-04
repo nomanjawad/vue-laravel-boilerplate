@@ -15,7 +15,7 @@ class StoreFaqRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:191'],
-
+            'page_slug' => ['nullable', 'string', 'max:191'],
             'body' => ['nullable', 'string'],
             'is_active' => ['boolean'],
             'published_at' => ['nullable', 'date'],

@@ -28,8 +28,17 @@ class SettingService
 
     public function update(array $settings): void
     {
+        // Fetch + save per row so Eloquent mutators (secret encryption) and
+        // model events (ClearsResponseCache, LogsContentActivity) fire.
+        // Query-builder update() would store secrets plaintext and leave the
+        // public response cache stale for up to 7 days.
         foreach ($settings as $key => $value) {
-            Setting::where('key', $key)->update(['value' => $value]);
+            $setting = Setting::query()->where('key', $key)->first();
+            if (! $setting) {
+                continue; // whitelist-by-existence
+            }
+            $setting->value = $value;
+            $setting->save();
         }
 
         Cache::forget('site_settings');

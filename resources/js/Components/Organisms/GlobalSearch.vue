@@ -151,7 +151,7 @@ onBeforeUnmount(() => {
                     v-model="query"
                     type="search"
                     data-admin-search
-                    placeholder="Search posts, products, orders…"
+                    placeholder="Search posts, pages, users…"
                     class="w-full border-0 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
                 >
                 <kbd class="hidden rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] text-gray-500 sm:inline">esc</kbd>

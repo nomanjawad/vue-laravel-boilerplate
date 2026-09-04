@@ -13,11 +13,9 @@ class UpdateFaqRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('faq')?->id;
-
         return [
             'title' => ['required', 'string', 'max:191'],
-
+            'page_slug' => ['nullable', 'string', 'max:191'],
             'body' => ['nullable', 'string'],
             'is_active' => ['boolean'],
             'published_at' => ['nullable', 'date'],

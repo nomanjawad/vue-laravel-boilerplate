@@ -22,16 +22,14 @@ Route::middleware('can:posts.delete')->group(function () {
     Route::delete('posts/{post:id}', [PostController::class, 'destroy'])->name('posts.destroy');
 });
 
-// Categories.
+// Categories (WP-style single screen — no create/edit GET pages).
 Route::middleware('can:categories.view')->group(function () {
     Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
 });
 Route::middleware('can:categories.create')->group(function () {
-    Route::get('categories/create', [CategoryController::class, 'create'])->name('categories.create');
     Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
 });
 Route::middleware('can:categories.update')->group(function () {
-    Route::get('categories/{category:id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
     Route::put('categories/{category:id}', [CategoryController::class, 'update'])->name('categories.update');
 });
 Route::middleware('can:categories.delete')->group(function () {

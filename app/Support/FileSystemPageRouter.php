@@ -20,7 +20,7 @@ use Inertia\Inertia;
  * name; overridable per page). Explicit routes in routes/public.php ALWAYS
  * win — the auto-router only registers a URL if no GET route with that URI
  * has been claimed already. So all DB-bound public pages (Home, About, Blog,
- * Shop, Careers, CaseStudies, Contact, Profile, Page, sitemap, robots)
+ * Careers, CaseStudies, Contact, Profile, Page, sitemap, robots)
  * continue to use their explicit controllers unchanged.
  *
  * Optional per-page metadata sidecar at

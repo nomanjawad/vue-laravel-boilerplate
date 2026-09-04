@@ -6,11 +6,10 @@ use App\Models\Career;
 use App\Models\CaseStudy;
 use App\Models\Category;
 use App\Models\Post;
-use App\Models\Product;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\MediaService;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -26,6 +25,8 @@ class DemoSeeder extends Seeder
     {
         $userId = User::orderBy('id')->value('id');
 
+        Category::uncategorized();
+
         $categories = collect(['Insights', 'Guides', 'Company News'])->map(
             fn ($name) => Category::firstOrCreate(['slug' => Str::slug($name)], ['name' => $name])
         );
@@ -40,9 +41,8 @@ class DemoSeeder extends Seeder
         ];
 
         foreach ($posts as $i => [$title, $excerpt]) {
-            Post::firstOrCreate(['slug' => Str::slug($title)], [
+            $post = Post::firstOrCreate(['slug' => Str::slug($title)], [
                 'user_id' => $userId,
-                'category_id' => $categories[$i % 3]->id,
                 'title' => $title,
                 'excerpt' => $excerpt,
                 'body' => $this->demoBody($excerpt),
@@ -50,27 +50,9 @@ class DemoSeeder extends Seeder
                 'status' => 'published',
                 'published_at' => now()->subDays(3 + $i * 4),
             ]);
-        }
-
-        $products = [
-            ['Starter Website Package', 499, 'A five-page brochure site with contact form, SEO basics, and a launch checklist.'],
-            ['Business Website Package', 1299, 'Up to fifteen pages with blog, newsletter capture, and analytics wired in.'],
-            ['E-commerce Package', 2499, 'Full online store: products, cart, checkout, and order management.'],
-            ['Monthly Care Plan', 49, 'Updates, backups, uptime monitoring, and small content changes every month.'],
-            ['SEO Audit', 299, 'A full technical and content audit with a prioritised action list.'],
-            ['Logo & Brand Kit', 399, 'Logo, colour palette, and typography guidelines ready for print and web.'],
-        ];
-
-        foreach ($products as $i => [$name, $price, $description]) {
-            Product::firstOrCreate(['slug' => Str::slug($name)], [
-                'name' => $name,
-                'description' => "<p>{$description}</p>",
-                'price' => $price,
-                'stock_quantity' => 25,
-                'is_active' => true,
-                'featured_image' => $this->placeholderImage(Str::slug($name), 800, 800, $i + 10),
-                'category_id' => null,
-            ]);
+            if ($post->categories()->count() === 0) {
+                $post->categories()->sync([$categories[$i % 3]->id]);
+            }
         }
 
         $team = [
@@ -135,30 +117,27 @@ class DemoSeeder extends Seeder
     }
 
     /**
-     * Generate a flat-colour placeholder with GD and store it on the public
-     * disk — keeps demo data working offline with zero bundled binaries.
+     * Generate a flat-colour placeholder with GD and import it through
+     * MediaService so demo content creates real Media rows (no parallel
+     * storage/demo/ namespace).
      */
     private function placeholderImage(string $name, int $width, int $height, int $seed): string
     {
-        $path = "demo/{$name}.png";
-        $disk = Storage::disk('public');
+        $img = imagecreatetruecolor($width, $height);
+        $palette = [[79, 70, 229], [16, 185, 129], [245, 158, 11], [239, 68, 68], [59, 130, 246], [168, 85, 247]];
+        [$r, $g, $b] = $palette[$seed % count($palette)];
+        imagefill($img, 0, 0, imagecolorallocate($img, $r, $g, $b));
 
-        if (! $disk->exists($path)) {
-            $img = imagecreatetruecolor($width, $height);
-            $palette = [[79, 70, 229], [16, 185, 129], [245, 158, 11], [239, 68, 68], [59, 130, 246], [168, 85, 247]];
-            [$r, $g, $b] = $palette[$seed % count($palette)];
-            imagefill($img, 0, 0, imagecolorallocate($img, $r, $g, $b));
+        // Subtle diagonal band for texture.
+        $overlay = imagecolorallocatealpha($img, 255, 255, 255, 100);
+        imagefilledpolygon($img, [0, $height, (int) ($width * 0.6), 0, $width, 0, $width, $height], $overlay);
 
-            // Subtle diagonal band for texture.
-            $overlay = imagecolorallocatealpha($img, 255, 255, 255, 100);
-            imagefilledpolygon($img, [0, $height, (int) ($width * 0.6), 0, $width, 0, $width, $height], $overlay);
+        ob_start();
+        imagepng($img);
+        $contents = (string) ob_get_clean();
 
-            ob_start();
-            imagepng($img);
-            $disk->put($path, ob_get_clean());
-            imagedestroy($img);
-        }
+        $media = app(MediaService::class)->importFromContents($contents, "{$name}.png", User::orderBy('id')->value('id'));
 
-        return $path;
+        return $media->url;
     }
 }

@@ -6,7 +6,7 @@ use App\Modules\Core\Contracts\ModuleProvider;
 
 /**
  * Lightweight provider that wraps a virtual module (config-only, no folder).
- * Used to back-compat-register the v2 features (blog, shop, careers, ...) as
+ * Used to back-compat-register the v2 features (blog, careers, ...) as
  * modules in the registry without physically moving any code yet.
  */
 class VirtualModuleProvider implements ModuleProvider

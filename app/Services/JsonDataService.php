@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
+use Spatie\ResponseCache\Facades\ResponseCache;
 
 /**
  * Reads static content from `data/*.json` for pages that don't need a DB.
@@ -14,9 +16,15 @@ use Illuminate\Support\Facades\Cache;
  *     invalidates automatically on the next request (old cache entries
  *     expire naturally). No manual `optimize:clear` needed for a content
  *     tweak.
+ *
+ * Filenames may be a flat slug (`home`) or one subdirectory (`pages/home`).
+ * `..` and deeper nesting are rejected.
  */
 class JsonDataService
 {
+    /** Flat slug or one subdirectory: `pages/home`. Rejects `..`. */
+    private const FILENAME_PATTERN = '/^[a-z0-9_-]+(\/[a-z0-9_-]+)?$/i';
+
     public function get(string $filename): array
     {
         $path = base_path("data/{$filename}.json");
@@ -54,19 +62,17 @@ class JsonDataService
 
     /**
      * Overwrite `data/{filename}.json` with $data. Used by the admin Page
-     * Content editor — never called from public read paths.
+     * editor — never called from public read paths.
      *
-     * $filename is restricted to a slug (no `/` or `..`) so a caller can't
-     * escape the `data/` directory. Written atomically (temp file + rename)
-     * so a concurrent request never observes a half-written file. PHP assoc
-     * arrays preserve insertion order on decode/encode, so round-tripping
-     * request JSON through here keeps the original key order.
+     * $filename is restricted to a slug or one subdirectory (no `..`) so a
+     * caller can't escape the `data/` directory. Written atomically (temp
+     * file + rename) so a concurrent request never observes a half-written
+     * file. PHP assoc arrays preserve insertion order on decode/encode, so
+     * round-tripping request JSON through here keeps the original key order.
      */
     public function put(string $filename, array $data): void
     {
-        if (! preg_match('/^[a-z0-9_-]+$/i', $filename)) {
-            throw new \InvalidArgumentException("Invalid data filename: {$filename}");
-        }
+        $this->assertValidFilename($filename);
 
         $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
@@ -75,28 +81,71 @@ class JsonDataService
         }
 
         $path = base_path("data/{$filename}.json");
+        File::ensureDirectoryExists(dirname($path));
+
         $tmpPath = $path.'.tmp-'.uniqid();
 
         file_put_contents($tmpPath, $json);
         rename($tmpPath, $path);
 
-        $this->clearCache($filename);
+        // mtime-keyed json_data_* entries invalidate automatically; bust the
+        // response cache + sitemap so public pages don't serve stale HTML for
+        // up to 7 days after a green "saved" toast.
+        ResponseCache::clear();
+        Cache::forget('sitemap.xml');
     }
 
-    public function clearCache(string $filename): void
+    /**
+     * Delete `data/{filename}.json` if it exists. Busts response cache + sitemap.
+     */
+    public function delete(string $filename): void
     {
-        // Legacy key format kept for backward compat; the current mtime-keyed
-        // scheme doesn't strictly need explicit clears (edits change the key
-        // automatically), but callers may still want to purge stale keys.
-        Cache::forget('json_data_'.$filename);
+        $this->assertValidFilename($filename);
+
+        $path = base_path("data/{$filename}.json");
+
+        if (is_file($path)) {
+            unlink($path);
+        }
+
+        ResponseCache::clear();
+        Cache::forget('sitemap.xml');
     }
 
-    public function clearAllCache(): void
+    /**
+     * List JSON filenames (without `.json`) in `data/{dir}/`, or `data/` when
+     * $dir is empty. Returns basename slugs only (e.g. `home`), not paths.
+     *
+     * @return list<string>
+     */
+    public function list(string $dir = ''): array
     {
-        $files = glob(base_path('data/*.json')) ?: [];
-        foreach ($files as $file) {
-            $name = pathinfo($file, PATHINFO_FILENAME);
-            Cache::forget('json_data_'.$name);
+        if ($dir !== '') {
+            if (! preg_match('/^[a-z0-9_-]+$/i', $dir) || str_contains($dir, '..')) {
+                throw new \InvalidArgumentException("Invalid data directory: {$dir}");
+            }
+        }
+
+        $base = $dir === '' ? base_path('data') : base_path("data/{$dir}");
+
+        if (! is_dir($base)) {
+            return [];
+        }
+
+        $files = [];
+        foreach (glob("{$base}/*.json") ?: [] as $path) {
+            $files[] = pathinfo($path, PATHINFO_FILENAME);
+        }
+
+        sort($files);
+
+        return $files;
+    }
+
+    private function assertValidFilename(string $filename): void
+    {
+        if (str_contains($filename, '..') || ! preg_match(self::FILENAME_PATTERN, $filename)) {
+            throw new \InvalidArgumentException("Invalid data filename: {$filename}");
         }
     }
 }

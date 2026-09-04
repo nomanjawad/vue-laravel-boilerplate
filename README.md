@@ -2,7 +2,7 @@
 
 Laravel 13 + Vue 3 + Inertia + Tailwind v4 boilerplate for small-to-medium websites.
 Ships an admin panel, a public site, and a **toggleable module system** so every
-feature (blog, shop, testimonials, events, …) lives in its own folder and can be
+feature (blog, testimonials, events, …) lives in its own folder and can be
 turned on or off from the dashboard.
 
 - **Backend:** Laravel 13 (PHP 8.3+)
@@ -73,7 +73,7 @@ it will never 500 the rest of the panel. Dashboard shows a red badge; the
 admin can Reinstall from `/admin/modules`.
 
 **`config/modules.php`** holds **virtual modules** — legacy v2 features
-(users, settings, media, menus, blog, shop, …) that use the classic Laravel
+(users, settings, media, menus, blog, …) that use the classic Laravel
 layout but participate in the module registry. New features use physical
 modules.
 
@@ -109,12 +109,12 @@ app/
   Data/                        Core DTOs (AuthData, MenuItemData, ModulesSharedData, …)
   Http/Controllers/{Admin,Auth,Public}/
   Http/Middleware/             HandleInertiaRequests, AdminMiddleware, HandleRedirects
-  Models/                      Legacy v2 models (Post, Product, Menu, User, …)
+  Models/                      Legacy v2 models (Post, Menu, User, …)
   Modules/
     Core/                      ModuleManager, AbstractModuleServiceProvider, PermissionSyncer, EnsureModuleEnabled
     Testimonials|Faqs|Events   Sample physical modules
   Providers/                   ModulesServiceProvider (orchestrates all modules)
-  Services/                    AdminSearchService, CartService, MediaService, SeoService, …
+  Services/                    AdminSearchService, MediaService, SeoService, …
 
 config/
   modules.php                  Virtual-module registry (legacy features)
@@ -188,7 +188,6 @@ Virtual modules in `config/modules.php` back-compat the v2 flags:
 
 ```
 FEATURE_BLOG=true
-FEATURE_SHOP=false
 FEATURE_CAREERS=true
 FEATURE_CASE_STUDIES=true
 FEATURE_TEAMS=true
@@ -206,7 +205,7 @@ Public page sections (hero copy, feature cards, stats bands) live in
 `data/*.json` — one file per page (`home.json`, `about.json`, `contact.json`,
 `header.json`, `footer.json`). Edit per project; no admin needed for these.
 
-Dynamic content (blog posts, products, testimonials, events, FAQs, careers,
+Dynamic content (blog posts, testimonials, events, FAQs, careers,
 case studies, team, menus, settings, media) is managed from `/admin`.
 
 ---
@@ -238,9 +237,9 @@ Requirements: PHP 8.3+, MySQL 5.7+/MariaDB 10.3+, extensions `mbstring bcmath pd
 
 **One-time server setup:**
 
-1. Upload the project (rsync or the host's Git deploy). Exclude `node_modules`, `vendor`, `.git`, `.env*`.
+1. Upload the project (rsync or the host's Git deploy). Exclude `node_modules`, `vendor`, `.git`, `.env*`, and never overwrite server `storage/` (sessions, logs, `storage/framework/cache/data`).
 2. `cd ~/webTemplate && composer install --no-dev --optimize-autoloader`
-3. `cp .env.example .env` — set `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, DB creds, `MAIL_*`.
+3. `cp .env.example .env` — set `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, DB creds, `MAIL_*`. Prefer `LOG_STACK=daily` (14-day retention) over `single`, and keep `RESPONSE_CACHE_DRIVER=database` (file response-cache burns inodes).
 4. `php artisan key:generate && php artisan migrate --force && php artisan storage:link`
 5. `php artisan optimize`
 6. Point the document root at `public/` (cPanel: Domains → Manage → Document Root; SiteGround: Site Tools → Domain → Manage → Document Root; Hostinger: hPanel → Domains → Manage).
@@ -253,6 +252,11 @@ composer deploy
 #   storage:link, migrate --force, typescript:transform,
 #   optimize, responsecache:clear
 ```
+
+**Inode note:** the scheduler prunes expired `cache` table rows weekly. If
+`template:doctor` warns about `storage/framework/cache/data`, flip
+`RESPONSE_CACHE_DRIVER=database`, clear response cache, and delete leftover
+files under that directory.
 
 **Recovery tool:** `public/debug.php?t={DEBUG_TOKEN}` — token-gated,
 pure-PHP page that checks extensions/DB/storage/log tail without booting
@@ -297,7 +301,11 @@ list before pointing DNS at a new site:
   newsletter submissions silently fail. Test with a smoke send before opening.
 - `RESPONSE_CACHE_ENABLED=true` is the default and is safe (Phase 6 of v4
   added `InertiaAwareCacheProfile` so Inertia XHR and full-page requests
-  never collide in cache).
+  never collide in cache). Keep `RESPONSE_CACHE_DRIVER=database` on shared
+  hosting — the file driver fills `storage/framework/cache/data` and burns
+  inodes.
+- `LOG_STACK=daily` (or `daily,console` in local) so logs rotate with
+  14-day retention instead of one unbounded `laravel.log`.
 
 **Canonical host + HTTPS**
 
@@ -349,7 +357,17 @@ health). It runs automatically at the end of the deploy pipeline with
 
 ---
 
-## 7. Conventions
+## 7. Theming
+
+Admin and public share one brand palette. Edit **Settings → Theme**:
+
+- **Primary color** — hex; `App\Support\BrandPalette` expands it to the 7 CSS steps (`brand-50`…`900`). Steps 300/500 are lightness-clamped so links stay readable on the dark admin shell.
+- **Font** — curated [bunny.net](https://fonts.bunny.net) list; Instrument Sans is the Vite default (no extra request). Other choices load a bunny stylesheet (preconnect already in `app.blade.php`).
+- **Corner radius** — `sm` / `md` / `lg` → `--radius-card` / `--radius-button`.
+
+Overrides are emitted as `:root{…}` **after** `@vite` in `resources/views/app.blade.php`. Saving theme settings busts the response cache via the `Setting` model. Defaults still live in `resources/css/app.css` `@theme` for builds without a DB.
+
+## 8. Conventions
 
 - **`pnpm` never `npm`.**
 - **MySQL only** — no SQLite in tests, config, or production.
@@ -362,7 +380,7 @@ health). It runs automatically at the end of the deploy pipeline with
 
 ---
 
-## 8. Useful commands
+## 9. Useful commands
 
 ```bash
 composer ide                        # regenerate IDE helpers + TS types
@@ -379,7 +397,7 @@ php artisan import:wordpress {file.xml}
 
 ---
 
-## 9. Reference: existing modules
+## 10. Reference: existing modules
 
 **Physical (`app/Modules/`):**
 - Testimonials
@@ -389,7 +407,6 @@ php artisan import:wordpress {file.xml}
 **Virtual (`config/modules.php`, legacy v2 layout):**
 - users, settings, media, menus, page_metas, redirects, subscribers, contact-form
 - blog (posts, categories, tags)
-- shop (products, orders)
 - careers, case-studies, teams
 
 All appear on `/admin/modules` with the same toggle/health/uninstall UX.

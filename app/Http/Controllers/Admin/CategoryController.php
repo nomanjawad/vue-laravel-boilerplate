@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -14,14 +15,10 @@ class CategoryController extends Controller
     public function index()
     {
         return Inertia::render('Admin/Categories/Index', [
-            'categories' => Category::withCount('posts')->orderBy('sort_order')->get(),
-        ]);
-    }
-
-    public function create()
-    {
-        return Inertia::render('Admin/Categories/Create', [
-            'parentCategories' => Category::orderBy('name')->get(['id', 'name']),
+            'categories' => Category::withCount('posts')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 
@@ -32,22 +29,15 @@ class CategoryController extends Controller
             'slug' => ['nullable', 'string', 'max:255', 'unique:categories'],
             'description' => ['nullable', 'string'],
             'parent_id' => ['nullable', 'exists:categories,id'],
-            'sort_order' => ['integer', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $validated['slug'] = $validated['slug'] ?: Str::slug($validated['name']);
+        $validated['sort_order'] = $validated['sort_order'] ?? 0;
 
         Category::create($validated);
 
-        return redirect()->route('admin.categories.index')->with('success', 'Category created successfully.');
-    }
-
-    public function edit(Category $category)
-    {
-        return Inertia::render('Admin/Categories/Edit', [
-            'category' => $category,
-            'parentCategories' => Category::where('id', '!=', $category->id)->orderBy('name')->get(['id', 'name']),
-        ]);
+        return back()->with('success', 'Category created successfully.');
     }
 
     public function update(Request $request, Category $category)
@@ -55,52 +45,68 @@ class CategoryController extends Controller
         // Categories used to be assignable as their own parent, which
         // silently creates a cycle that breaks every recursive tree walk
         // (breadcrumbs, menus). Reject self-reference and any descendant.
-        $descendantIds = $this->descendantIds($category);
+        $descendantIds = $category->descendantIds();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['nullable', 'string', 'max:255', 'unique:categories,slug,' . $category->id],
+            'slug' => [
+                'nullable',
+                'string',
+                'max:255',
+                'unique:categories,slug,'.$category->id,
+                // Uncategorized keeps its reserved slug (WP parity).
+                Rule::when($category->isUncategorized(), Rule::in([Category::UNCATEGORIZED_SLUG])),
+            ],
             'description' => ['nullable', 'string'],
             'parent_id' => [
                 'nullable',
                 'exists:categories,id',
                 Rule::notIn([$category->id, ...$descendantIds]),
+                Rule::prohibitedIf($category->isUncategorized()),
             ],
-            'sort_order' => ['integer', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $validated['slug'] = $validated['slug'] ?: Str::slug($validated['name']);
+        if ($category->isUncategorized()) {
+            $validated['slug'] = Category::UNCATEGORIZED_SLUG;
+            $validated['parent_id'] = null;
+        } else {
+            $validated['slug'] = ($validated['slug'] ?? null) ?: Str::slug($validated['name']);
+        }
+
+        $validated['sort_order'] = $validated['sort_order'] ?? $category->sort_order;
 
         $category->update($validated);
 
-        return redirect()->route('admin.categories.index')->with('success', 'Category updated successfully.');
-    }
-
-    /**
-     * IDs of $category and all its descendants — none of which may be set
-     * as its `parent_id` (would create a cycle).
-     *
-     * @return array<int, int>
-     */
-    private function descendantIds(Category $category): array
-    {
-        $ids = [];
-        $frontier = [$category->id];
-        while ($frontier !== []) {
-            $children = Category::whereIn('parent_id', $frontier)->pluck('id')->all();
-            if ($children === []) {
-                break;
-            }
-            $ids = [...$ids, ...$children];
-            $frontier = $children;
-        }
-
-        return $ids;
+        return back()->with('success', 'Category updated successfully.');
     }
 
     public function destroy(Category $category)
     {
+        if ($category->isUncategorized()) {
+            return back()->with('error', 'The Uncategorized category cannot be deleted.');
+        }
+
+        // WP behavior: children move up one level; posts left without a
+        // category fall back to Uncategorized.
+        $affectedPostIds = $category->posts()->pluck('posts.id')->all();
+        $parentId = $category->parent_id;
+
+        Category::where('parent_id', $category->id)->update(['parent_id' => $parentId]);
+
         $category->delete();
-        return redirect()->route('admin.categories.index')->with('success', 'Category deleted successfully.');
+
+        if ($affectedPostIds !== []) {
+            $uncategorizedId = Category::uncategorized()->id;
+            $orphans = Post::whereIn('id', $affectedPostIds)
+                ->whereDoesntHave('categories')
+                ->get();
+
+            foreach ($orphans as $post) {
+                $post->categories()->attach($uncategorizedId);
+            }
+        }
+
+        return back()->with('success', 'Category deleted successfully.');
     }
 }

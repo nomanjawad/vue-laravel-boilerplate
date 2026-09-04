@@ -69,7 +69,7 @@ const deletePost = (post: App.Data.PostData) => {
                     <tr v-for="post in posts.data" :key="post.id">
                         <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ post.title }}</td>
                         <td class="px-6 py-4 text-sm text-gray-500">{{ post.user?.name }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-500">{{ post.category?.name || '-' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">{{ post.categories?.map((c) => c.name).join(', ') || '-' }}</td>
                         <td class="px-6 py-4">
                             <span :class="[
                                 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',

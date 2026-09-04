@@ -1,6 +1,6 @@
 ---
 name: modules-reference
-description: Catalog of every shipped module — what each feature does, its admin/public URLs, permissions, models, and behavior quirks (shop cart/checkout, subscribers, redirects & 404 log, custom code, audit log, users). Use to orient on which module owns a feature or how an existing feature behaves before changing it.
+description: Catalog of every shipped module — what each feature does, its admin/public URLs, permissions, models, and behavior quirks (subscribers, redirects & 404 log, custom code, audit log, users). Use to orient on which module owns a feature or how an existing feature behaves before changing it.
 ---
 
 # Module catalog
@@ -16,44 +16,45 @@ create-module skill for how the machinery works.
 | users | /admin/users, /admin/audit-log | users.*, roles.view/update, modules.manage, audit_log.view | Escalation guards: only super-admins grant super-admin; can't delete yourself; one role per user via UI |
 | settings | /admin/settings | settings.view/update | Tabbed editor; see settings-and-media skill |
 | media | /admin/media | media.view/create/update/delete | WebP pipeline; see settings-and-media skill |
-| menus | /admin/menus | menus.* | DB-driven header/footer nav (`menus` table → `menus` shared prop → PublicLayout). Top-level items only render; `parent_id` exists but no nesting UI |
-| page_content | /admin/page-content(+/layout) | page_content.view/update | JSON page editor; see page-content skill |
+| menus | /admin/menus | menus.* | WP-style menus: locations (header/footer), nested tree, drag-drop reorder, add-from-content (pages/posts/…). Shared as nested `menus` prop → PublicLayout |
+| page_content | /admin/pages, /admin/page-content/layout | page_content.view/create/update/delete | JSON pages + widget editor; header/footer layout JSON; see page-content + widgets skills |
 | redirects | /admin/redirects | redirects.* | 301/302 map + 404 log (below) |
 | custom_code | /admin/custom-code | custom_code.* | HTML/JS snippets (below) |
 | subscribers | /admin/subscribers | subscribers.view/delete | Newsletter list (below) |
+| settings (Cache) | /admin/system/cache | settings.update | Per-layer cache panel (pages/sitemap/settings/modules/redirects/views/all) |
 
 ## Optional virtual (flag defaults in config/template.php)
 
 | Module | Admin | Public | Default |
 |---|---|---|---|
 | blog | /admin/posts, /admin/categories, /admin/tags | /blog, /blog/{slug} | on — see blog skill |
-| shop | /admin/products, /admin/orders | /shop, /cart, /checkout | on — see below |
 | teams | /admin/teams | none (rendered inside pages, e.g. About) | on |
 | careers | /admin/careers | /careers, /careers/{slug} | off |
 | case_studies | /admin/case-studies | /case-studies, /case-studies/{slug} | off |
+| enquiries | /admin/enquiries | stores POST /contact leads | on via `contact_form` |
 
 ## Physical (`app/Modules/`)
 
-Testimonials, Faqs, Events — admin CRUD only (`/admin/testimonials`, `/admin/faqs`,
-`/admin/events`), simple schema (`title`, `body`, `is_active`, `published_at`;
-Events also has a slug). Events ships a `Public/EventController` but **no public
-route is registered** — wire one by hand (`{event:slug}`) or via the file-based
-page router if needed.
+Testimonials, Faqs, Events — admin CRUD. FAQs are **page-wise**: nullable
+`page_slug` ties each FAQ to a `data/pages/{slug}.json` page (null = global).
+The `faqs` widget modes are `current_page` (default, falls back to global),
+`picked` (a chosen page slug), and `global`. Scope: `Faq::forPageSlug($slug)`
+(not `forPage` — that name collides with Eloquent pagination).
 
 ## Behavior notes per feature
 
-**Shop.** Cart is **session-based** (`CartService`, `session('cart')` keyed by
-product id); the shared `cartCount` prop counts distinct product lines, not
-quantities. Checkout requires auth; `OrderService` computes tax at **0%
-(project-configurable)**, charges through `DummyPaymentService` (**a stub with
-90% random success** — not a real gateway), decrements stock, generates
-`ORD-YYYYMMDD-XXXXX` numbers. Admin orders are read-only except a status
-PATCH (`pending|processing|completed|cancelled|refunded`) — no admin
-create/delete; orders come from checkout only.
-
 **Subscribers.** Public `POST /newsletter` (throttled 5/min, doNotCacheResponse)
 upserts by lowercased email and clears `unsubscribed_at` (re-subscribe).
-Admin: paginated list + streamed CSV export + delete.
+Admin: paginated list + streamed CSV export + delete. Sidebar badge =
+`whereNull('seen_at')` (stamped on index view).
+
+**Enquiries.** Public contact form (`POST /contact`) persists an `Enquiry` row
+**after** the honeypot check and **before** `Mail::queue`, then emails the
+admin. Phone validated via `propaganistas/laravel-phone` using
+`contact_default_country` (ISO alpha-2, Contact settings tab). Admin inbox at
+`/admin/enquiries`: search, read/unread filter, detail (marks read), mark
+unread, bulk mark-read, delete, mailto reply. Sidebar badge =
+`UnreadEnquiries` (`whereNull('read_at')`, Cache 60s).
 
 **Redirects & 404s.** `HandleRedirects` runs globally **before routing**
 (catches legacy URLs), reads a cached plain-array map, preserves query strings,
@@ -67,9 +68,9 @@ verbatim into **public pages only** (never the admin panel) via
 SPA hydration. Toggle uses `$request->boolean('is_active')` defaulting FALSE
 deliberately (a missing key must never silently activate injected code).
 
-**Audit log.** `LogsContentActivity` (dirty-only) on Post, Product, Career,
+**Audit log.** `LogsContentActivity` (dirty-only) on Post, Career,
 CaseStudy, Team, CustomCode, Redirect, Menu, Setting, Event, Faq, Testimonial.
-NOT on Order/Subscriber/User. Auth events (login/logout/failed) logged with
+NOT on Subscriber/User. Auth events (login/logout/failed) logged with
 passwords stripped. Viewer at /admin/audit-log (filter by log, causer, search).
 
 **Global admin search** (`/` key or topbar) covers models each enabled module

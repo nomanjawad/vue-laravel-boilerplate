@@ -9,33 +9,17 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 /**
- * Edits `data/*.json` (JsonDataService) — content stays in JSON, never the
- * DB. Pages carry an SEO block inside their JSON (title, description,
- * og_image, noindex, json_ld); header/footer are layout-only and have none.
- * Split into two admin nav entries — "Pages" (index) and "Header / Footer"
- * (layout) — each its own sidebar link rather than tabs on one screen.
+ * Edits layout JSON only (header.json / footer.json). Page CRUD lives on
+ * Admin\PageController (data/pages/{slug}.json).
  */
 class PageContentController extends Controller
 {
-    private const PAGE_FILES = [
-        'home' => 'Home',
-        'about' => 'About',
-        'contact' => 'Contact',
-    ];
-
     private const LAYOUT_FILES = [
         'header' => 'Header',
         'footer' => 'Footer',
     ];
 
     public function __construct(private JsonDataService $jsonData) {}
-
-    public function index()
-    {
-        return Inertia::render('Admin/PageContent/Index', [
-            'pages' => $this->filesPayload(self::PAGE_FILES),
-        ]);
-    }
 
     public function layout()
     {
@@ -46,24 +30,11 @@ class PageContentController extends Controller
 
     public function update(Request $request, string $file)
     {
-        abort_unless(
-            array_key_exists($file, self::PAGE_FILES) || array_key_exists($file, self::LAYOUT_FILES),
-            404
-        );
+        abort_unless(array_key_exists($file, self::LAYOUT_FILES), 404);
 
         $validated = $request->validate([
             'content' => ['required', 'array'],
         ]);
-
-        $jsonLd = $validated['content']['seo']['json_ld'] ?? null;
-        if (is_string($jsonLd) && $jsonLd !== '') {
-            json_decode($jsonLd);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw ValidationException::withMessages([
-                    'content.seo.json_ld' => 'The JSON-LD schema is not valid JSON: '.json_last_error_msg(),
-                ]);
-            }
-        }
 
         $this->jsonData->put($file, $validated['content']);
 
