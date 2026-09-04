@@ -85,8 +85,8 @@ NEVER cache routes rendering session data (auth, form errors) — use
 `HandleRedirects` prepended globally (301/302 map before routing, logs 404s
 to `not_found_logs`); `PreventSearchIndexing` appends `X-Robots-Tag: noindex`
 unless `SEO_INDEXABLE=true`; web group gets `HandleInertiaRequests` (shared
-props: auth, modules, flash, menus, settings, enabledFeatures,
-seo, organizationJsonLd) + `ContentSecurityPolicy` (opt-in via CSP_ENABLED).
+props: auth, modules, flash, menus, layout, settings, enabledFeatures,
+seo, organizationJsonLd, localBusinessJsonLd) + `ContentSecurityPolicy` (opt-in via CSP_ENABLED).
 Admin = `['web','auth','admin']` + prefix `/admin`; `admin` middleware
 requires role super-admin/admin/editor; fine-grained access via
 `can:{resource}.{action}` route middleware + policies.

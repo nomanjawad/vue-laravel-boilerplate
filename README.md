@@ -1,9 +1,11 @@
 # webTemplate
 
-Laravel 13 + Vue 3 + Inertia + Tailwind v4 boilerplate for small-to-medium websites.
-Ships an admin panel, a public site, and a **toggleable module system** so every
-feature (blog, testimonials, events, …) lives in its own folder and can be
-turned on or off from the dashboard.
+Laravel 13 + Vue 3 + Inertia + Tailwind v4 boilerplate repositioned as a
+**universal backend for service-based client websites** — a scaled-down,
+WordPress-like CMS. Ships an admin panel, a public site, and a **toggleable
+module system** so every feature (blog, testimonials, events, …) lives in its
+own folder and can be turned on or off from the dashboard. Custom frontends
+are built per client; the backend stays generic.
 
 - **Backend:** Laravel 13 (PHP 8.3+)
 - **Frontend:** Vue 3 (Composition API + `<script setup lang="ts">`) + Tailwind CSS v4
@@ -116,11 +118,11 @@ app/
   Providers/                   ModulesServiceProvider (orchestrates all modules)
   Services/                    AdminSearchService, MediaService, SeoService, …
 
+data/                          JSON content: pages/{slug}.json + header.json / footer.json
 config/
   modules.php                  Virtual-module registry (legacy features)
+  widgets.php                  Page widget type registry (serializable)
   template.php                 Feature flag fallback
-
-data/                          JSON content for static public pages
 resources/
   js/
     Layouts/                   Layout shells
@@ -199,20 +201,94 @@ fresh installs where the DB isn't reachable yet.
 
 ---
 
-## 5. Static content
+## 5. Pages & content
 
-Public page sections (hero copy, feature cards, stats bands) live in
-`data/*.json` — one file per page (`home.json`, `about.json`, `contact.json`,
-`header.json`, `footer.json`). Edit per project; no admin needed for these.
+### 5.1 JSON pages (widget editor)
 
-Dynamic content (blog posts, testimonials, events, FAQs, careers,
-case studies, team, menus, settings, media) is managed from `/admin`.
+Public pages are **one JSON file each** under `data/pages/{slug}.json`
+(git-diffable; never the DB). Manage them at **/admin/pages**:
+
+```json
+{
+  "title": "Home",
+  "status": "published",
+  "seo": { "title": "", "description": "", "og_image": "", "canonical": "", "noindex": false },
+  "widgets": [
+    { "id": "w_…", "type": "hero", "visible": true, "data": { "title": "…" } }
+  ]
+}
+```
+
+- Widget types live in `config/widgets.php` (must stay serializable for
+  `php artisan optimize`). Public components: `resources/js/Components/Widgets/`.
+- Route `/` = slug `home`; other published slugs render at `/{slug}` via
+  `DynamicPageController`. Drafts 404.
+- Collection widgets (testimonials, FAQs, team, latest posts) pull live
+  module rows through `WidgetDataResolver`.
+- `data/header.json` / `data/footer.json` — Header & Footer admin screen
+  (`/admin/page-content/layout`); shared as the `layout` Inertia prop.
+- Menus are DB-driven (locations, nesting, drag-drop) at `/admin/menus`.
+
+Agent guides: `agents/skills/page-content`, `widgets`, `seo`.
+
+### 5.2 Blog
+
+Posts use a TipTap **block editor** (`AppBlockEditor`) storing HTML.
+Categories are WP-style many-to-many with a default **Uncategorized** and
+public archives at `/blog/category/{slug}`. Featured/OG images use the
+media library picker.
+
+### 5.3 Dynamic admin content
+
+Blog, testimonials, events, FAQs, careers, case studies, team, menus,
+settings, media, enquiries, subscribers — managed from `/admin`.
 
 ---
 
-## 6. Deployment
+## 6. SEO
 
-### 6.1 GitHub Actions (recommended)
+On-page SEO is RankMath-parity style (see `agents/skills/seo`):
+
+- Shared `seo` prop from `HandleInertiaRequests::resolveSeo()` →
+  `PublicLayout` `<Head>` (title template, canonical, OG, robots).
+- Automatic JSON-LD: Organization, optional LocalBusiness, BlogPosting,
+  BreadcrumbList, FAQPage (from FAQ widgets).
+- SERP preview + content checklist in page/post editors.
+- Sitemap: real `lastmod`, image entries, skips `noindex` pages/posts.
+- **Go-live gate:** set `SEO_INDEXABLE=true` or every crawler gets
+  `noindex` (meta + `X-Robots-Tag` + `robots.txt`). Confirm with
+  `php artisan template:doctor --production`.
+
+---
+
+## 7. Performance
+
+- **`AppImage`** — single public/widget image component (srcset from media
+  variants, width/height, lazy by default, `eager` for LCP).
+- Media pipeline records dimensions; run `php artisan media:backfill-dimensions`
+  after migrate on existing installs.
+- Dynamic pages preload the first hero/image for LCP.
+- `public/.htaccess`: Gzip (`mod_deflate`) + optional Brotli; WebP/avif/woff
+  in `ExpiresByType`.
+- Full rules: `agents/skills/launch-readiness`.
+
+---
+
+## 8. Theming
+
+Admin and public share one brand palette. Edit **Settings → Theme**:
+
+- **Primary color** — hex; `App\Support\BrandPalette` expands it to the 7 CSS steps (`brand-50`…`900`). Steps 300/500 are lightness-clamped so links stay readable on the dark admin shell.
+- **Font** — curated [bunny.net](https://fonts.bunny.net) list; Instrument Sans is the Vite default (no extra request). Other choices load a bunny stylesheet (preconnect already in `app.blade.php`).
+- **Corner radius** — `sm` / `md` / `lg` → `--radius-card` / `--radius-button`.
+
+Overrides are emitted as `:root{…}` **after** `@vite` in `resources/views/app.blade.php`. Saving theme settings busts the response cache via the `Setting` model. Defaults still live in `resources/css/app.css` `@theme` for builds without a DB.
+
+---
+
+## 9. Deployment
+
+### 9.1 GitHub Actions (recommended)
 
 Tag a release or trigger manually:
 
@@ -231,7 +307,7 @@ DEPLOY_SSH_KEY      # private key contents
 The workflow runs `composer install --no-dev`, `pnpm build`, rsyncs over
 SSH, then remotely runs `optimize:clear + migrate --force + optimize`.
 
-### 6.2 Shared hosting (cPanel / SiteGround / Hostinger)
+### 9.2 Shared hosting (cPanel / SiteGround / Hostinger)
 
 Requirements: PHP 8.3+, MySQL 5.7+/MariaDB 10.3+, extensions `mbstring bcmath pdo_mysql gd exif intl zip openssl curl fileinfo tokenizer xml`.
 
@@ -270,7 +346,7 @@ cache config; `optimize:clear` after every deploy.
 than 8.3 — flip it in Site Tools → DevOps → PHP Manager first. Ultrafast
 PHP + Dynamic Cache should both be on.
 
-### 6.3 Queue on shared hosting
+### 9.3 Queue on shared hosting
 
 No long-running worker needed. `routes/console.php` schedules
 `queue:work --stop-when-empty --tries=3` every minute. Add the standard
@@ -280,7 +356,7 @@ cron:
 * * * * * cd /home/user/webTemplate && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-### 6.4 Production go-live checklist
+### 9.4 Production go-live checklist
 
 Things that have gone wrong on live deploys (from `feedback.md`) — walk this
 list before pointing DNS at a new site:
@@ -299,11 +375,10 @@ list before pointing DNS at a new site:
   Google.
 - Real `MAIL_*` + `MAIL_FROM_ADDRESS`. Without these, contact-form and
   newsletter submissions silently fail. Test with a smoke send before opening.
-- `RESPONSE_CACHE_ENABLED=true` is the default and is safe (Phase 6 of v4
-  added `InertiaAwareCacheProfile` so Inertia XHR and full-page requests
-  never collide in cache). Keep `RESPONSE_CACHE_DRIVER=database` on shared
-  hosting — the file driver fills `storage/framework/cache/data` and burns
-  inodes.
+- `RESPONSE_CACHE_ENABLED=true` is the default and is safe (Inertia-aware
+  cache profile so XHR and full-page requests never collide). Keep
+  `RESPONSE_CACHE_DRIVER=database` on shared hosting — the file driver fills
+  `storage/framework/cache/data` and burns inodes.
 - `LOG_STACK=daily` (or `daily,console` in local) so logs rotate with
   14-day retention instead of one unbounded `laravel.log`.
 
@@ -327,8 +402,7 @@ redirect loop.
 The automated deploy step (composer `deploy` / GH Actions) re-runs only
 the safe idempotent seeders (`RoleAndPermissionSeeder` + `AdminUserSeeder`)
 on every release. Content-shaped seeders (`ModulesSeeder`, `MenuSeeder`,
-`SettingSeeder`, `PageMetaSeeder`) run **once, manually**, on the very
-first production deploy:
+`SettingSeeder`) run **once, manually**, on the very first production deploy:
 
 ```bash
 php artisan db:seed --force
@@ -341,8 +415,7 @@ it with the seeded default.
 **Pre-launch grep**
 
 Grep the deployed tree for leftover `WebTemplate` literals — every one
-should be gone (Phase 10 purged them from the template; project-specific
-copy-paste can reintroduce):
+should be gone (project-specific copy-paste can reintroduce):
 
 ```bash
 grep -rn "WebTemplate" resources/ app/ | grep -v /node_modules/
@@ -357,17 +430,7 @@ health). It runs automatically at the end of the deploy pipeline with
 
 ---
 
-## 7. Theming
-
-Admin and public share one brand palette. Edit **Settings → Theme**:
-
-- **Primary color** — hex; `App\Support\BrandPalette` expands it to the 7 CSS steps (`brand-50`…`900`). Steps 300/500 are lightness-clamped so links stay readable on the dark admin shell.
-- **Font** — curated [bunny.net](https://fonts.bunny.net) list; Instrument Sans is the Vite default (no extra request). Other choices load a bunny stylesheet (preconnect already in `app.blade.php`).
-- **Corner radius** — `sm` / `md` / `lg` → `--radius-card` / `--radius-button`.
-
-Overrides are emitted as `:root{…}` **after** `@vite` in `resources/views/app.blade.php`. Saving theme settings busts the response cache via the `Setting` model. Defaults still live in `resources/css/app.css` `@theme` for builds without a DB.
-
-## 8. Conventions
+## 10. Conventions
 
 - **`pnpm` never `npm`.**
 - **MySQL only** — no SQLite in tests, config, or production.
@@ -380,7 +443,7 @@ Overrides are emitted as `:root{…}` **after** `@vite` in `resources/views/app.
 
 ---
 
-## 9. Useful commands
+## 11. Useful commands
 
 ```bash
 composer ide                        # regenerate IDE helpers + TS types
@@ -392,21 +455,25 @@ php artisan template:init           # first-run interactive setup
 php artisan make:module {Name}
 php artisan make:crud {Model} --module={Name} [--slug --soft-deletes --media --public]
 
+php artisan media:prune [--delete]
+php artisan media:backfill-dimensions
 php artisan import:wordpress {file.xml}
 ```
 
 ---
 
-## 10. Reference: existing modules
+## 12. Reference: existing modules
 
 **Physical (`app/Modules/`):**
 - Testimonials
-- FAQs
+- FAQs (page-wise via `page_slug`; FAQ widget modes: current_page / picked / global)
 - Events
 
-**Virtual (`config/modules.php`, legacy v2 layout):**
-- users, settings, media, menus, page_metas, redirects, subscribers, contact-form
+**Virtual (`config/modules.php`):**
+- users, settings (+ Cache panel), media, menus, page_content (Pages + Header/Footer)
+- redirects, custom_code, subscribers, enquiries (contact form inbox)
 - blog (posts, categories, tags)
 - careers, case-studies, teams
 
+Sidebar groups: Content → Collections → Inbox → Appearance → System.
 All appear on `/admin/modules` with the same toggle/health/uninstall UX.

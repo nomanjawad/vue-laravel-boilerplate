@@ -8,8 +8,7 @@
  * boolean, number, select, repeater, collection.
  *
  * Collection widgets pull live module content via WidgetDataResolver.
- * FAQs default mode is `current_page` (Phase 6.5 wires page-wise filtering;
- * until then the resolver returns latest/active FAQs).
+ * FAQs default mode is `current_page` (page-wise filtering via Faq::forPageSlug).
  */
 return [
 

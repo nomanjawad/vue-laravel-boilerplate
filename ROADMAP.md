@@ -1,6 +1,6 @@
 # webTemplate → Universal Service-Site CMS: Full Roadmap
 
-> Status: **in progress** · Plan of 2026-09-04 · Based on a four-part codebase audit (main @ cade35c) · Phase 9 landed
+> Status: **complete** · Plan of 2026-09-04 · Based on a four-part codebase audit (main @ cade35c) · Phases 0–11 landed
 >
 > Phase checklist: mark each phase done here as it lands.
 > - [x] Phase 0 — Bug fixes
@@ -16,7 +16,7 @@
 > - [x] Phase 8 — Theme / color schemes
 > - [x] Phase 9 — Blade audit + inode optimization
 > - [x] Phase 10 — Performance pack (Lighthouse)
-> - [ ] Phase 11 — Docs & skills upkeep (per-phase, see table)
+> - [x] Phase 11 — Docs & skills upkeep (per-phase, see table)
 
 ## Context
 
