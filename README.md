@@ -307,6 +307,11 @@ DEPLOY_SSH_KEY      # private key contents
 The workflow runs `composer install --no-dev`, `pnpm build`, rsyncs over
 SSH, then remotely runs `optimize:clear + migrate --force + optimize`.
 
+**`data/` ships with the deploy.** Page JSON (`data/pages/*.json`) plus
+`header.json` / `footer.json` are source-controlled and rsynced to the
+server. Live admin edits on production are overwritten on the next deploy
+unless those changes are committed back to the repo first.
+
 ### 9.2 Shared hosting (cPanel / SiteGround / Hostinger)
 
 Requirements: PHP 8.3+, MySQL 5.7+/MariaDB 10.3+, extensions `mbstring bcmath pdo_mysql gd exif intl zip openssl curl fileinfo tokenizer xml`.

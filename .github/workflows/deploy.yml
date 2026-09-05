@@ -106,7 +106,6 @@ jobs:
             --exclude='/public/hot' \
             --exclude='/storage/' \
             --exclude='/bootstrap/cache/' \
-            --exclude='/data/' \
             --exclude='*.sql' \
             --exclude='__MACOSX/' \
             --exclude='/agents/' \

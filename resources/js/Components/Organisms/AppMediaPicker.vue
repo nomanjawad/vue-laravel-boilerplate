@@ -57,19 +57,31 @@ const libraryLoading = ref(false)
 const libraryError = ref<string | null>(null)
 const librarySearch = ref('')
 const libraryPage = ref<LibraryPage | null>(null)
+const multiFileWarn = ref(false)
+
+const selected = computed<MediaItem | null>(() => {
+    if (!props.modelValue || typeof props.modelValue !== 'object') return null
+    return props.modelValue
+})
 
 const preview = computed<string | null>(() => {
-    if (!props.modelValue) return null
-    if (typeof props.modelValue === 'object') {
-        const variants = props.modelValue.variants ?? {}
-        return toImageUrl(
-            variantPath(variants.thumb)
-                ?? variantPath(variants.md)
-                ?? props.modelValue.url
-                ?? '',
-        )
-    }
-    return null
+    if (!selected.value) return null
+    const variants = selected.value.variants ?? {}
+    return toImageUrl(
+        variantPath(variants.thumb)
+            ?? variantPath(variants.md)
+            ?? selected.value.url
+            ?? '',
+    )
+})
+
+const caption = computed(() => {
+    if (!selected.value) return ''
+    const name = selected.value.filename ?? 'Selected file'
+    const w = selected.value.width
+    const h = selected.value.height
+    if (w && h) return `${name} · ${w}×${h}`
+    return name
 })
 
 function thumbUrl(item: MediaItem): string | null {
@@ -81,7 +93,14 @@ function thumbUrl(item: MediaItem): string | null {
 
 async function upload(files: File[] | FileList | null | undefined) {
     if (!files || !files.length) return
-    const file = files[0]
+
+    const list = Array.from(files)
+    multiFileWarn.value = list.length > 1
+    if (list.length > 1) {
+        error.value = null
+    }
+
+    const file = list[0]
     if (!file) return
 
     // Nudge when alt is empty — images need alt for a11y / SEO (Ahrefs hygiene).
@@ -92,7 +111,7 @@ async function upload(files: File[] | FileList | null | undefined) {
     }
 
     uploading.value = true
-    error.value = null
+    if (!multiFileWarn.value) error.value = null
 
     const formData = new FormData()
     formData.append('file', file)
@@ -111,6 +130,7 @@ async function upload(files: File[] | FileList | null | undefined) {
             if (media) emit('update:modelValue', media)
             altText.value = ''
             altNudge.value = false
+            error.value = null
         },
         onError: (errors: Record<string, string | string[]>) => {
             error.value = Object.values(errors).flat().join(' ')
@@ -183,57 +203,43 @@ function selectFromLibrary(item: MediaItem) {
 </script>
 
 <template>
-    <div>
-        <div
-            class="flex items-center gap-3 rounded-lg border-2 border-dashed p-3"
-            :class="dragOver ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 bg-white'"
-            @dragover.prevent="dragOver = true"
-            @dragleave.prevent="dragOver = false"
-            @drop.prevent="onDrop"
-        >
-            <div
-                v-if="preview"
-                class="h-16 w-16 overflow-hidden rounded border border-gray-200 bg-gray-100"
-            >
-                <img :src="preview" class="h-full w-full object-cover" alt="">
+    <div class="w-full min-w-0 space-y-3">
+        <!-- Filled: preview + actions (no dashed border) -->
+        <div v-if="preview" class="space-y-2">
+            <div class="relative overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+                <img
+                    :src="preview"
+                    :alt="selected?.alt_text ?? selected?.filename ?? ''"
+                    class="max-h-48 w-full object-cover"
+                >
+                <div
+                    v-if="uploading"
+                    class="absolute inset-0 flex items-center justify-center bg-gray-900/50"
+                >
+                    <AppSpinner :size="28" />
+                </div>
             </div>
-            <div v-else class="flex h-16 w-16 items-center justify-center rounded border border-gray-200 bg-gray-100 text-gray-400">
-                <AppSpinner v-if="uploading" :size="20" />
-                <span v-else class="text-xs">no image</span>
-            </div>
-
-            <div class="min-w-0 flex-1">
-                <p class="text-sm text-gray-700">{{ label }}</p>
-                <p class="text-xs text-gray-500">Drag &amp; drop, upload, or choose from the library.</p>
-                <label class="mt-2 block text-xs font-medium text-gray-500">
-                    Alt text
-                    <input
-                        v-model="altText"
-                        type="text"
-                        placeholder="Describe the image for accessibility…"
-                        class="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                        @click.stop
-                    >
-                </label>
-                <p v-if="altNudge" class="mt-1 text-xs text-amber-600">
-                    Tip: add alt text — empty alt hurts accessibility and SEO.
-                </p>
-                <p v-if="error" class="mt-1 text-xs text-rose-600">{{ error }}</p>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2">
+            <p v-if="caption" class="truncate text-xs text-gray-500">{{ caption }}</p>
+            <div class="flex flex-wrap gap-2">
+                <AppFileInput
+                    :accept="accept"
+                    :disabled="uploading"
+                    label="Replace"
+                    variant="secondary"
+                    @select="upload"
+                />
                 <button
                     type="button"
-                    class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    :disabled="uploading"
                     @click="openLibrary"
                 >
-                    Choose from library
+                    Browse
                 </button>
-                <AppFileInput :accept="accept" @select="upload" />
                 <button
-                    v-if="preview"
                     type="button"
-                    class="text-xs text-rose-600 hover:underline"
+                    class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                    :disabled="uploading"
                     @click="clear"
                 >
                     Remove
@@ -241,10 +247,76 @@ function selectFromLibrary(item: MediaItem) {
             </div>
         </div>
 
+        <!-- Empty: full-width drop zone -->
+        <div
+            v-else
+            class="relative flex w-full min-w-0 flex-col items-center gap-3 rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors"
+            :class="dragOver
+                ? 'border-brand-500 bg-brand-600/10'
+                : 'border-gray-300 bg-gray-50'"
+            @dragover.prevent="dragOver = true"
+            @dragleave.prevent="dragOver = false"
+            @drop.prevent="onDrop"
+        >
+            <div
+                v-if="uploading"
+                class="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-gray-900/40"
+            >
+                <AppSpinner :size="28" />
+            </div>
+
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-gray-500">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+            </div>
+
+            <div class="min-w-0 space-y-1">
+                <p class="text-sm font-medium text-gray-800">{{ label }}</p>
+                <p class="text-xs text-gray-500">Drag &amp; drop or</p>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-2">
+                <AppFileInput
+                    :accept="accept"
+                    :disabled="uploading"
+                    label="Upload"
+                    variant="primary"
+                    @select="upload"
+                />
+                <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    :disabled="uploading"
+                    @click="openLibrary"
+                >
+                    Choose from library
+                </button>
+            </div>
+        </div>
+
+        <!-- Alt text: only relevant before / during upload (empty or replacing) -->
+        <label v-if="!preview" class="block text-xs font-medium text-gray-500">
+            Alt text
+            <input
+                v-model="altText"
+                type="text"
+                placeholder="Describe the image for accessibility…"
+                class="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400"
+            >
+        </label>
+        <p v-if="!preview && altNudge" class="text-xs text-amber-600">
+            Tip: add alt text — empty alt hurts accessibility and SEO.
+        </p>
+        <p v-if="multiFileWarn" class="text-xs text-amber-600">
+            Only one file can be selected here — uploaded the first file.
+        </p>
+        <p v-if="error" class="text-xs text-rose-600">{{ error }}</p>
+
         <Teleport to="body">
             <div
                 v-if="libraryOpen"
-                class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
+                class="fixed inset-0 z-[220] flex items-center justify-center bg-black/50 p-4"
                 @click.self="closeLibrary"
             >
                 <div class="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl">
@@ -278,7 +350,7 @@ function selectFromLibrary(item: MediaItem) {
                                 v-for="item in libraryPage.data"
                                 :key="item.id"
                                 type="button"
-                                class="group overflow-hidden rounded-lg border border-gray-200 bg-gray-50 text-left transition hover:border-indigo-400"
+                                class="group overflow-hidden rounded-lg border border-gray-200 bg-gray-50 text-left transition hover:border-brand-500"
                                 @click="selectFromLibrary(item)"
                             >
                                 <div class="aspect-square overflow-hidden bg-gray-100">

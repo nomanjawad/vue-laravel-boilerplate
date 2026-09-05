@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Media;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -41,6 +42,13 @@ class MediaService
         'image/jpeg', 'image/png', 'image/webp', 'image/gif',
         'application/pdf',
     ];
+
+    private const IMAGE_MIMES = [
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    ];
+
+    /** Max bytes for paste/import fetches (matches upload max). */
+    private const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 
     public function upload(UploadedFile $file, ?string $altText = null, ?int $userId = null): Media
     {
@@ -97,18 +105,162 @@ class MediaService
      * Store an external file (e.g. a downloaded WordPress attachment) through
      * the same optimization pipeline, so all media follows one convention.
      */
-    public function importFromContents(string $contents, string $originalName, ?int $userId = null): Media
+    public function importFromContents(string $contents, string $originalName, ?int $userId = null, ?string $altText = null): Media
     {
+        if (strlen($contents) > self::MAX_IMPORT_BYTES) {
+            throw new InvalidArgumentException('Imported file exceeds the 10 MB limit.');
+        }
+
         $tmp = tempnam(sys_get_temp_dir(), 'media-import-');
         file_put_contents($tmp, $contents);
 
         try {
-            $file = new UploadedFile($tmp, $originalName, mime_content_type($tmp) ?: null, test: true);
+            $detected = mime_content_type($tmp) ?: null;
+            $file = new UploadedFile($tmp, $originalName, $detected, test: true);
 
-            return $this->upload($file, null, $userId);
+            return $this->upload($file, $altText, $userId);
         } finally {
             @unlink($tmp);
         }
+    }
+
+    /**
+     * Fetch a remote image (paste from Google Docs / Word) into the library.
+     * SSRF-hardened: http(s) only, no private/link-local hosts, images only.
+     */
+    public function importFromUrl(string $url, ?string $originalName = null, ?int $userId = null, ?string $altText = null): Media
+    {
+        $url = trim($url);
+        if ($url === '' || ! filter_var($url, FILTER_VALIDATE_URL)) {
+            throw new InvalidArgumentException('Invalid image URL.');
+        }
+
+        $parts = parse_url($url);
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        if (! in_array($scheme, ['http', 'https'], true)) {
+            throw new InvalidArgumentException('Only http(s) image URLs are allowed.');
+        }
+
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        if ($host === '' || $this->isBlockedHost($host)) {
+            throw new InvalidArgumentException('That image host is not allowed.');
+        }
+
+        $response = Http::timeout(15)
+            ->withHeaders(['Accept' => 'image/*,*/*;q=0.8'])
+            ->withOptions(['allow_redirects' => ['max' => 3]])
+            ->get($url);
+
+        if (! $response->successful()) {
+            throw new InvalidArgumentException('Failed to download image (HTTP '.$response->status().').');
+        }
+
+        $contents = $response->body();
+        if ($contents === '' || strlen($contents) > self::MAX_IMPORT_BYTES) {
+            throw new InvalidArgumentException('Imported image is empty or exceeds the 10 MB limit.');
+        }
+
+        $contentType = strtolower(trim(explode(';', (string) $response->header('Content-Type'))[0]));
+        if ($contentType !== '' && ! in_array($contentType, self::IMAGE_MIMES, true)) {
+            // Some CDNs send application/octet-stream; sniff from bytes below.
+            if ($contentType !== 'application/octet-stream') {
+                throw new InvalidArgumentException("Refusing to import non-image Content-Type [{$contentType}].");
+            }
+        }
+
+        $name = $originalName ?: basename((string) ($parts['path'] ?? 'pasted-image'));
+        if ($name === '' || $name === '/' || ! str_contains($name, '.')) {
+            $ext = match ($contentType) {
+                'image/png' => 'png',
+                'image/webp' => 'webp',
+                'image/gif' => 'gif',
+                default => 'jpg',
+            };
+            $name = 'pasted-image.'.$ext;
+        }
+
+        return $this->importFromContents($contents, $name, $userId, $altText);
+    }
+
+    /**
+     * Decode a data:image/…;base64,… payload into the media library.
+     */
+    public function importFromDataUrl(string $dataUrl, ?string $originalName = null, ?int $userId = null, ?string $altText = null): Media
+    {
+        if (! preg_match('#^data:(image/(?:jpeg|jpg|png|webp|gif));base64,(.+)$#i', $dataUrl, $m)) {
+            throw new InvalidArgumentException('Invalid or unsupported data URL (images only).');
+        }
+
+        $mime = strtolower($m[1]);
+        if ($mime === 'image/jpg') {
+            $mime = 'image/jpeg';
+        }
+
+        $binary = base64_decode($m[2], true);
+        if ($binary === false || $binary === '') {
+            throw new InvalidArgumentException('Could not decode data URL.');
+        }
+
+        $ext = match ($mime) {
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            default => 'jpg',
+        };
+
+        return $this->importFromContents(
+            $binary,
+            $originalName ?: 'pasted-image.'.$ext,
+            $userId,
+            $altText,
+        );
+    }
+
+    private function isBlockedHost(string $host): bool
+    {
+        if ($host === 'localhost' || str_ends_with($host, '.localhost') || str_ends_with($host, '.local')) {
+            return true;
+        }
+
+        // IPv6 loopback / link-local shorthand
+        if ($host === '::1' || str_starts_with($host, 'fe80:') || str_starts_with($host, '[')) {
+            return true;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return $this->isPrivateIp($host);
+        }
+
+        // Resolve once and reject private answers (basic SSRF guard).
+        $ips = @gethostbynamel($host) ?: [];
+        foreach ($ips as $ip) {
+            if ($this->isPrivateIp($ip)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isPrivateIp(string $ip): bool
+    {
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return ! filter_var(
+                $ip,
+                FILTER_VALIDATE_IP,
+                FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE,
+            );
+        }
+
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            return ! filter_var(
+                $ip,
+                FILTER_VALIDATE_IP,
+                FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE,
+            );
+        }
+
+        return true;
     }
 
     /**

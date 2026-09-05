@@ -37,10 +37,6 @@ const form = useForm({
     featured_image: props.post.featured_image || '',
     meta_title: props.post.meta_title || '',
     meta_description: props.post.meta_description || '',
-    og_image: props.post.og_image || '',
-    canonical_url: props.post.canonical_url || '',
-    og_title: props.post.og_title || '',
-    og_description: props.post.og_description || '',
     focus_keyword: props.post.focus_keyword || '',
     noindex: props.post.noindex,
     tags: props.post.tags?.map((t) => t.id) || [],
@@ -52,7 +48,7 @@ function urlAsMedia(url: string): PickerMedia | null {
     return url ? { id: 0, url } : null
 }
 
-function setUrlFromMedia(field: 'featured_image' | 'og_image', media: PickerMedia | null) {
+function setUrlFromMedia(field: 'featured_image', media: PickerMedia | null) {
     form[field] = media?.url ?? ''
 }
 
@@ -110,66 +106,6 @@ function toggleTag(id: number) {
                         <AppBlockEditor v-model="form.body" placeholder="Write your post… Type / for blocks" />
                     </AppFormField>
                 </AppFormSection>
-
-                <AppFormSection title="SEO" description="Per-post overrides. Falls back to global defaults / title template.">
-                    <SeoSerpPreview
-                        :title="form.meta_title || form.title"
-                        :description="form.meta_description"
-                        :url="`https://example.com/blog/${form.slug || 'post-slug'}`"
-                    />
-                    <AppFormField name="focus_keyword" label="Focus keyword" help="Optional. Powers the content checklist below.">
-                        <template #default="{ id, invalid }">
-                            <AppInput :id="id" v-model="form.focus_keyword" placeholder="e.g. dental implants" :invalid="invalid" />
-                        </template>
-                    </AppFormField>
-                    <SeoContentChecklist
-                        :focus-keyword="form.focus_keyword"
-                        :title="form.title"
-                        :slug="form.slug"
-                        :meta-title="form.meta_title"
-                        :meta-description="form.meta_description"
-                        :body-html="form.body"
-                    />
-                    <AppFormField name="meta_title" label="Meta Title" help="Leave blank to use the site title template.">
-                        <template #default="{ id, invalid }">
-                            <AppInput :id="id" v-model="form.meta_title" placeholder="Falls back to title template" :invalid="invalid" />
-                        </template>
-                    </AppFormField>
-                    <AppFormField name="meta_description" label="Meta Description">
-                        <template #default="{ id, invalid }">
-                            <AppTextarea :id="id" v-model="form.meta_description" :rows="2" placeholder="Aim for 50–160 characters" :invalid="invalid" />
-                        </template>
-                    </AppFormField>
-                    <AppFormField name="canonical_url" label="Canonical URL" help="Optional override. Blank = self-referencing.">
-                        <template #default="{ id, invalid }">
-                            <AppInput :id="id" v-model="form.canonical_url" placeholder="https://example.com/blog/…" :invalid="invalid" />
-                        </template>
-                    </AppFormField>
-                    <AppFormField name="og_title" label="OG Title" help="Falls back to meta title.">
-                        <template #default="{ id, invalid }">
-                            <AppInput :id="id" v-model="form.og_title" placeholder="Optional social title" :invalid="invalid" />
-                        </template>
-                    </AppFormField>
-                    <AppFormField name="og_description" label="OG Description" help="Falls back to meta description.">
-                        <template #default="{ id, invalid }">
-                            <AppTextarea :id="id" v-model="form.og_description" :rows="2" placeholder="Optional social description" :invalid="invalid" />
-                        </template>
-                    </AppFormField>
-                    <AppFormField name="og_image" label="Social share image">
-                        <AppMediaPicker
-                            label="OG image"
-                            :model-value="urlAsMedia(form.og_image)"
-                            @update:model-value="(m) => setUrlFromMedia('og_image', m)"
-                        />
-                    </AppFormField>
-                    <AppFormField
-                        name="noindex"
-                        label="No-index"
-                        help="Hides this post from Google and other search engines (adds a noindex meta tag)."
-                    >
-                        <AppSwitch v-model="form.noindex" />
-                    </AppFormField>
-                </AppFormSection>
             </div>
 
             <div class="space-y-6">
@@ -210,6 +146,44 @@ function toggleTag(id: number) {
                             <span class="text-sm text-gray-700">{{ tag.name }}</span>
                         </label>
                     </div>
+                </AppFormSection>
+
+                <AppFormSection title="SEO" description="Canonical and Open Graph tags are derived automatically from meta + featured image.">
+                    <SeoSerpPreview
+                        :title="form.meta_title || form.title"
+                        :description="form.meta_description"
+                        :url="`https://example.com/blog/${form.slug || 'post-slug'}`"
+                    />
+                    <AppFormField name="focus_keyword" label="Focus keyword" help="Optional. Powers the content checklist below.">
+                        <template #default="{ id, invalid }">
+                            <AppInput :id="id" v-model="form.focus_keyword" placeholder="e.g. dental implants" :invalid="invalid" />
+                        </template>
+                    </AppFormField>
+                    <SeoContentChecklist
+                        :focus-keyword="form.focus_keyword"
+                        :title="form.title"
+                        :slug="form.slug"
+                        :meta-title="form.meta_title"
+                        :meta-description="form.meta_description"
+                        :body-html="form.body"
+                    />
+                    <AppFormField name="meta_title" label="Meta Title" help="Leave blank to use the site title template.">
+                        <template #default="{ id, invalid }">
+                            <AppInput :id="id" v-model="form.meta_title" placeholder="Falls back to title template" :invalid="invalid" />
+                        </template>
+                    </AppFormField>
+                    <AppFormField name="meta_description" label="Meta Description">
+                        <template #default="{ id, invalid }">
+                            <AppTextarea :id="id" v-model="form.meta_description" :rows="2" placeholder="Aim for 50–160 characters" :invalid="invalid" />
+                        </template>
+                    </AppFormField>
+                    <AppFormField
+                        name="noindex"
+                        label="No-index"
+                        help="Hides this post from Google and other search engines (adds a noindex meta tag)."
+                    >
+                        <AppSwitch v-model="form.noindex" />
+                    </AppFormField>
                 </AppFormSection>
             </div>
         </div>

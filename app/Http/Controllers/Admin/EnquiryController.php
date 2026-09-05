@@ -87,6 +87,11 @@ class EnquiryController extends Controller
 
         UnreadEnquiries::forget();
 
+        activity('default')
+            ->causedBy(auth()->user())
+            ->withProperties(['ids' => $validated['ids'], 'count' => count($validated['ids'])])
+            ->log('bulk marked '.count($validated['ids']).' enquiries as read');
+
         return back()->with('success', 'Selected enquiries marked as read.');
     }
 

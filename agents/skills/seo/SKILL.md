@@ -25,11 +25,15 @@ Rules:
 - **Title template** (`seo_title_template`, default `%title% — %site_name%`)
   applies only when the page/post has **no** explicit meta title. Explicit
   titles are used as-is. Applied via `SeoService::applyTitleTemplate()`.
-- **Canonical** is always absolute (`url()` / `SeoService::absoluteUrl()`).
-  Optional override: page `seo.canonical` or post `canonical_url`.
+- **Canonical** is always self-referencing via `SeoService::canonicalUrl()`
+  (`fullUrl()` minus tracking params like `utm_*` / `gclid`). Pagination
+  query strings are kept. **No editor override.**
+- **og:title / og:description** always mirror the resolved meta title /
+  description. **No editor override.**
+- **og:image** = page/post `featured_image`, falling back to the site-wide
+  `og_image` setting. Absolute via `SeoService::absoluteUrl()`.
 - **noindex** ORs: `!config('template.indexable')` ∪ `site_noindex` ∪
   page/post `noindex`.
-- **og:image** promoted to absolute (Media URLs are root-relative).
 - Posts set `og_type=article` + `article:published_time` /
   `article:modified_time`.
 
@@ -38,7 +42,9 @@ Rules:
 (`summary_large_image`), `article_*_time`, `canonical`, `noindex`, `json_ld`.
 
 Inertia `app.ts` title callback avoids double-suffix when the resolved title
-already ends with ` — ${APP_NAME}`.
+already ends with ` — ${APP_NAME}`. Do **not** add page-level `<Head title>`
+on public Careers/Case Studies (or any public page) — that clobbers the
+template.
 
 ## Social meta (PublicLayout)
 
@@ -72,21 +78,31 @@ Per-page via `jsonLd` prop:
 - **Content checklist** — `SeoContentChecklist.vue` on post Create/Edit
   (focus keyword client-side: title/slug/description/first paragraph, lengths,
   word count ≥300, image alts, H2, internal link). Not a gimmick score.
-- Page/post SEO fields: meta title/description, canonical, og title/
-  description/image, noindex; posts also have `focus_keyword`.
-
-New post columns (migration + fillable + `PostData`): `canonical_url`,
-`og_title`, `og_description`, `focus_keyword`.
+- Page/post SEO fields: meta title/description, noindex, custom JSON-LD;
+  posts also have `focus_keyword`. Featured image is a separate field and
+  feeds `og:image`. Canonical / OG title / OG description are **not** editable.
 
 New page JSON `seo` keys: `canonical`, `og_title`, `og_description` (plus
 existing title/description/og_image/noindex/json_ld).
 
 ## Sitemap (`SitemapService`)
 
-- Real `lastmod` (post `updated_at`, page-file mtime)
-- `<image:image>` for featured/OG images (image namespace only when needed)
-- Skips `seo.noindex` pages and `posts.noindex` posts
-- Enumerates published `data/pages/*.json` + blog/careers/case-studies
+RankMath-style **index + children** (module-aware via `ModuleManager::enabled`):
+
+| URL | Contents |
+|---|---|
+| `/sitemap.xml` | Sitemap index (XSL-styled) |
+| `/sitemap-pages.xml` | Published, non-noindex JSON pages |
+| `/sitemap-posts.xml` | `/blog` + published posts (when blog module on) |
+| `/sitemap-categories.xml` | Categories with ≥1 published post in self+descendants |
+| `/sitemap-careers.xml` / `/sitemap-case-studies.xml` | List + items when modules on |
+
+- Per-type cache keys (`sitemap.index`, `sitemap.pages`, …) + `sitemap.meta`
+  (generated_at, url_count). Bust via `SitemapService::forgetStatic()`.
+- Real `lastmod` (post `updated_at`, page-file mtime; list pages = max child)
+- `<image:image>` for featured/OG images
+- XSL at `/sitemap.xsl` — browser-readable tables
+- Cache panel: Clear + **Regenerate** (`POST …/cache/sitemap/regenerate`) + View link
 
 ## Ahrefs hygiene
 

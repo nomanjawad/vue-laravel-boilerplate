@@ -8,7 +8,7 @@ interface PostItem {
     slug: string
     title: string
     excerpt?: string | null
-    featured_image?: string | null
+    featured_image?: string | import('@/Components/Atoms/AppImage.vue').AppImageMedia | null
 }
 
 interface Props {

@@ -47,6 +47,17 @@ return [
             'lock_table' => env('DB_CACHE_LOCK_TABLE'),
         ],
 
+        // Isolated store for spatie/laravel-responsecache. ResponseCache::clear()
+        // deletes every row in its store — without a separate table that wiped
+        // settings/modules/sitemap/permission caches sharing `cache` (F11 #8).
+        'responsecache' => [
+            'driver' => 'database',
+            'connection' => env('DB_CACHE_CONNECTION'),
+            'table' => env('DB_RESPONSE_CACHE_TABLE', 'cache_responses'),
+            'lock_connection' => env('DB_CACHE_LOCK_CONNECTION'),
+            'lock_table' => env('DB_CACHE_LOCK_TABLE'),
+        ],
+
         'file' => [
             'driver' => 'file',
             'path' => storage_path('framework/cache/data'),

@@ -105,18 +105,30 @@ const isActive = (href: string): boolean => {
 }
 
 // Breadcrumb derived from the URL: /admin/page-content/layout →
-// Page content / Layout. Only the first crumb links (its index page is the
-// one URL guaranteed to exist); numeric segments render as "#id".
+// Page content / Layout. Only link crumbs whose path exists in moduleNav
+// (avoids /admin/page-content and /admin/system 404s — F11 #35).
+const knownNavHrefs = computed(() => {
+    const set = new Set<string>(['/admin'])
+    for (const entry of moduleNav.value) {
+        if (entry.href) set.add(entry.href)
+    }
+    return set
+})
+
 const breadcrumbs = computed(() => {
     const path = page.url.split('?')[0] ?? ''
     const segments = path.split('/').filter(Boolean).slice(1) // drop leading "admin"
-    return segments.map((seg, i) => ({
-        label: /^\d+$/.test(seg)
-            ? `#${seg}`
-            : seg.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase()),
-        href: i === 0 ? `/admin/${seg}` : null,
-        last: i === segments.length - 1,
-    }))
+    return segments.map((seg, i) => {
+        const href = `/admin/${segments.slice(0, i + 1).join('/')}`
+        const isLast = i === segments.length - 1
+        return {
+            label: /^\d+$/.test(seg)
+                ? `#${seg}`
+                : seg.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase()),
+            href: !isLast && knownNavHrefs.value.has(href) ? href : null,
+            last: isLast,
+        }
+    })
 })
 
 const navItemClass = (active: boolean) => [

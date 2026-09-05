@@ -4,7 +4,6 @@
     "seo": {
         "title": "Home",
         "description": "Welcome to our website.",
-        "og_image": "",
         "noindex": false,
         "json_ld": ""
     },
@@ -55,10 +54,22 @@
             "data": {
                 "title": "",
                 "items": [
-                    { "value": "99%", "label": "Uptime" },
-                    { "value": "50+", "label": "Projects" },
-                    { "value": "24/7", "label": "Support" },
-                    { "value": "100%", "label": "Satisfaction" }
+                    {
+                        "value": "99%",
+                        "label": "Uptime"
+                    },
+                    {
+                        "value": "50+",
+                        "label": "Projects"
+                    },
+                    {
+                        "value": "24/7",
+                        "label": "Support"
+                    },
+                    {
+                        "value": "100%",
+                        "label": "Satisfaction"
+                    }
                 ]
             }
         },
@@ -86,5 +97,6 @@
                 "button_url": "/contact"
             }
         }
-    ]
+    ],
+    "featured_image": ""
 }

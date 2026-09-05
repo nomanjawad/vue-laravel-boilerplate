@@ -19,6 +19,7 @@ const props = defineProps<Props>()
 interface ProfileForm {
     name: string
     email: string
+    current_password: string
     password: string
     password_confirmation: string
 }
@@ -26,13 +27,14 @@ interface ProfileForm {
 const form = useForm<ProfileForm>({
     name: props.user.name,
     email: props.user.email,
+    current_password: '',
     password: '',
     password_confirmation: '',
 })
 
 const submit = (): void => {
     form.put('/profile', {
-        onSuccess: () => form.reset('password', 'password_confirmation'),
+        onSuccess: () => form.reset('current_password', 'password', 'password_confirmation'),
     })
 }
 </script>
@@ -55,6 +57,11 @@ const submit = (): void => {
                         <label class="block text-sm font-medium text-gray-700">Email</label>
                         <input v-model="form.email" type="email" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
                         <p v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Current Password <span class="text-gray-400">(required to change email or password)</span></label>
+                        <input v-model="form.current_password" type="password" autocomplete="current-password" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                        <p v-if="form.errors.current_password" class="mt-1 text-sm text-red-600">{{ form.errors.current_password }}</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">New Password <span class="text-gray-400">(leave blank to keep current)</span></label>

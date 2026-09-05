@@ -75,3 +75,18 @@ Virtual module `blog` (config/modules.php), depends on `media`, feature flag
 - Post body uses `AppBlockEditor` (TipTap). Featured/OG images use `AppMediaPicker`.
 - Saving a post with zero categories auto-attaches Uncategorized (server-side).
 - Title template (`seo_title_template`) applies only when `meta_title` is empty.
+
+## Block editor: import + rich paste (F4)
+
+`AppBlockEditor` (posts + Pages `richtext` widget) supports:
+
+- **Tables** — TipTap Table (+ row/cell/header), `/table` slash command, +Col/−Col/+Row/−Row/Del table when the caret is in a table. Public body uses `.cms-prose` table CSS (`resources/css/pages/blog.css`).
+- **Underline / text-align** — survive Word/Google Docs paste.
+- **Placeholder** — `placeholder` prop drives TipTap Placeholder (empty editor hint).
+- **Slash menu** — opens only at the start of an **empty** block (F11 #31; no hijack of `24/7`).
+- **Rich paste** — HTML clipboard → `cleanPastedHtml` (strip mso/`<o:p>`/scripts) → `ingestEditorHtml` (base64 + remote images → `POST /admin/media/import`) → insert. Plain text paste uses TipTap default.
+- **Import** toolbar (non-compact): `.docx` via `mammoth`, `.md` via `marked` (GFM tables). Confirm replace vs append when the editor has content. Google Docs: File → Download → Microsoft Word (.docx) (native `.gdoc` is not parseable).
+
+**Media import endpoint:** `POST /admin/media/import` (`media.create`) accepts JSON `{ data_url }` or `{ url }` (+ optional `filename`/`alt_text`), returns `MediaData` JSON. Server: MIME whitelist, 10 MB cap, SSRF host/IP guard on URLs, WebP pipeline via `MediaService::importFromDataUrl` / `importFromUrl`.
+
+Utils: `resources/js/Utils/cleanPastedHtml.ts`, `ingestEditorHtml.ts`, `importDocumentFile.ts`, `csrfHeaders.ts`.

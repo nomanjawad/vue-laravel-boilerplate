@@ -37,23 +37,43 @@ async function refresh() {
 }
 
 async function markRead(id: number | string) {
-    const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content')
-    await fetch(`/admin/notifications/${id}/read`, {
+    const res = await fetch(`/admin/notifications/${id}/read`, {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'X-CSRF-TOKEN': token ?? '', Accept: 'application/json' },
+        headers: csrfHeaders(),
     })
+    if (!res.ok) {
+        console.warn('Failed to mark notification read', res.status)
+        return
+    }
     refresh()
 }
 
 async function markAllRead() {
-    const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content')
-    await fetch('/admin/notifications/read-all', {
+    const res = await fetch('/admin/notifications/read-all', {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'X-CSRF-TOKEN': token ?? '', Accept: 'application/json' },
+        headers: csrfHeaders(),
     })
+    if (!res.ok) {
+        console.warn('Failed to mark all notifications read', res.status)
+        return
+    }
     refresh()
+}
+
+/** Prefer Blade meta; fall back to the XSRF-TOKEN cookie Laravel always sets. */
+function csrfHeaders(): Record<string, string> {
+    const meta = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+    if (meta) {
+        return { 'X-CSRF-TOKEN': meta, Accept: 'application/json' }
+    }
+    const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/)
+    const fromCookie = match?.[1] ? decodeURIComponent(match[1]) : ''
+    return {
+        ...(fromCookie ? { 'X-XSRF-TOKEN': fromCookie } : {}),
+        Accept: 'application/json',
+    }
 }
 
 onMounted(() => {

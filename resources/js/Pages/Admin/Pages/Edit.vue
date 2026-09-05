@@ -13,6 +13,8 @@ import AppBlockEditor from '@/Components/Organisms/AppBlockEditor.vue'
 import AppFloatingSave from '@/Components/Molecules/AppFloatingSave.vue'
 import SeoSerpPreview from '@/Components/Molecules/SeoSerpPreview.vue'
 import type { VariantEntry } from '@/Composables/useImageUrl'
+import { useClickOutside } from '@/Composables/useClickOutside'
+import { useUnsavedGuard } from '@/Composables/useUnsavedGuard'
 
 defineOptions({ layout: AdminLayout })
 
@@ -46,10 +48,6 @@ interface WidgetInstance {
 interface SeoBlock {
     title: string
     description: string
-    og_image: string
-    og_title: string
-    og_description: string
-    canonical: string
     noindex: boolean
     json_ld: string
 }
@@ -58,6 +56,7 @@ interface PagePayload {
     slug: string
     title: string
     status: string
+    featured_image?: string
     seo: SeoBlock
     widgets: WidgetInstance[]
 }
@@ -106,13 +105,10 @@ const form = useForm<Record<string, any>>({
     title: props.page?.title ?? '',
     slug: props.page?.slug ?? '',
     status: props.page?.status ?? 'draft',
+    featured_image: props.page?.featured_image ?? '',
     seo: {
         title: props.page?.seo?.title ?? '',
         description: props.page?.seo?.description ?? '',
-        og_image: props.page?.seo?.og_image ?? '',
-        og_title: props.page?.seo?.og_title ?? '',
-        og_description: props.page?.seo?.og_description ?? '',
-        canonical: props.page?.seo?.canonical ?? '',
         noindex: props.page?.seo?.noindex ?? false,
         json_ld: props.page?.seo?.json_ld ?? '',
     },
@@ -121,6 +117,37 @@ const form = useForm<Record<string, any>>({
 
 const expanded = ref<Record<string, boolean>>({})
 const showPalette = ref(false)
+const paletteFilter = ref('')
+const paletteRoot = ref<HTMLElement | null>(null)
+
+useClickOutside(paletteRoot, () => { showPalette.value = false }, { enabled: () => showPalette.value })
+useUnsavedGuard(() => form.isDirty)
+
+const formErrors = computed(() =>
+    Object.entries(form.errors)
+        .filter(([, msg]) => typeof msg === 'string' && msg.length > 0)
+        .map(([field, msg]) => ({ field, msg: msg as string })),
+)
+
+function isExpanded(id: string): boolean {
+    return expanded.value[id] !== false
+}
+
+function toggleExpanded(id: string) {
+    expanded.value[id] = !isExpanded(id)
+}
+
+function isCollectionWidget(def: WidgetDef): boolean {
+    return (def.fields ?? []).some((f) => f.type === 'collection')
+}
+
+const filteredRegistry = computed(() => {
+    const q = paletteFilter.value.trim().toLowerCase()
+    return props.widgetsRegistry.filter((d) => !q || d.label.toLowerCase().includes(q) || d.key.includes(q))
+})
+
+const staticWidgets = computed(() => filteredRegistry.value.filter((d) => !isCollectionWidget(d)))
+const dynamicWidgets = computed(() => filteredRegistry.value.filter((d) => isCollectionWidget(d)))
 
 function addWidget(type: string) {
     const widget: WidgetInstance = {
@@ -132,6 +159,7 @@ function addWidget(type: string) {
     form.widgets = [...form.widgets, widget]
     expanded.value[widget.id] = true
     showPalette.value = false
+    paletteFilter.value = ''
 }
 
 function removeWidget(index: number | string) {
@@ -250,10 +278,11 @@ function save() {
     }
 }
 
-// Slugify title on create when slug empty
+// Slugify title on create when slug empty / still tracking the previous title.
 function onTitleInput(v: string) {
+    const previous = form.title
     form.title = v
-    if (props.isCreate && (!form.slug || form.slug === slugify(form.title.slice(0, -1)))) {
+    if (props.isCreate && (!form.slug || form.slug === slugify(previous))) {
         form.slug = slugify(v)
     }
 }
@@ -273,6 +302,19 @@ function slugify(s: string): string {
         <h1 class="text-2xl font-bold text-gray-900">{{ isCreate ? 'New Page' : 'Edit Page' }}</h1>
     </div>
 
+    <div
+        v-if="formErrors.length"
+        class="mb-4 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+        role="alert"
+    >
+        <p class="font-medium">Couldn’t save — fix the following:</p>
+        <ul class="mt-1 list-inside list-disc space-y-0.5">
+            <li v-for="err in formErrors" :key="err.field">
+                <span class="font-mono text-xs text-rose-600">{{ err.field }}</span> — {{ err.msg }}
+            </li>
+        </ul>
+    </div>
+
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Widgets column -->
         <div class="space-y-4 lg:col-span-2">
@@ -282,7 +324,7 @@ function slugify(s: string): string {
                 class="rounded-lg border border-gray-200 bg-white shadow-sm"
             >
                 <div class="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
-                    <button type="button" class="text-sm font-medium text-gray-900" @click="expanded[widget.id] = !expanded[widget.id]">
+                    <button type="button" class="text-sm font-medium text-gray-900" @click="toggleExpanded(widget.id)">
                         {{ registryByKey[widget.type]?.label || widget.type }}
                     </button>
                     <span class="text-xs text-gray-400">{{ widget.id }}</span>
@@ -297,7 +339,7 @@ function slugify(s: string): string {
                     </div>
                 </div>
 
-                <div v-show="expanded[widget.id] !== false" class="space-y-4 p-4">
+                <div v-show="isExpanded(widget.id)" class="space-y-4 p-4">
                     <template v-for="field in (registryByKey[widget.type]?.fields || [])" :key="field.key">
                         <!-- text / link / number -->
                         <AppFormField
@@ -465,24 +507,68 @@ function slugify(s: string): string {
                 </div>
             </div>
 
-            <div class="relative">
+            <div ref="paletteRoot" class="relative">
                 <button
                     type="button"
                     class="w-full rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 text-sm font-medium text-gray-600 hover:border-gray-400 hover:text-gray-800"
+                    :aria-expanded="showPalette"
                     @click="showPalette = !showPalette"
                 >
-                    + Add widget
+                    {{ showPalette ? 'Close widget palette' : '+ Add widget' }}
                 </button>
-                <div v-if="showPalette" class="absolute z-10 mt-2 grid w-full grid-cols-2 gap-2 rounded-lg border border-gray-200 bg-white p-3 shadow-lg sm:grid-cols-3">
-                    <button
-                        v-for="def in widgetsRegistry"
-                        :key="def.key"
-                        type="button"
-                        class="rounded px-3 py-2 text-left text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"
-                        @click="addWidget(def.key)"
-                    >
-                        {{ def.label }}
-                    </button>
+                <div
+                    v-if="showPalette"
+                    class="absolute z-20 mt-2 w-full rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
+                    role="dialog"
+                    aria-label="Add widget"
+                >
+                    <div class="mb-2 flex items-center gap-2">
+                        <AppInput
+                            v-model="paletteFilter"
+                            placeholder="Filter widgets…"
+                            class="flex-1"
+                        />
+                        <button
+                            type="button"
+                            class="rounded px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                            aria-label="Close"
+                            @click="showPalette = false"
+                        >
+                            ×
+                        </button>
+                    </div>
+
+                    <div v-if="staticWidgets.length" class="mb-3">
+                        <p class="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Static</p>
+                        <div class="grid grid-cols-2 gap-1 sm:grid-cols-3">
+                            <button
+                                v-for="def in staticWidgets"
+                                :key="def.key"
+                                type="button"
+                                class="rounded px-3 py-2 text-left text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"
+                                @click="addWidget(def.key)"
+                            >
+                                {{ def.label }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="dynamicWidgets.length">
+                        <p class="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Dynamic</p>
+                        <div class="grid grid-cols-2 gap-1 sm:grid-cols-3">
+                            <button
+                                v-for="def in dynamicWidgets"
+                                :key="def.key"
+                                type="button"
+                                class="rounded px-3 py-2 text-left text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"
+                                @click="addWidget(def.key)"
+                            >
+                                {{ def.label }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <p v-if="!filteredRegistry.length" class="px-1 py-2 text-sm text-gray-500">No widgets match.</p>
                 </div>
             </div>
         </div>
@@ -517,9 +603,15 @@ function slugify(s: string): string {
                         @update:model-value="(v) => (form.status = v)"
                     />
                 </AppFormField>
+                <AppFormField name="featured_image" label="Featured Image" help="Used as the social share (og:image) image.">
+                    <AppMediaPicker
+                        :model-value="mediaModel(form.featured_image)"
+                        @update:model-value="(m) => (form.featured_image = mediaUrlOnly(m))"
+                    />
+                </AppFormField>
             </AppFormSection>
 
-            <AppFormSection title="SEO" description="Search and social previews for this page.">
+            <AppFormSection title="SEO" description="Search preview for this page. Canonical and Open Graph tags are derived automatically.">
                 <SeoSerpPreview
                     :title="form.seo.title || form.title"
                     :description="form.seo.description"
@@ -534,27 +626,6 @@ function slugify(s: string): string {
                     <template #default="{ id }">
                         <AppTextarea :id="id" v-model="form.seo.description" :rows="3" placeholder="Falls back to the site tagline" />
                     </template>
-                </AppFormField>
-                <AppFormField name="seo-canonical" label="Canonical URL" help="Optional override. Blank = self-referencing.">
-                    <template #default="{ id }">
-                        <AppInput :id="id" v-model="form.seo.canonical" placeholder="https://example.com/…" />
-                    </template>
-                </AppFormField>
-                <AppFormField name="seo-og-title" label="OG Title" help="Falls back to meta title.">
-                    <template #default="{ id }">
-                        <AppInput :id="id" v-model="form.seo.og_title" placeholder="Optional social title" />
-                    </template>
-                </AppFormField>
-                <AppFormField name="seo-og-desc" label="OG Description" help="Falls back to meta description.">
-                    <template #default="{ id }">
-                        <AppTextarea :id="id" v-model="form.seo.og_description" :rows="2" placeholder="Optional social description" />
-                    </template>
-                </AppFormField>
-                <AppFormField name="seo-og" label="OG Image">
-                    <AppMediaPicker
-                        :model-value="mediaModel(form.seo.og_image)"
-                        @update:model-value="(m) => (form.seo.og_image = mediaUrlOnly(m))"
-                    />
                 </AppFormField>
                 <AppFormField name="seo-noindex" label="Noindex">
                     <AppSwitch v-model="form.seo.noindex" />

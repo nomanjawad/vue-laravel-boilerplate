@@ -17,9 +17,10 @@ return [
          * to store requests. This can be the name of any store
          * that is configured in your app's cache.php config
          */
-        // Default database — file store creates unbounded inodes under
-        // storage/framework/cache/data (shared-hosting limits). See Phase 9.
-        'store' => env('RESPONSE_CACHE_DRIVER', 'database'),
+        // Dedicated `responsecache` store (cache_responses table) so
+        // ResponseCache::clear() never wipes app caches in `cache`.
+        // Falls back to database if the store is missing on old deploys.
+        'store' => env('RESPONSE_CACHE_DRIVER', 'responsecache'),
 
         /*
          * The default number of seconds responses will be cached

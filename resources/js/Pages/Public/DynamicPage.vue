@@ -48,14 +48,28 @@ interface Props {
     }
     collectionData?: Record<string, unknown[]>
     breadcrumbs?: BreadcrumbItem[]
-    /** Prefetch URL for the first visible hero/image (LCP). */
-    lcpPreload?: string | null
+    /** Prefetch for the first visible hero/image (LCP) — href + optional imagesrcset. */
+    lcpPreload?: string | { href: string; imagesrcset?: string; imagesizes?: string } | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
     collectionData: () => ({}),
     breadcrumbs: () => [],
     lcpPreload: null,
+})
+
+const lcpHref = computed(() => {
+    const p = props.lcpPreload
+    if (!p) return null
+    return typeof p === 'string' ? p : p.href
+})
+const lcpSrcset = computed(() => {
+    const p = props.lcpPreload
+    return p && typeof p === 'object' ? p.imagesrcset : undefined
+})
+const lcpSizes = computed(() => {
+    const p = props.lcpPreload
+    return p && typeof p === 'object' ? p.imagesizes : undefined
 })
 
 const widgetMap: Record<string, Component> = {
@@ -82,11 +96,13 @@ const visibleWidgets = computed(() =>
 <template>
     <Head>
         <link
-            v-if="lcpPreload"
+            v-if="lcpHref"
             head-key="lcp-preload"
             rel="preload"
             as="image"
-            :href="lcpPreload"
+            :href="lcpHref"
+            :imagesrcset="lcpSrcset"
+            :imagesizes="lcpSrcset ? lcpSizes : undefined"
         />
     </Head>
 

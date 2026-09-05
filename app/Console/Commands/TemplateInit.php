@@ -86,7 +86,7 @@ class TemplateInit extends Command
             ['name' => 'Admin', 'password' => Hash::make($adminPassword)],
         );
         $admin->syncRoles(['admin']);
-        Setting::query()->where('key', 'site_name')->update(['value' => $siteName]);
+        Setting::set('site_name', $siteName);
 
         // 4. Storage symlink + IDE helpers (dev only).
         Artisan::call('storage:link');
@@ -113,12 +113,19 @@ class TemplateInit extends Command
     {
         $path = base_path('.env');
         $env = file_get_contents($path);
+        if ($env === false) {
+            return;
+        }
 
         foreach ($values as $key => $value) {
-            if (preg_match("/^{$key}=.*/m", $env)) {
-                $env = preg_replace("/^{$key}=.*/m", "{$key}={$value}", $env);
+            // Line-wise replace — avoid preg_replace replacement pitfalls when
+            // the site name contains `$1` / backslashes (F11 #45).
+            $line = $key.'='.$value;
+            $pattern = '/^'.preg_quote((string) $key, '/').'=.*/m';
+            if (preg_match($pattern, $env)) {
+                $env = preg_replace($pattern, addcslashes($line, '\\$'), $env) ?? $env;
             } else {
-                $env .= "\n{$key}={$value}";
+                $env .= "\n{$line}";
             }
         }
 

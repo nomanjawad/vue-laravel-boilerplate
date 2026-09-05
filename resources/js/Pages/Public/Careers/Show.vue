@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import PublicLayout from '@/Layouts/PublicLayout.vue'
-import { Head, Link } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3'
 
 defineOptions({ layout: PublicLayout })
 
@@ -45,8 +45,6 @@ const typeColor = (type: CareerType): string => {
 </script>
 
 <template>
-    <Head :title="career.title" />
-
     <article class="py-12">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Back link -->

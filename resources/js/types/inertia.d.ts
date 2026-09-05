@@ -29,6 +29,8 @@ export interface SharedPageProps {
         }
     } | null
     settings: App.Data.SettingsData
+    /** Resolved logo media payload for AppImage; null on admin. */
+    siteLogo?: string | import('@/Components/Atoms/AppImage.vue').AppImageMedia | null
     enabledFeatures: Record<string, boolean>
     seo: App.Data.SeoData
     organizationJsonLd: Record<string, unknown> | null

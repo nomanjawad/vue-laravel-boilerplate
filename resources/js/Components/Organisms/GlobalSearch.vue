@@ -108,6 +108,8 @@ function visit(result: FlatResult | App.Data.SearchResultData | undefined) {
 }
 
 function onKeydown(e: KeyboardEvent) {
+    if (!props.open) return
+
     if (e.key === 'Escape') {
         e.preventDefault()
         emit('close')

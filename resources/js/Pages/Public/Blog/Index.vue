@@ -2,6 +2,7 @@
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import { Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
+import AppImage, { type AppImageMedia } from '@/Components/Atoms/AppImage.vue'
 
 defineOptions({ layout: PublicLayout })
 
@@ -10,7 +11,7 @@ interface BlogListPost {
     slug: string
     title: string
     excerpt?: string | null
-    featured_image?: string | null
+    featured_image?: string | AppImageMedia | null
     published_at: string
     categories?: { id: number; name: string; slug: string }[]
 }
@@ -86,7 +87,13 @@ function onCategoryChange(event: Event) {
                 <article v-for="post in posts.data" :key="post.id" class="group">
                     <Link :href="`/blog/${post.slug}`">
                         <div class="aspect-video bg-gray-100 rounded-lg mb-4 overflow-hidden">
-                            <img v-if="post.featured_image" :src="post.featured_image" :alt="post.title" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            <AppImage
+                                v-if="post.featured_image"
+                                :src="post.featured_image"
+                                :alt="post.title"
+                                sizes="(max-width: 768px) 100vw, 33vw"
+                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
                         </div>
                     </Link>
                     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 mb-2">
@@ -112,7 +119,19 @@ function onCategoryChange(event: Event) {
 
             <div v-if="posts.links && posts.links.length > 3" class="mt-12 flex justify-center">
                 <nav class="flex space-x-1">
-                    <Link v-for="link in posts.links" :key="link.label" :href="link.url || '#'" v-html="link.label" :class="['px-3 py-1 text-sm rounded', link.active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100', !link.url ? 'opacity-50 cursor-not-allowed' : '']" />
+                <template v-for="(link, i) in posts.links" :key="`${link.url ?? ''}-${i}`">
+                    <Link
+                        v-if="link.url"
+                        :href="link.url"
+                        v-html="link.label"
+                        :class="['px-3 py-1 text-sm rounded', link.active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100']"
+                    />
+                    <span
+                        v-else
+                        v-html="link.label"
+                        class="px-3 py-1 text-sm rounded opacity-50 cursor-not-allowed"
+                    />
+                </template>
                 </nav>
             </div>
         </div>

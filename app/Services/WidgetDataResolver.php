@@ -2,18 +2,21 @@
 
 namespace App\Services;
 
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\Team;
 use App\Modules\Core\ModuleManager;
 use App\Modules\Faqs\Models\Faq;
 use App\Modules\Testimonials\Models\Testimonial;
+use App\Support\SchemaCache;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * Resolves collection-type widgets (testimonials, faqs, team, latest_posts)
  * into plain arrays keyed by widget id for the public DynamicPage.
  *
- * Guarded by Schema::hasTable + module-enabled checks so a disabled module
+ * Guarded by SchemaCache::hasTable + module-enabled checks so a disabled module
  * or missing migration never 500s the page.
  */
 class WidgetDataResolver
@@ -64,7 +67,7 @@ class WidgetDataResolver
      */
     private function resolveTestimonials(array $collection): array
     {
-        if (! $this->modules->enabled('testimonials') || ! Schema::hasTable('testimonials')) {
+        if (! $this->modules->enabled('testimonials') || ! SchemaCache::hasTable('testimonials')) {
             return [];
         }
 
@@ -72,20 +75,42 @@ class WidgetDataResolver
         $mode = (string) ($collection['mode'] ?? 'latest');
         $ids = array_values(array_filter((array) ($collection['ids'] ?? []), 'is_numeric'));
 
-        $query = Testimonial::query()->where('is_active', true);
+        $query = Testimonial::query()
+            ->where('is_active', true)
+            ->select(['id', 'title', 'body']);
 
         if ($mode === 'picked' && $ids !== []) {
-            $query->whereIn('id', $ids);
-        } else {
-            $query->latest('id')->limit($limit);
+            $rows = $query->whereIn('id', $ids)->get();
+
+            return $this->orderByIds($rows, $ids, $limit)
+                ->map(fn (Testimonial $t) => $this->serializeTestimonial($t))
+                ->all();
         }
 
-        return $query->get()->map(fn (Testimonial $t) => $t->toArray())->all();
+        return $query->latest('id')->limit($limit)->get()
+            ->map(fn (Testimonial $t) => $this->serializeTestimonial($t))
+            ->all();
+    }
+
+    /**
+     * @return array{id: int, name: string, title: string, body: string, quote: string}
+     */
+    private function serializeTestimonial(Testimonial $t): array
+    {
+        $body = (string) ($t->body ?? '');
+
+        return [
+            'id' => $t->id,
+            'name' => (string) $t->title,
+            'title' => (string) $t->title,
+            'body' => $body,
+            'quote' => $body,
+        ];
     }
 
     private function resolveFaqs(array $collection, ?string $pageSlug): array
     {
-        if (! $this->modules->enabled('faqs') || ! Schema::hasTable('faqs')) {
+        if (! $this->modules->enabled('faqs') || ! SchemaCache::hasTable('faqs')) {
             return [];
         }
 
@@ -94,8 +119,8 @@ class WidgetDataResolver
                 ->where('is_active', true)
                 ->latest('id')
                 ->limit(max(1, (int) ($collection['limit'] ?? 20)))
-                ->get()
-                ->map(fn (Faq $f) => $f->toArray())
+                ->get(['id', 'title', 'body'])
+                ->map(fn (Faq $f) => $this->serializeFaq($f))
                 ->all();
         }
 
@@ -105,12 +130,13 @@ class WidgetDataResolver
         $pickedSlug = is_string($collection['page_slug'] ?? null) ? $collection['page_slug'] : null;
 
         if ($mode === 'picked' && $ids !== []) {
-            return Faq::query()
+            $rows = Faq::query()
                 ->where('is_active', true)
                 ->whereIn('id', $ids)
-                ->limit($limit)
-                ->get()
-                ->map(fn (Faq $f) => $f->toArray())
+                ->get(['id', 'title', 'body', 'page_slug']);
+
+            return $this->orderByIds($rows, $ids, $limit)
+                ->map(fn (Faq $f) => $this->serializeFaq($f))
                 ->all();
         }
 
@@ -126,8 +152,8 @@ class WidgetDataResolver
                 ->global()
                 ->orderBy('id')
                 ->limit($limit)
-                ->get()
-                ->map(fn (Faq $f) => $f->toArray())
+                ->get(['id', 'title', 'body', 'page_slug'])
+                ->map(fn (Faq $f) => $this->serializeFaq($f))
                 ->all();
         }
 
@@ -136,7 +162,7 @@ class WidgetDataResolver
             ->forPageSlug($targetSlug)
             ->orderBy('id')
             ->limit($limit)
-            ->get();
+            ->get(['id', 'title', 'body', 'page_slug']);
 
         if ($items->isEmpty()) {
             $items = Faq::query()
@@ -144,10 +170,26 @@ class WidgetDataResolver
                 ->global()
                 ->orderBy('id')
                 ->limit($limit)
-                ->get();
+                ->get(['id', 'title', 'body', 'page_slug']);
         }
 
-        return $items->map(fn (Faq $f) => $f->toArray())->all();
+        return $items->map(fn (Faq $f) => $this->serializeFaq($f))->all();
+    }
+
+    /**
+     * Public FAQ widgets + FAQPage schema expect question/answer; the Faq
+     * model stores title/body.
+     *
+     * @return array{id: int, question: string, answer: string, page_slug: ?string}
+     */
+    private function serializeFaq(Faq $faq): array
+    {
+        return [
+            'id' => $faq->id,
+            'question' => (string) $faq->title,
+            'answer' => (string) $faq->body,
+            'page_slug' => $faq->page_slug ?? null,
+        ];
     }
 
     /**
@@ -156,7 +198,7 @@ class WidgetDataResolver
      */
     private function resolveTeam(array $collection): array
     {
-        if (! $this->modules->enabled('teams') || ! Schema::hasTable('teams')) {
+        if (! $this->modules->enabled('teams') || ! SchemaCache::hasTable('teams')) {
             return [];
         }
 
@@ -164,15 +206,25 @@ class WidgetDataResolver
         $mode = (string) ($collection['mode'] ?? 'latest');
         $ids = array_values(array_filter((array) ($collection['ids'] ?? []), 'is_numeric'));
 
-        $query = Team::query()->active();
+        $query = Team::query()
+            ->active()
+            ->select(['id', 'name', 'position', 'bio', 'photo', 'sort_order']);
 
         if ($mode === 'picked' && $ids !== []) {
-            $query->whereIn('id', $ids);
+            $rows = $this->orderByIds($query->whereIn('id', $ids)->get(), $ids, $limit);
         } else {
-            $query->orderBy('sort_order')->limit($limit);
+            $rows = $query->orderBy('sort_order')->limit($limit)->get();
         }
 
-        return $query->get()->map(fn (Team $t) => $t->toArray())->all();
+        $map = Media::imagePayloadMap($rows->pluck('photo'));
+
+        return $rows->map(function (Team $t) use ($map) {
+            $row = $t->toArray();
+            $key = is_string($t->photo) ? $t->photo : '';
+            $row['photo'] = $map[$key] ?? Media::imagePayload($key !== '' ? $key : null);
+
+            return $row;
+        })->all();
     }
 
     /**
@@ -181,25 +233,57 @@ class WidgetDataResolver
      */
     private function resolvePosts(array $collection): array
     {
-        if (! $this->modules->enabled('blog') || ! Schema::hasTable('posts')) {
+        if (! $this->modules->enabled('blog') || ! SchemaCache::hasTable('posts')) {
             return [];
         }
 
         $limit = max(1, (int) ($collection['limit'] ?? 3));
         $mode = (string) ($collection['mode'] ?? 'latest');
         $ids = array_values(array_filter((array) ($collection['ids'] ?? []), 'is_numeric'));
+        $columns = ['id', 'title', 'slug', 'excerpt', 'featured_image', 'published_at'];
 
-        $query = Post::query()->published();
+        $query = Post::query()->published()->select($columns);
 
         if ($mode === 'picked' && $ids !== []) {
-            $query->whereIn('id', $ids);
+            $rows = $this->orderByIds($query->whereIn('id', $ids)->get(), $ids, $limit);
         } else {
-            $query->latest('published_at')->limit($limit);
+            $rows = $query->latest('published_at')->limit($limit)->get();
         }
 
-        return $query
-            ->get(['id', 'title', 'slug', 'excerpt', 'featured_image', 'published_at'])
-            ->map(fn (Post $p) => $p->toArray())
-            ->all();
+        $map = Media::imagePayloadMap($rows->pluck('featured_image'));
+
+        return $rows->map(function (Post $p) use ($map) {
+            $row = $p->toArray();
+            $key = $p->featured_image ?? '';
+            $row['featured_image'] = $map[$key] ?? Media::imagePayload($p->featured_image);
+
+            return $row;
+        })->all();
+    }
+
+    /**
+     * Preserve admin pick order and honor limit (F11 #40).
+     *
+     * @template T of \Illuminate\Database\Eloquent\Model
+     * @param  Collection<int, T>  $rows
+     * @param  list<int|string>  $ids
+     * @return Collection<int, T>
+     */
+    private function orderByIds(Collection $rows, array $ids, int $limit): Collection
+    {
+        $byId = $rows->keyBy(fn ($row) => (int) $row->getKey());
+        $ordered = collect();
+
+        foreach ($ids as $id) {
+            $row = $byId->get((int) $id);
+            if ($row !== null) {
+                $ordered->push($row);
+            }
+            if ($ordered->count() >= $limit) {
+                break;
+            }
+        }
+
+        return $ordered;
     }
 }

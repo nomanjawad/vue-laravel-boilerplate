@@ -41,6 +41,11 @@ class PageContentController extends Controller
 
         $this->jsonData->put($file, $validated['content']);
 
+        activity('layout')
+            ->causedBy(auth()->user())
+            ->withProperties(['file' => $file])
+            ->log('updated '.$file.' layout');
+
         return back()->with('success', 'Content updated successfully.');
     }
 

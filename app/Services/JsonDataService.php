@@ -27,6 +27,8 @@ class JsonDataService
 
     public function get(string $filename): array
     {
+        $this->assertValidFilename($filename);
+
         $path = base_path("data/{$filename}.json");
 
         // Debug builds: bypass cache entirely. `data/*.json` is content the
@@ -92,7 +94,7 @@ class JsonDataService
         // response cache + sitemap so public pages don't serve stale HTML for
         // up to 7 days after a green "saved" toast.
         ResponseCache::clear();
-        Cache::forget('sitemap.xml');
+        SitemapService::forgetStatic();
     }
 
     /**
@@ -109,7 +111,7 @@ class JsonDataService
         }
 
         ResponseCache::clear();
-        Cache::forget('sitemap.xml');
+        SitemapService::forgetStatic();
     }
 
     /**

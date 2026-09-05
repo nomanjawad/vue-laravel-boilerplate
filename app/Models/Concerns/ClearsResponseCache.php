@@ -2,7 +2,7 @@
 
 namespace App\Models\Concerns;
 
-use Illuminate\Support\Facades\Cache;
+use App\Services\SitemapService;
 use Spatie\ResponseCache\Facades\ResponseCache;
 
 /**
@@ -21,6 +21,15 @@ trait ClearsResponseCache
     protected static function clearPublicCaches(): void
     {
         ResponseCache::clear();
-        Cache::forget('sitemap.xml');
+        SitemapService::forgetStatic();
+    }
+
+    /**
+     * Bust caches after query-builder / bulk writes that skip Eloquent events
+     * (e.g. MenuController::reorder).
+     */
+    public static function bustPublicCaches(): void
+    {
+        static::clearPublicCaches();
     }
 }

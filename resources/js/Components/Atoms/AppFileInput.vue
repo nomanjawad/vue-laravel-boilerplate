@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 interface Props {
     accept?: string
     multiple?: boolean
     disabled?: boolean
     id?: string
+    /** Button label when no default slot is provided. */
+    label?: string
+    /** primary = filled brand; secondary = outline. */
+    variant?: 'primary' | 'secondary'
 }
 
 withDefaults(defineProps<Props>(), {
@@ -11,11 +17,19 @@ withDefaults(defineProps<Props>(), {
     multiple: false,
     disabled: false,
     id: undefined,
+    label: 'Upload',
+    variant: 'primary',
 })
 
 const emit = defineEmits<{
     (e: 'select', files: File[]): void
 }>()
+
+const inputRef = ref<HTMLInputElement | null>(null)
+
+function open() {
+    inputRef.value?.click()
+}
 
 function onChange(e: Event) {
     const target = e.target as HTMLInputElement
@@ -24,16 +38,33 @@ function onChange(e: Event) {
     emit('select', files)
     target.value = ''
 }
+
+defineExpose({ open })
 </script>
 
 <template>
-    <input
-        :id="id"
-        type="file"
-        :accept="accept"
-        :multiple="multiple"
-        :disabled="disabled"
-        class="block w-full text-sm text-gray-700 file:mr-3 file:rounded file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
-        @change="onChange"
-    >
+    <span class="inline-flex">
+        <input
+            :id="id"
+            ref="inputRef"
+            type="file"
+            :accept="accept"
+            :multiple="multiple"
+            :disabled="disabled"
+            class="sr-only"
+            tabindex="-1"
+            @change="onChange"
+        >
+        <button
+            type="button"
+            :disabled="disabled"
+            class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            :class="variant === 'primary'
+                ? 'bg-brand-600 text-white hover:bg-brand-700'
+                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'"
+            @click="open"
+        >
+            <slot>{{ label }}</slot>
+        </button>
+    </span>
 </template>

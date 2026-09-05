@@ -63,6 +63,7 @@ class PageController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/'],
             'status' => ['required', 'in:published,draft'],
+            'featured_image' => ['nullable', 'string', 'max:500'],
             'seo' => ['nullable', 'array'],
             'widgets' => ['nullable', 'array'],
         ]);
@@ -76,6 +77,11 @@ class PageController extends Controller
 
         $payload = $this->buildPayload($validated);
         $this->jsonData->put("pages/{$slug}", $payload);
+
+        activity('pages')
+            ->causedBy(auth()->user())
+            ->withProperties(['slug' => $slug, 'title' => $validated['title']])
+            ->log('created page "'.$validated['title'].'"');
 
         return redirect("/admin/pages/{$slug}/edit")
             ->with('success', 'Page created.');
@@ -91,15 +97,12 @@ class PageController extends Controller
                 'slug' => $slug,
                 'title' => $page['title'] ?? $slug,
                 'status' => $page['status'] ?? 'draft',
-                'seo' => $page['seo'] ?? [
-                    'title' => '',
-                    'description' => '',
-                    'og_image' => '',
-                    'og_title' => '',
-                    'og_description' => '',
-                    'canonical' => '',
-                    'noindex' => false,
-                    'json_ld' => '',
+                'featured_image' => (string) ($page['featured_image'] ?? ($page['seo']['og_image'] ?? '')),
+                'seo' => [
+                    'title' => (string) (($page['seo']['title'] ?? '')),
+                    'description' => (string) (($page['seo']['description'] ?? '')),
+                    'noindex' => (bool) ($page['seo']['noindex'] ?? false),
+                    'json_ld' => (string) (($page['seo']['json_ld'] ?? '')),
                 ],
                 'widgets' => $page['widgets'] ?? [],
             ],
@@ -118,6 +121,7 @@ class PageController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/'],
             'status' => ['required', 'in:published,draft'],
+            'featured_image' => ['nullable', 'string', 'max:500'],
             'seo' => ['nullable', 'array'],
             'widgets' => ['nullable', 'array'],
         ]);
@@ -137,8 +141,20 @@ class PageController extends Controller
             $this->jsonData->put("pages/{$newSlug}", $payload);
             $this->jsonData->delete("pages/{$slug}");
             $this->redirectOldPageSlug($slug, $newSlug);
+            activity('pages')
+                ->causedBy(auth()->user())
+                ->withProperties([
+                    'slug' => $newSlug,
+                    'old_slug' => $slug,
+                    'title' => $validated['title'],
+                ])
+                ->log('renamed page "'.$slug.'" → "'.$newSlug.'"');
         } else {
             $this->jsonData->put("pages/{$slug}", $payload);
+            activity('pages')
+                ->causedBy(auth()->user())
+                ->withProperties(['slug' => $slug, 'title' => $validated['title']])
+                ->log('updated page "'.$validated['title'].'"');
         }
 
         return redirect("/admin/pages/{$newSlug}/edit")
@@ -159,6 +175,14 @@ class PageController extends Controller
 
         $this->jsonData->delete("pages/{$slug}");
 
+        activity('pages')
+            ->causedBy(auth()->user())
+            ->withProperties([
+                'slug' => $slug,
+                'title' => is_string($page['title'] ?? null) ? $page['title'] : $slug,
+            ])
+            ->log('deleted page "'.(is_string($page['title'] ?? null) ? $page['title'] : $slug).'"');
+
         return redirect('/admin/pages')->with('success', 'Page deleted.');
     }
 
@@ -170,13 +194,10 @@ class PageController extends Controller
         return [
             'title' => $validated['title'],
             'status' => $validated['status'],
+            'featured_image' => (string) ($validated['featured_image'] ?? ''),
             'seo' => [
                 'title' => (string) ($seo['title'] ?? ''),
                 'description' => (string) ($seo['description'] ?? ''),
-                'og_image' => (string) ($seo['og_image'] ?? ''),
-                'og_title' => (string) ($seo['og_title'] ?? ''),
-                'og_description' => (string) ($seo['og_description'] ?? ''),
-                'canonical' => (string) ($seo['canonical'] ?? ''),
                 'noindex' => (bool) ($seo['noindex'] ?? false),
                 'json_ld' => (string) ($seo['json_ld'] ?? ''),
             ],

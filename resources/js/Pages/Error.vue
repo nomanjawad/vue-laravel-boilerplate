@@ -29,7 +29,11 @@ const messages = {
 
 const info = computed<ErrorInfo>(() => {
     const found = (messages as Record<number, ErrorInfo | undefined>)[props.status]
-    return found ?? messages[500]
+    const base = found ?? messages[500]
+    return {
+        title: base.title,
+        message: props.message?.trim() ? props.message : base.message,
+    }
 })
 </script>
 

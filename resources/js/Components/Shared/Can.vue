@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { usePermissions } from '@/Composables/usePermissions'
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const { can, canAny } = usePermissions()
-const allowed = props.any ? canAny(props.any) : can(props.permission)
+const allowed = computed(() => (props.any ? canAny(props.any) : can(props.permission)))
 </script>
 
 <template>

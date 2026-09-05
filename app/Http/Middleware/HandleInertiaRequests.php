@@ -11,14 +11,15 @@ use App\Data\ModulesSharedData;
 use App\Data\SeoData;
 use App\Data\SettingsData;
 use App\Models\Category;
+use App\Models\Media;
 use App\Models\Menu;
 use App\Models\Post;
 use App\Models\Setting;
 use App\Modules\Core\ModuleManager;
 use App\Services\JsonDataService;
 use App\Services\SeoService;
+use App\Support\SchemaCache;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -71,9 +72,10 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         if (self::$tablesExist === null) {
-            self::$tablesExist = Schema::hasTable('menus') && Schema::hasTable('site_settings');
+            self::$tablesExist = SchemaCache::hasTable('menus') && SchemaCache::hasTable('site_settings');
         }
         $tablesExist = self::$tablesExist;
+        $isAdmin = $request->is('admin', 'admin/*');
 
         // Eager-load roles + permissions once per request so `auth`/`modules`
         // shares don't each re-query Spatie's tables.
@@ -89,19 +91,27 @@ class HandleInertiaRequests extends Middleware
 
             'auth' => fn () => AuthData::fromUser($user, $permissionNames, $isSuperAdmin)->toArray(),
 
-            // Module registry — sidebar uses this; pages can read it via
-            // useModule() to gracefully handle "module disabled while page open".
-            'modules' => fn () => ModulesSharedData::from([
-                'nav' => array_map(
-                    fn (array $entry) => ModuleNavEntry::from($entry),
-                    $this->modules->navFor($permissionNames, $isSuperAdmin),
-                ),
-                'enabled' => collect($this->modules->manifests())
-                    ->filter(fn ($_, $k) => $this->modules->enabled($k))
-                    ->keys()
-                    ->values()
-                    ->toArray(),
-            ])->toArray(),
+            // Admin sidebar only — skip nav/badge work on public requests (F12 #4).
+            'modules' => fn () => $isAdmin
+                ? ModulesSharedData::from([
+                    'nav' => array_map(
+                        fn (array $entry) => ModuleNavEntry::from($entry),
+                        $this->modules->navFor($permissionNames, $isSuperAdmin),
+                    ),
+                    'enabled' => collect($this->modules->manifests())
+                        ->filter(fn ($_, $k) => $this->modules->enabled($k))
+                        ->keys()
+                        ->values()
+                        ->toArray(),
+                ])->toArray()
+                : ModulesSharedData::from([
+                    'nav' => [],
+                    'enabled' => collect($this->modules->manifests())
+                        ->filter(fn ($_, $k) => $this->modules->enabled($k))
+                        ->keys()
+                        ->values()
+                        ->toArray(),
+                ])->toArray(),
 
             'flash' => fn () => FlashData::from([
                 'success' => $request->session()->get('success'),
@@ -119,7 +129,7 @@ class HandleInertiaRequests extends Middleware
                 : MenusData::from(['header' => [], 'footer' => []])->toArray(),
 
             // header.json + footer.json — public pages only (admin has its own editor).
-            'layout' => fn () => $request->is('admin', 'admin/*')
+            'layout' => fn () => $isAdmin
                 ? null
                 : [
                     'header' => $this->jsonData->get('header'),
@@ -127,10 +137,13 @@ class HandleInertiaRequests extends Middleware
                 ],
 
             'settings' => fn () => $tablesExist
-                ? SettingsData::from(
-                    Setting::whereIn('key', self::PUBLIC_SETTINGS)->pluck('value', 'key')->toArray()
-                )->toArray()
+                ? SettingsData::from($this->publicSettingsMap())->toArray()
                 : SettingsData::from([])->toArray(),
+
+            // Resolved logo for AppImage (srcset/dims) — public header CLS (F12 #3).
+            'siteLogo' => fn () => $isAdmin || ! $tablesExist
+                ? null
+                : $this->resolveSiteLogo(),
 
             'enabledFeatures' => config('template.features'),
 
@@ -142,6 +155,37 @@ class HandleInertiaRequests extends Middleware
             'organizationJsonLd' => fn () => $tablesExist ? $this->seo->organization() : null,
             'localBusinessJsonLd' => fn () => $tablesExist ? $this->seo->localBusiness() : null,
         ];
+    }
+
+    /**
+     * Whitelisted public settings via the cached Setting::get map (F12 #4).
+     *
+     * @return array<string, mixed>
+     */
+    protected function publicSettingsMap(): array
+    {
+        $out = [];
+        foreach (self::PUBLIC_SETTINGS as $key) {
+            $out[$key] = Setting::get($key);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array{url: string, variants: ?array, width: ?int, height: ?int, alt_text: ?string}|string|null
+     */
+    protected function resolveSiteLogo(): array|string|null
+    {
+        $fromSettings = Setting::get('site_logo');
+        if (is_string($fromSettings) && $fromSettings !== '') {
+            return Media::imagePayload($fromSettings);
+        }
+
+        $header = $this->jsonData->get('header');
+        $fromHeader = is_string($header['logo'] ?? null) ? $header['logo'] : null;
+
+        return Media::imagePayload($fromHeader);
     }
 
     /**
@@ -165,38 +209,25 @@ class HandleInertiaRequests extends Middleware
     /**
      * Build the SEO meta payload for the current route.
      *
-     * Sources (in priority order for content):
-     * - JSON page `seo` block (home / dynamic pages)
-     * - Post columns (blog.show)
-     * - Category name/description (blog.category)
-     * - Fallback content titles for index routes (Blog, Careers, …)
-     *
-     * Title template (`seo_title_template`, default `%title% — %site_name%`)
-     * applies only when the page/post has no explicit meta title. Canonical is
-     * always absolute via `url()`; an optional override field wins when set.
+     * Canonical / OG tags are always derived (never overridden from the
+     * editor). See feedback.md F1 / F2 / F11 #10.
      */
     protected function resolveSeo(Request $request, bool $settingsExist): array
     {
-        $settings = $settingsExist
-            ? Setting::whereIn('key', [
-                'site_name', 'site_description', 'og_image', 'site_noindex', 'seo_title_template',
-            ])->pluck('value', 'key')
-            : collect();
-        // No literal brand fallback — an empty site_name + empty APP_NAME
-        // should surface as an obvious blank in the tab title so the project
-        // owner notices during setup, not ship a placeholder to visitors.
-        $siteName = $settings->get('site_name') ?: (string) config('app.name');
-        $defaultDescription = $settings->get('site_description') ?: '';
-        $defaultImage = $settings->get('og_image');
-        $titleTemplate = $settings->get('seo_title_template') ?: '%title% — %site_name%';
-        // Sitewide kill switch (Admin > Settings > SEO & Analytics) — forces
-        // noindex on every route, composed with (never overridden by) a
-        // page's own noindex below.
-        $siteNoindex = $settings->get('site_noindex') === '1';
+        $siteName = $settingsExist
+            ? ((string) Setting::get('site_name') ?: (string) config('app.name'))
+            : (string) config('app.name');
+        $defaultDescription = $settingsExist ? (string) (Setting::get('site_description') ?: '') : '';
+        $defaultImage = $settingsExist ? Setting::get('og_image') : null;
+        $titleTemplate = $settingsExist
+            ? ((string) (Setting::get('seo_title_template') ?: '%title% — %site_name%'))
+            : '%title% — %site_name%';
+        $siteNoindex = $settingsExist && Setting::get('site_noindex') === '1';
 
         $routeName = $request->route()?->getName();
         $meta = [];
         $contentTitle = '';
+        $featuredImage = '';
         $ogType = 'website';
         $articlePublished = null;
         $articleModified = null;
@@ -211,6 +242,8 @@ class HandleInertiaRequests extends Middleware
             $page = $this->jsonData->get("pages/{$slug}");
             $meta = is_array($page['seo'] ?? null) ? $page['seo'] : [];
             $contentTitle = (string) ($page['title'] ?? $slug);
+            // featured_image is the source of og:image; legacy seo.og_image fallback.
+            $featuredImage = (string) ($page['featured_image'] ?? $meta['og_image'] ?? '');
         }
 
         if ($routeName === 'blog.show') {
@@ -219,13 +252,10 @@ class HandleInertiaRequests extends Middleware
                 $meta = [
                     'title' => $post->meta_title ?: '',
                     'description' => $post->meta_description ?: ($post->excerpt ?: ''),
-                    'og_image' => $post->og_image ?: ($post->featured_image ?: ''),
-                    'og_title' => $post->og_title ?: '',
-                    'og_description' => $post->og_description ?: '',
-                    'canonical' => $post->canonical_url ?: '',
                     'noindex' => (bool) $post->noindex,
                 ];
                 $contentTitle = $post->title;
+                $featuredImage = (string) ($post->featured_image ?: '');
                 $ogType = 'article';
                 $articlePublished = $post->published_at?->toAtomString();
                 $articleModified = $post->updated_at?->toAtomString();
@@ -259,19 +289,13 @@ class HandleInertiaRequests extends Middleware
             $contentTitle = is_object($study) && isset($study->title)
                 ? (string) $study->title
                 : 'Case Studies';
+            if (is_object($study) && isset($study->featured_image)) {
+                $featuredImage = (string) $study->featured_image;
+            }
         }
 
-        // `?? '' | ?:` in two steps, not a bare `$meta['x'] ?: …`: `??` on the
-        // array read is what avoids an "undefined array key" warning when the
-        // route has no seo block (or the block omits a key); the outer `?:`
-        // then treats an admin-cleared field ("" — the JSON editor writes
-        // empty strings, not null) the same as a missing one.
         $metaTitle = (string) ($meta['title'] ?? '');
         $description = (string) ($meta['description'] ?? '');
-        $ogImage = (string) ($meta['og_image'] ?? '');
-        $ogTitle = (string) ($meta['og_title'] ?? '');
-        $ogDescription = (string) ($meta['og_description'] ?? '');
-        $canonicalOverride = (string) ($meta['canonical'] ?? '');
         $jsonLd = (string) ($meta['json_ld'] ?? '');
 
         $resolvedTitle = $this->seo->applyTitleTemplate(
@@ -281,32 +305,23 @@ class HandleInertiaRequests extends Middleware
             $titleTemplate,
         );
 
-        // og:image must be an absolute URL for social crawlers. Media URLs are
-        // stored root-relative (see Media::getUrlAttribute), so promote a
-        // relative value to absolute here; an already-absolute URL is untouched.
-        $ogImage = $this->seo->absoluteUrl($ogImage ?: $defaultImage);
+        $resolvedDescription = $description !== '' ? $description : $defaultDescription;
 
-        $canonical = $canonicalOverride !== ''
-            ? ($this->seo->absoluteUrl($canonicalOverride) ?: url($canonicalOverride))
-            : $request->url();
+        // Derived OG: always mirror resolved meta + featured image (no overrides).
+        $ogImage = $this->seo->absoluteUrl($featuredImage !== '' ? $featuredImage : $defaultImage);
 
         return SeoData::from([
             'site_name' => $siteName,
             'title' => $resolvedTitle !== '' ? $resolvedTitle : null,
-            'description' => $description !== '' ? $description : $defaultDescription,
+            'description' => $resolvedDescription,
             'og_image' => $ogImage,
-            'og_title' => $ogTitle !== '' ? $ogTitle : null,
-            'og_description' => $ogDescription !== '' ? $ogDescription : null,
+            'og_title' => $resolvedTitle !== '' ? $resolvedTitle : null,
+            'og_description' => $resolvedDescription !== '' ? $resolvedDescription : null,
             'og_type' => $ogType,
             'twitter_card' => 'summary_large_image',
             'article_published_time' => $articlePublished,
             'article_modified_time' => $articleModified,
-            'canonical' => $canonical,
-            // Sitewide indexable flag must gate this the same way it gates
-            // PreventSearchIndexing's X-Robots-Tag header — otherwise a
-            // staging build (SEO_INDEXABLE=false) sends the noindex header
-            // but still renders <meta name="robots" content="index,follow">
-            // client-side. See feedback.md §43.
+            'canonical' => $this->seo->canonicalUrl($request),
             'noindex' => ! config('template.indexable') || $siteNoindex || (bool) ($meta['noindex'] ?? false),
             'json_ld' => $jsonLd !== '' ? $jsonLd : null,
         ])->toArray();

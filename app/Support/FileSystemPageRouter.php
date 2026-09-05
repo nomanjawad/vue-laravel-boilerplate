@@ -113,7 +113,7 @@ class FileSystemPageRouter
             'path' => $folderName === 'Home' ? '/' : "/{$kebab}",
             'name' => $kebab,
             'component' => "Public/{$folderName}/Index",
-            'middleware' => [],
+            'middleware' => ['responsecache'],
             'data' => $kebab,
         ];
 

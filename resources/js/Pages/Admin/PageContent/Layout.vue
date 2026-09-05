@@ -27,12 +27,14 @@ interface HeaderContent {
     show_cta_button: boolean
     cta_text: string
     cta_url: string
+    [key: string]: unknown
 }
 
 interface FooterContent {
     columns: FooterColumn[]
     copyright: string
     show_social_icons: boolean
+    [key: string]: unknown
 }
 
 interface ContentFile {
@@ -55,6 +57,7 @@ const COLUMN_TYPES = [
 
 function asHeader(data: Record<string, unknown>): HeaderContent {
     return {
+        ...data,
         logo: typeof data.logo === 'string' ? data.logo : '',
         logo_alt: typeof data.logo_alt === 'string' ? data.logo_alt : '',
         show_cta_button: Boolean(data.show_cta_button),
@@ -75,6 +78,7 @@ function asFooter(data: Record<string, unknown>): FooterContent {
         : []
 
     return {
+        ...data,
         columns,
         copyright: typeof data.copyright === 'string' ? data.copyright : '',
         show_social_icons: data.show_social_icons !== false,
@@ -247,6 +251,37 @@ function save(file: string) {
                     @click="save('footer')"
                 >
                     {{ activeForm.processing ? 'Saving…' : 'Save footer' }}
+                </button>
+            </div>
+        </div>
+
+        <div v-else-if="activeForm && activeFile" class="flex-1 space-y-6">
+            <AppFormSection
+                :title="files.find((f) => f.file === activeFile)?.label ?? activeFile"
+                description="No dedicated editor for this file — unknown keys are preserved on save."
+            >
+                <p class="text-sm text-gray-600">
+                    Edit known string fields below, or change the JSON on disk under
+                    <code class="rounded bg-gray-100 px-1">data/{{ activeFile }}.json</code>.
+                </p>
+                <template v-for="(val, key) in activeForm.content" :key="String(key)">
+                    <AppFormField
+                        v-if="typeof val === 'string'"
+                        :name="`content.${String(key)}`"
+                        :label="String(key)"
+                    >
+                        <AppInput v-model="(activeForm.content as Record<string, string>)[String(key)]" />
+                    </AppFormField>
+                </template>
+            </AppFormSection>
+            <div class="flex justify-end border-t border-gray-100 pt-4">
+                <button
+                    type="button"
+                    class="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                    :disabled="activeForm.processing"
+                    @click="save(activeFile)"
+                >
+                    {{ activeForm.processing ? 'Saving…' : 'Save' }}
                 </button>
             </div>
         </div>

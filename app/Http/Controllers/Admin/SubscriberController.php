@@ -34,13 +34,22 @@ class SubscriberController extends Controller
     /** Streamed CSV export — works within shared-hosting memory limits. */
     public function export(): StreamedResponse
     {
+        activity('default')
+            ->causedBy(auth()->user())
+            ->log('exported subscribers CSV');
+
         return response()->streamDownload(function () {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['email', 'name', 'subscribed_at', 'unsubscribed_at']);
 
             Subscriber::orderBy('id')->chunk(500, function ($subscribers) use ($out) {
                 foreach ($subscribers as $s) {
-                    fputcsv($out, [$s->email, $s->name, $s->created_at, $s->unsubscribed_at]);
+                    fputcsv($out, [
+                        self::csvSafe((string) $s->email),
+                        self::csvSafe((string) ($s->name ?? '')),
+                        self::csvSafe((string) $s->created_at),
+                        self::csvSafe((string) ($s->unsubscribed_at ?? '')),
+                    ]);
                 }
             });
 
@@ -53,5 +62,17 @@ class SubscriberController extends Controller
         $subscriber->delete();
 
         return back()->with('success', 'Subscriber removed.');
+    }
+
+    /**
+     * Neutralize CSV formula injection (Excel/Sheets treat leading = + - @ as formulas).
+     */
+    private static function csvSafe(string $value): string
+    {
+        if ($value !== '' && preg_match('/^[=+\-@\t\r]/', $value)) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 }

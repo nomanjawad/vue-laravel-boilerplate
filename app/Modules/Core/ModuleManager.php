@@ -6,12 +6,13 @@ use App\Modules\Core\Exceptions\ModuleDependencyException;
 use App\Modules\Core\Exceptions\ModuleException;
 use App\Modules\Core\Exceptions\ModuleNotFoundException;
 use App\Modules\Core\Models\Module;
+use App\Services\SitemapService;
+use App\Support\SchemaCache;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 /**
@@ -246,7 +247,7 @@ class ModuleManager
         );
 
         $this->forgetCache();
-        Cache::forget('sitemap.xml');
+        $this->bustPublicSurfaces();
 
         // Migrations run outside a wrapping transaction (Artisan manages its
         // own), so we can't roll back on partial failure. Instead, catch any
@@ -268,7 +269,10 @@ class ModuleManager
             throw $e;
         }
 
-        rescue(fn () => Artisan::call('responsecache:clear'), report: false);
+        activity('modules')
+            ->causedBy(auth()->user())
+            ->withProperties(['module' => $key])
+            ->log('enabled module "'.$key.'"');
     }
 
     public function disable(string $key): void
@@ -297,8 +301,12 @@ class ModuleManager
         );
 
         $this->forgetCache();
-        Cache::forget('sitemap.xml');
-        rescue(fn () => Artisan::call('responsecache:clear'), report: false);
+        $this->bustPublicSurfaces();
+
+        activity('modules')
+            ->causedBy(auth()->user())
+            ->withProperties(['module' => $key])
+            ->log('disabled module "'.$key.'"');
     }
 
     public function markUnhealthy(string $key, Throwable $e): void
@@ -334,6 +342,7 @@ class ModuleManager
             'last_error_at' => null,
         ]);
         $this->forgetCache();
+        $this->bustPublicSurfaces();
     }
 
     public function reinstall(string $key): void
@@ -391,6 +400,19 @@ class ModuleManager
             'disabled_at' => now(),
         ]);
         $this->forgetCache();
+        $this->bustPublicSurfaces();
+    }
+
+    /**
+     * After enable/disable/uninstall/health-clear: drop sitemap + response
+     * HTML caches, and clear a cached route list so physical module routes
+     * appear/disappear without a manual `route:cache` (F11 #20, #41).
+     */
+    private function bustPublicSurfaces(): void
+    {
+        SitemapService::forgetStatic();
+        rescue(fn () => Artisan::call('responsecache:clear'), report: false);
+        rescue(fn () => Artisan::call('route:clear'), report: false);
     }
 
     /**
@@ -507,12 +529,18 @@ class ModuleManager
         }
     }
 
+    private ?bool $tablesReadyMemo = null;
+
     protected function tablesReady(): bool
     {
+        if ($this->tablesReadyMemo !== null) {
+            return $this->tablesReadyMemo;
+        }
+
         try {
-            return DB::connection()->getPdo() && Schema::hasTable('modules');
+            return $this->tablesReadyMemo = DB::connection()->getPdo() && SchemaCache::hasTable('modules');
         } catch (Throwable) {
-            return false;
+            return $this->tablesReadyMemo = false;
         }
     }
 }

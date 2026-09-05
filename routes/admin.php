@@ -41,6 +41,8 @@ Route::get('audit-log', [AuditLogController::class, 'index'])
 // posts to system/cache/pages; the full UI lives at GET system/cache.
 Route::middleware('can:settings.update')->group(function () {
     Route::get('system/cache', [CacheController::class, 'index'])->name('cache.index');
+    Route::post('system/cache/sitemap/regenerate', [CacheController::class, 'regenerateSitemap'])
+        ->name('cache.sitemap.regenerate');
     Route::post('system/cache/{layer}', [CacheController::class, 'clear'])
         ->where('layer', 'pages|sitemap|settings|modules|redirects|views|all')
         ->name('cache.clear');
@@ -161,16 +163,18 @@ Route::middleware('can:custom_code.delete')->group(function () {
 });
 
 // Enquiries (contact-form leads).
-Route::middleware('can:enquiries.view')->group(function () {
-    Route::get('enquiries', [EnquiryController::class, 'index'])->name('enquiries.index');
-});
-Route::middleware('can:enquiries.update')->group(function () {
-    Route::post('enquiries/{enquiry}/read', [EnquiryController::class, 'markRead'])->name('enquiries.read');
-    Route::post('enquiries/{enquiry}/unread', [EnquiryController::class, 'markUnread'])->name('enquiries.unread');
-    Route::post('enquiries/bulk-read', [EnquiryController::class, 'bulkMarkRead'])->name('enquiries.bulk-read');
-});
-Route::middleware('can:enquiries.delete')->group(function () {
-    Route::delete('enquiries/{enquiry}', [EnquiryController::class, 'destroy'])->name('enquiries.destroy');
+Route::middleware('module:enquiries')->group(function () {
+    Route::middleware('can:enquiries.view')->group(function () {
+        Route::get('enquiries', [EnquiryController::class, 'index'])->name('enquiries.index');
+    });
+    Route::middleware('can:enquiries.update')->group(function () {
+        Route::post('enquiries/{enquiry}/read', [EnquiryController::class, 'markRead'])->name('enquiries.read');
+        Route::post('enquiries/{enquiry}/unread', [EnquiryController::class, 'markUnread'])->name('enquiries.unread');
+        Route::post('enquiries/bulk-read', [EnquiryController::class, 'bulkMarkRead'])->name('enquiries.bulk-read');
+    });
+    Route::middleware('can:enquiries.delete')->group(function () {
+        Route::delete('enquiries/{enquiry}', [EnquiryController::class, 'destroy'])->name('enquiries.destroy');
+    });
 });
 
 // Subscribers.
@@ -188,6 +192,7 @@ Route::middleware('can:media.view')->group(function () {
 });
 Route::middleware('can:media.create')->group(function () {
     Route::post('media', [MediaController::class, 'store'])->name('media.store');
+    Route::post('media/import', [MediaController::class, 'import'])->name('media.import');
 });
 Route::middleware('can:media.update')->group(function () {
     Route::put('media/{media}', [MediaController::class, 'update'])->name('media.update');

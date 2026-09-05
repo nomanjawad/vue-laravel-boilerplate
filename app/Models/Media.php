@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\ClearsResponseCache;
+use App\Models\Concerns\LogsContentActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,10 @@ class Media extends Model
 {
     use ClearsResponseCache;
     use HasFactory;
+    use LogsContentActivity;
+
+    /** @var string */
+    protected string $activityLogName = 'media';
 
     protected $fillable = [
         'user_id', 'filename', 'path', 'mime_type', 'size',
@@ -80,6 +85,119 @@ class Media extends Model
         }
 
         return $paths;
+    }
+
+    /**
+     * AppImage-compatible payload from a stored URL/path (featured_image, photo…).
+     * Falls back to a plain URL string when the media row is missing (imports).
+     *
+     * @return array{url: string, variants: ?array, width: ?int, height: ?int, alt_text: ?string}|string|null
+     */
+    public static function imagePayload(?string $stored): array|string|null
+    {
+        if ($stored === null || $stored === '') {
+            return null;
+        }
+
+        $media = self::findByStoredUrl($stored);
+        if ($media) {
+            return $media->toImagePayload();
+        }
+
+        return $stored;
+    }
+
+    /**
+     * Batch-resolve stored URLs → AppImage payloads (one query).
+     *
+     * @param  iterable<string|null>  $storedUrls
+     * @return array<string, array{url: string, variants: ?array, width: ?int, height: ?int, alt_text: ?string}|string>
+     */
+    public static function imagePayloadMap(iterable $storedUrls): array
+    {
+        $unique = [];
+        foreach ($storedUrls as $url) {
+            if (is_string($url) && $url !== '') {
+                $unique[$url] = true;
+            }
+        }
+
+        if ($unique === []) {
+            return [];
+        }
+
+        $paths = [];
+        foreach (array_keys($unique) as $url) {
+            $path = self::storagePathFromStoredUrl($url);
+            if ($path !== null) {
+                $paths[$path] = $url;
+            }
+        }
+
+        $byPath = $paths === []
+            ? collect()
+            : self::query()->whereIn('path', array_keys($paths))->get()->keyBy('path');
+
+        $out = [];
+        foreach (array_keys($unique) as $url) {
+            $path = self::storagePathFromStoredUrl($url);
+            $media = $path !== null ? $byPath->get($path) : null;
+            $out[$url] = $media instanceof self ? $media->toImagePayload() : $url;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array{url: string, variants: ?array, width: ?int, height: ?int, alt_text: ?string}
+     */
+    public function toImagePayload(): array
+    {
+        return [
+            'url' => $this->url,
+            'variants' => $this->variants,
+            'width' => $this->width,
+            'height' => $this->height,
+            'alt_text' => $this->alt_text,
+        ];
+    }
+
+    public static function findByStoredUrl(?string $stored): ?self
+    {
+        $path = self::storagePathFromStoredUrl($stored);
+        if ($path === null) {
+            return null;
+        }
+
+        return self::query()->where('path', $path)->first();
+    }
+
+    /**
+     * Normalize a browser URL or disk path to the media.path column value.
+     */
+    public static function storagePathFromStoredUrl(?string $stored): ?string
+    {
+        if ($stored === null || $stored === '') {
+            return null;
+        }
+
+        $path = parse_url($stored, PHP_URL_PATH);
+        if (! is_string($path) || $path === '') {
+            $path = $stored;
+        }
+
+        $path = ltrim($path, '/');
+
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+
+        // Public imports under /uploads/ are not media-library rows.
+        if (str_starts_with($path, 'uploads/')) {
+            return null;
+        }
+
+        return $path !== '' ? $path : null;
     }
 
     protected function casts(): array

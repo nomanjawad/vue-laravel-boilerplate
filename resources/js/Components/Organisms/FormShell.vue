@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onBeforeUnmount, provide } from 'vue'
+import { provide } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useUnsavedGuard } from '@/Composables/useUnsavedGuard'
 
 type HttpMethod = 'post' | 'put' | 'patch' | 'delete'
 
@@ -40,16 +41,7 @@ function submit() {
     props.form[props.method](props.action, { preserveScroll: true })
 }
 
-// Unsaved-change warning. Browsers ignore the message text now but still show
-// the native confirmation dialog when beforeunload returns a string.
-function guard(e: BeforeUnloadEvent) {
-    if (props.form.isDirty) {
-        e.preventDefault()
-        e.returnValue = ''
-    }
-}
-window.addEventListener('beforeunload', guard)
-onBeforeUnmount(() => window.removeEventListener('beforeunload', guard))
+useUnsavedGuard(() => props.form.isDirty)
 </script>
 
 <template>

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Career;
 use App\Models\Post;
 use App\Models\Setting;
+use Illuminate\Http\Request;
 
 class SeoService
 {
@@ -252,5 +253,26 @@ class SeoService
         }
 
         return url($path);
+    }
+
+    /**
+     * Self-referencing canonical: full URL minus tracking query params.
+     * Keeps pagination (?page=2) so paginated listings don't all canonicalize
+     * to page 1 (feedback.md F11 #10).
+     */
+    public function canonicalUrl(Request $request): string
+    {
+        $drop = [];
+        foreach ($request->query() as $key => $_) {
+            $k = strtolower((string) $key);
+            if (str_starts_with($k, 'utm_')
+                || in_array($k, ['gclid', 'fbclid', 'msclkid', '_ga', 'mc_cid', 'mc_eid'], true)) {
+                $drop[] = $key;
+            }
+        }
+
+        return $drop === []
+            ? $request->fullUrl()
+            : $request->fullUrlWithoutQuery($drop);
     }
 }

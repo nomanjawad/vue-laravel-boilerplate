@@ -5,6 +5,7 @@ import type { SharedPageProps } from '@/types/inertia'
 import CookieConsent from '@/Components/Shared/CookieConsent.vue'
 import NewsletterSignup from '@/Components/Shared/NewsletterSignup.vue'
 import FlashToaster from '@/Components/Shared/FlashToaster.vue'
+import AppImage, { type AppImageMedia } from '@/Components/Atoms/AppImage.vue'
 
 const page = usePage<SharedPageProps>()
 const navOpen = ref(false)
@@ -15,20 +16,20 @@ const settings = computed<Partial<App.Data.SettingsData>>(() => page.props.setti
 const layout = computed(() => page.props.layout)
 const appName = computed(() => settings.value.site_name ?? '')
 
-function toImageUrl(raw: string | null | undefined): string | null {
-    if (!raw || typeof raw !== 'string') return null
-    if (/^(https?:)?\/\//.test(raw) || raw.startsWith('/')) return raw
-    if (raw.startsWith('uploads/')) return `/${raw}`
-    return `/storage/${raw}`
-}
-
-// site_logo wins; fall back to header.json logo.
-const siteLogo = computed(() => {
-    return toImageUrl(settings.value.site_logo)
-        || toImageUrl(layout.value?.header?.logo)
+const siteLogo = computed<string | AppImageMedia | null>(() => {
+    const raw = page.props.siteLogo
+    if (!raw) return null
+    if (typeof raw === 'string') return raw
+    return raw as AppImageMedia
 })
 
-const logoAlt = computed(() => layout.value?.header?.logo_alt || appName.value || 'Logo')
+const logoAlt = computed(() => {
+    const logo = siteLogo.value
+    if (logo && typeof logo === 'object' && logo.alt_text) {
+        return logo.alt_text
+    }
+    return layout.value?.header?.logo_alt || appName.value || 'Logo'
+})
 
 const showCta = computed(() => Boolean(layout.value?.header?.show_cta_button))
 const ctaText = computed(() => layout.value?.header?.cta_text || 'Get Quote')
@@ -94,14 +95,17 @@ const jsonLdBlocks = computed<unknown[]>(() => {
         <meta v-if="ogDescription" head-key="twitter:description" name="twitter:description" :content="ogDescription" />
         <meta v-if="seo.og_image" head-key="twitter:image" name="twitter:image" :content="seo.og_image" />
 
+        <!-- Children (not v-text): Inertia <Head> stringifies attrs, so
+             v-text would land as textContent="…" and leave the script body empty. -->
         <component
             :is="'script'"
             v-for="(block, i) in jsonLdBlocks"
             :key="i"
             :head-key="`json-ld-${i}`"
             type="application/ld+json"
-            v-text="JSON.stringify(block)"
-        />
+        >
+            {{ JSON.stringify(block) }}
+        </component>
     </Head>
 
     <div class="min-h-screen flex flex-col bg-white">
@@ -109,21 +113,23 @@ const jsonLdBlocks = computed<unknown[]>(() => {
             v-if="seo.json_ld"
             :is="'script'"
             type="application/ld+json"
-            v-text="seo.json_ld"
-        />
+        >
+            {{ seo.json_ld }}
+        </component>
 
         <header class="bg-white border-b border-gray-200">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-16 gap-4">
                     <Link href="/" class="flex items-center gap-2 text-xl font-bold text-gray-900 shrink-0">
-                        <img
+                        <AppImage
                             v-if="siteLogo"
                             :src="siteLogo"
                             :alt="logoAlt"
+                            :height="32"
+                            eager
+                            sizes="128px"
                             class="h-8 w-auto"
-                            loading="eager"
-                            decoding="async"
-                        >
+                        />
                         <span v-else>{{ appName }}</span>
                     </Link>
 

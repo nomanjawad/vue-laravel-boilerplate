@@ -65,10 +65,14 @@ class Setting extends Model
         // IMPORTANT: only cache plain arrays here — Laravel Collections/models do not
         // round-trip reliably through the file cache driver used on shared hosting.
         // NOTE: Secret values are stored ciphertext in DB but returned decrypted here
-        // because pluck() reads the accessor path only for the primary column. For
-        // secret keys use Setting::query()->where('key', ...)->first()->value instead.
+        // when rows are hydrated with is_secret (see cache closure below).
         $settings = Cache::remember('site_settings', 3600, function () {
-            return static::pluck('value', 'key')->toArray();
+            // Hydrate is_secret so the value accessor can decrypt ciphertext (F11 #23).
+            // pluck('value','key') skips is_secret and returns encrypted blobs.
+            return static::query()
+                ->get(['key', 'value', 'is_secret'])
+                ->mapWithKeys(fn (self $row) => [$row->key => $row->value])
+                ->all();
         });
 
         return $settings[$key] ?? $default;

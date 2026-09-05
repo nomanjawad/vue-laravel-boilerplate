@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
-import { ref, watch } from 'vue'
+import { useTableFilters } from '@/Composables/useTableFilters'
 
 defineOptions({ layout: AdminLayout })
 
@@ -28,14 +28,9 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const search = ref<string>(props.filters?.search || '')
-
-watch(search, (value) => {
-    router.get('/admin/users', { search: value }, {
-        preserveState: true,
-        replace: true,
-    })
-})
+const { search } = useTableFilters({
+    search: props.filters?.search ?? '',
+}, { route: '/admin/users' })
 
 const deleteUser = (user: AdminUser) => {
     if (confirm(`Delete user "${user.name}"?`)) {
@@ -92,17 +87,22 @@ const deleteUser = (user: AdminUser) => {
         <!-- Pagination -->
         <div v-if="users.links && users.links.length > 3" class="px-6 py-3 border-t flex justify-end">
             <nav class="flex space-x-1">
-                <Link
-                    v-for="link in users.links"
-                    :key="link.label"
-                    :href="link.url || '#'"
-                    v-html="link.label"
-                    :class="[
-                        'px-3 py-1 text-sm rounded',
-                        link.active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100',
-                        !link.url ? 'opacity-50 cursor-not-allowed' : ''
-                    ]"
-                />
+                <template v-for="(link, i) in users.links" :key="`${link.url ?? ''}-${i}`">
+                    <Link
+                        v-if="link.url"
+                        :href="link.url"
+                        v-html="link.label"
+                        :class="[
+                            'px-3 py-1 text-sm rounded',
+                            link.active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100',
+                        ]"
+                    />
+                    <span
+                        v-else
+                        v-html="link.label"
+                        class="px-3 py-1 text-sm rounded opacity-50 cursor-not-allowed"
+                    />
+                </template>
             </nav>
         </div>
     </div>

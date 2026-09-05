@@ -180,6 +180,18 @@ class MenuController extends Controller
             }
         });
 
+        // Query-builder updates skip model events — bust public nav caches (F11 #9).
+        Menu::bustPublicCaches();
+
+        $location = $menus->first()?->location ?? 'menu';
+        activity('default')
+            ->causedBy(auth()->user())
+            ->withProperties([
+                'location' => $location,
+                'count' => count($validated['items']),
+            ])
+            ->log('reordered '.$location.' menu');
+
         return back()->with('success', 'Menu order saved.');
     }
 

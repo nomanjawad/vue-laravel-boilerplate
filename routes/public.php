@@ -6,13 +6,23 @@ use App\Http\Controllers\Public\ProfileController;
 use App\Services\SitemapService;
 use Illuminate\Support\Facades\Route;
 
-// XML sitemap from static routes + published content. Cached; busted by
-// the ClearsResponseCache trait whenever content changes.
+// RankMath-style sitemap index + per-type children. Cached; busted by
+// SitemapService::forgetAll() from ClearsResponseCache / JsonDataService.
 Route::get('/sitemap.xml', function (SitemapService $sitemap) {
     abort_unless(config('template.indexable'), 404);
 
-    return response($sitemap->xml(), 200, ['Content-Type' => 'application/xml']);
+    return response($sitemap->xml(), 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
 })->name('sitemap');
+
+Route::get('/sitemap-{type}.xml', function (string $type, SitemapService $sitemap) {
+    abort_unless(config('template.indexable'), 404);
+    abort_unless(isset(SitemapService::CHILD_KEYS[$type]), 404);
+
+    $xml = $sitemap->childXml($type);
+    abort_if($xml === null, 404);
+
+    return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
+})->where('type', 'pages|posts|categories|careers|case-studies')->name('sitemap.child');
 
 // Dynamic robots.txt: block all crawlers until SEO_INDEXABLE=true.
 Route::get('/robots.txt', function () {

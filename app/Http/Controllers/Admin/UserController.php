@@ -49,6 +49,12 @@ class UserController extends Controller
 
         $user->assignRole($validated['role']);
 
+        activity('users')
+            ->causedBy(auth()->user())
+            ->performedOn($user)
+            ->withProperties(['role' => $validated['role']])
+            ->log('assigned role "'.$validated['role'].'" to user "'.$user->name.'"');
+
         return redirect()->route('admin.users.index')->with('success', 'User created successfully.');
     }
 
@@ -86,7 +92,19 @@ class UserController extends Controller
             ...(! empty($validated['password']) ? ['password' => Hash::make($validated['password'])] : []),
         ]);
 
+        $previousRole = $user->getRoleNames()->first();
         $user->syncRoles([$validated['role']]);
+
+        if ($previousRole !== $validated['role']) {
+            activity('users')
+                ->causedBy(auth()->user())
+                ->performedOn($user)
+                ->withProperties([
+                    'from' => $previousRole,
+                    'to' => $validated['role'],
+                ])
+                ->log('changed role for "'.$user->name.'" from "'.($previousRole ?? 'none').'" to "'.$validated['role'].'"');
+        }
 
         return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');
     }

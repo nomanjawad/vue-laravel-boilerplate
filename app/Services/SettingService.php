@@ -11,8 +11,12 @@ class SettingService
     {
         // IMPORTANT: only cache plain arrays here — Laravel Collections/models do not
         // round-trip reliably through the file cache driver used on shared hosting.
+        // Hydrate is_secret so the value accessor decrypts secrets (F11 #23).
         return Cache::remember('site_settings', 3600, function () {
-            return Setting::pluck('value', 'key')->toArray();
+            return Setting::query()
+                ->get(['key', 'value', 'is_secret'])
+                ->mapWithKeys(fn (Setting $row) => [$row->key => $row->value])
+                ->all();
         });
     }
 
@@ -23,7 +27,11 @@ class SettingService
 
     public function getByGroup(string $group): array
     {
-        return Setting::where('group', $group)->pluck('value', 'key')->toArray();
+        return Setting::query()
+            ->where('group', $group)
+            ->get(['key', 'value', 'is_secret'])
+            ->mapWithKeys(fn (Setting $row) => [$row->key => $row->value])
+            ->all();
     }
 
     public function update(array $settings): void

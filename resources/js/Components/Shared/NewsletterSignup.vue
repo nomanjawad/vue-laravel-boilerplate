@@ -3,9 +3,10 @@ import { useForm } from '@inertiajs/vue3'
 
 interface NewsletterForm {
     email: string
+    website: string
 }
 
-const form = useForm<NewsletterForm>({ email: '' })
+const form = useForm<NewsletterForm>({ email: '', website: '' })
 
 const submit = () => {
     form.post('/newsletter', {
@@ -20,6 +21,10 @@ const submit = () => {
         <h3 class="text-lg font-semibold mb-4">Newsletter</h3>
         <p class="text-gray-400 text-sm mb-3">Get updates straight to your inbox.</p>
         <form @submit.prevent="submit" class="flex gap-2">
+            <!-- Honeypot — hidden from humans; bots that fill it are silently accepted (F11 #15). -->
+            <div class="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+                <label>Website<input v-model="form.website" type="text" tabindex="-1" autocomplete="off" /></label>
+            </div>
             <input
                 v-model="form.email"
                 type="email"

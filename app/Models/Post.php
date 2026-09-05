@@ -18,8 +18,7 @@ class Post extends Model
     protected $fillable = [
         'user_id', 'title', 'slug', 'excerpt', 'body',
         'featured_image', 'status', 'published_at', 'meta_title',
-        'meta_description', 'og_image', 'canonical_url', 'og_title',
-        'og_description', 'focus_keyword', 'noindex',
+        'meta_description', 'focus_keyword', 'noindex',
     ];
 
     protected function casts(): array

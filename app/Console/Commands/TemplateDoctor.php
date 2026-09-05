@@ -271,8 +271,8 @@ class TemplateDoctor extends Command
 
     protected function checkBackupBinary(): void
     {
-        $path = env('DB_DUMP_BINARY_PATH');
-        if (! $path) {
+        $path = (string) (config('database.connections.mysql.dump.dump_binary_path') ?: '');
+        if ($path === '') {
             $this->warn('  DB_DUMP_BINARY_PATH not set (backups will fall back to the default PATH)');
 
             return;

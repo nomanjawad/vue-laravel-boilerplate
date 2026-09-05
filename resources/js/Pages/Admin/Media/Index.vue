@@ -2,6 +2,7 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, useForm, router, Link } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
+import AppFileInput from '@/Components/Atoms/AppFileInput.vue'
 import { usePermissions } from '@/Composables/usePermissions'
 import { useImageUrl, variantPath, type VariantEntry } from '@/Composables/useImageUrl'
 
@@ -39,10 +40,10 @@ const form = useForm<UploadForm>({
     alt_text: '',
 })
 
-const fileInput = ref<HTMLInputElement | null>(null)
 const search = ref(props.filters?.search ?? '')
 const typeFilter = ref(props.filters?.type ?? '')
 const selected = ref<number[]>([])
+const dragOver = ref(false)
 
 const allIds = computed(() => props.media.data.map((m) => m.id))
 const allSelected = computed(
@@ -57,6 +58,7 @@ function thumbSrc(item: MediaItem): string | null {
 }
 
 function applyFilters() {
+    selected.value = []
     router.get('/admin/media', {
         search: search.value || undefined,
         type: typeFilter.value || undefined,
@@ -74,11 +76,11 @@ watch(search, () => {
 watch(typeFilter, applyFilters)
 
 const uploadFile = () => {
+    if (!form.file) return
     form.post('/admin/media', {
         forceFormData: true,
         onSuccess: () => {
             form.reset()
-            if (fileInput.value) fileInput.value.value = ''
         },
         onError: (errors) => {
             // eslint-disable-next-line no-console
@@ -87,9 +89,14 @@ const uploadFile = () => {
     })
 }
 
-const onFileChange = (e: Event) => {
-    const target = e.target as HTMLInputElement
-    form.file = target.files?.[0] ?? null
+function onFilesSelected(files: File[]) {
+    form.file = files[0] ?? null
+}
+
+function onDrop(e: DragEvent) {
+    dragOver.value = false
+    const files = Array.from(e.dataTransfer?.files ?? [])
+    if (files[0]) form.file = files[0]
 }
 
 const deleteMedia = (id: number) => {
@@ -161,28 +168,66 @@ const formatSize = (bytes: number) => {
     </div>
 
     <div class="mb-6 rounded-lg bg-white p-6 shadow">
-        <form @submit.prevent="uploadFile" class="flex flex-wrap items-end gap-3">
-            <div class="min-w-[200px] flex-1">
-                <label class="mb-1 block text-xs font-medium text-gray-500">File</label>
-                <input ref="fileInput" type="file" class="w-full text-sm" required @change="onFileChange">
-                <p class="mt-1 text-xs text-gray-400">
-                    JPEG, PNG, WebP, GIF, or PDF. Max 10 MB.
+        <form @submit.prevent="uploadFile" class="space-y-4">
+            <div
+                class="flex w-full min-w-0 flex-col items-center gap-3 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors"
+                :class="dragOver
+                    ? 'border-brand-500 bg-brand-600/10'
+                    : 'border-gray-300 bg-gray-50'"
+                @dragover.prevent="dragOver = true"
+                @dragleave.prevent="dragOver = false"
+                @drop.prevent="onDrop"
+            >
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-gray-500">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-sm font-medium text-gray-800">Upload media</p>
+                    <p class="text-xs text-gray-500">Drag &amp; drop or choose a file</p>
+                    <p class="text-xs text-gray-400">JPEG, PNG, WebP, GIF, or PDF. Max 10 MB.</p>
+                </div>
+                <div class="flex flex-wrap items-center justify-center gap-2">
+                    <AppFileInput
+                        accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+                        :disabled="form.processing"
+                        label="Choose file"
+                        variant="primary"
+                        @select="onFilesSelected"
+                    />
+                    <button
+                        type="submit"
+                        :disabled="form.processing || !form.file"
+                        class="inline-flex items-center justify-center rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {{ form.processing ? 'Uploading…' : 'Upload' }}
+                    </button>
+                </div>
+                <p v-if="form.file" class="max-w-full truncate text-xs text-gray-600">
+                    Selected: {{ form.file.name }}
                 </p>
             </div>
-            <div class="min-w-[200px] flex-1">
-                <label class="mb-1 block text-xs font-medium text-gray-500">Alt Text</label>
-                <input v-model="form.alt_text" type="text" placeholder="Describe the image…" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-                <p v-if="form.file && !form.alt_text.trim() && form.file.type.startsWith('image/')" class="mt-1 text-xs text-amber-600">
-                    Tip: add alt text — empty alt hurts accessibility and SEO.
-                </p>
-            </div>
-            <button type="submit" :disabled="form.processing" class="rounded-md bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800 disabled:opacity-50">
-                Upload
-            </button>
+
+            <label class="block text-xs font-medium text-gray-500">
+                Alt text
+                <input
+                    v-model="form.alt_text"
+                    type="text"
+                    placeholder="Describe the image…"
+                    class="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                >
+            </label>
+            <p
+                v-if="form.file && !form.alt_text.trim() && form.file.type.startsWith('image/')"
+                class="text-xs text-amber-600"
+            >
+                Tip: add alt text — empty alt hurts accessibility and SEO.
+            </p>
         </form>
-        <div v-if="form.progress" class="mt-2">
+        <div v-if="form.progress" class="mt-3">
             <div class="h-2 w-full rounded-full bg-gray-200">
-                <div class="h-2 rounded-full bg-gray-900" :style="{ width: form.progress.percentage + '%' }" />
+                <div class="h-2 rounded-full bg-brand-600" :style="{ width: form.progress.percentage + '%' }" />
             </div>
         </div>
         <div
@@ -301,17 +346,22 @@ const formatSize = (bytes: number) => {
 
     <div v-if="media.links && media.links.length > 3" class="mt-6 flex justify-center">
         <nav class="flex space-x-1">
-            <Link
-                v-for="link in media.links"
-                :key="link.label"
-                :href="link.url || '#'"
-                v-html="link.label"
-                :class="[
-                    'rounded px-3 py-1 text-sm',
-                    link.active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100',
-                    !link.url ? 'cursor-not-allowed opacity-50' : '',
-                ]"
-            />
+            <template v-for="(link, i) in media.links" :key="`${link.url ?? ''}-${i}`">
+                <Link
+                    v-if="link.url"
+                    :href="link.url"
+                    v-html="link.label"
+                    :class="[
+                        'rounded px-3 py-1 text-sm',
+                        link.active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100',
+                    ]"
+                />
+                <span
+                    v-else
+                    v-html="link.label"
+                    class="cursor-not-allowed rounded px-3 py-1 text-sm opacity-50"
+                />
+            </template>
         </nav>
     </div>
 </template>

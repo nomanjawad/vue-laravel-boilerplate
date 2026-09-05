@@ -4,6 +4,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Schema;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -36,9 +37,16 @@ Schedule::command('queue:work --queue=default --stop-when-empty --tries=3 --max-
 // Prune stale failed jobs every Sunday.
 Schedule::command('queue:prune-failed --hours=336')->weekly()->sundays()->at('04:00');
 
-// Laravel's database cache store does not self-prune expired rows. Response
-// cache (RESPONSE_CACHE_DRIVER=database) and CACHE_STORE=database both write
-// here — without this, the `cache` table grows forever.
+// Laravel's database cache store does not self-prune expired rows. App cache
+// (`cache`) and response cache (`cache_responses`) both need a daily sweep —
+// weekly left expired rows lingering ~14 days vs a 7-day response TTL.
 Schedule::call(static function (): void {
-    DB::table('cache')->where('expiration', '<', now()->timestamp)->delete();
-})->weekly()->sundays()->at('04:30')->name('cache-prune-expired');
+    $cutoff = now()->timestamp;
+    DB::table('cache')->where('expiration', '<', $cutoff)->delete();
+    if (Schema::hasTable('cache_responses')) {
+        DB::table('cache_responses')->where('expiration', '<', $cutoff)->delete();
+    }
+})->daily()->at('04:30')->name('cache-prune-expired');
+
+// Prune activity_log rows older than 180 days (spatie/laravel-activitylog).
+Schedule::command('activitylog:clean --days=180')->daily()->at('05:00');

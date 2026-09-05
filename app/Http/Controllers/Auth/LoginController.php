@@ -24,7 +24,7 @@ class LoginController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            if ($request->user()->hasAnyRole(['admin', 'editor'])) {
+            if ($request->user()->hasAnyRole(['admin', 'editor', 'super-admin'])) {
                 return redirect()->intended('/admin');
             }
 

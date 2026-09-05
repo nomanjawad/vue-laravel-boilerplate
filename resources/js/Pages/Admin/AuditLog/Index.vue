@@ -15,6 +15,7 @@ interface ActivityRow {
     id: number
     log_name: string | null
     description: string
+    summary: string
     subject_type: string | null
     subject_id: number | null
     causer: ActivityCauser | null
@@ -31,6 +32,7 @@ interface Filters {
 const props = defineProps<{
     activities: Illuminate.LengthAwarePaginator<number, ActivityRow>
     filters: Filters
+    streams: string[]
 }>()
 
 const search = ref<string>(props.filters.search ?? '')
@@ -54,6 +56,34 @@ watch([search, logName], () => {
 function formatWhen(iso: string): string {
     return new Date(iso).toLocaleString()
 }
+
+function streamLabel(name: string | null): string {
+    const key = name || 'default'
+    const labels: Record<string, string> = {
+        default: 'Content',
+        auth: 'Auth',
+        pages: 'Pages',
+        layout: 'Layout',
+        media: 'Media',
+        users: 'Users',
+        modules: 'Modules',
+        system: 'System',
+    }
+    return labels[key] ?? key
+}
+
+function streamClass(name: string | null): string {
+    switch (name) {
+        case 'auth': return 'bg-amber-100 text-amber-700'
+        case 'pages': return 'bg-sky-100 text-sky-700'
+        case 'layout': return 'bg-violet-100 text-violet-700'
+        case 'media': return 'bg-emerald-100 text-emerald-700'
+        case 'users': return 'bg-rose-100 text-rose-700'
+        case 'modules': return 'bg-orange-100 text-orange-700'
+        case 'system': return 'bg-gray-200 text-gray-700'
+        default: return 'bg-indigo-100 text-indigo-700'
+    }
+}
 </script>
 
 <template>
@@ -63,7 +93,7 @@ function formatWhen(iso: string): string {
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Audit log</h1>
                 <p class="mt-1 text-sm text-gray-500">
-                    Who did what, and when. Content CRUD + login events.
+                    Who did what in the admin — content, pages, media, modules, cache, and auth.
                 </p>
             </div>
         </div>
@@ -80,8 +110,9 @@ function formatWhen(iso: string): string {
                 class="rounded border border-gray-300 px-3 py-2 text-sm"
             >
                 <option value="">All streams</option>
-                <option value="default">Content</option>
-                <option value="auth">Auth</option>
+                <option v-for="stream in streams" :key="stream" :value="stream">
+                    {{ streamLabel(stream) }}
+                </option>
             </select>
         </div>
 
@@ -92,8 +123,7 @@ function formatWhen(iso: string): string {
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">When</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Who</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Stream</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Description</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Subject</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">What happened</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -106,22 +136,15 @@ function formatWhen(iso: string): string {
                         <td class="px-4 py-2">
                             <span
                                 class="rounded px-2 py-0.5 text-xs"
-                                :class="row.log_name === 'auth' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'"
+                                :class="streamClass(row.log_name)"
                             >
-                                {{ row.log_name || 'default' }}
+                                {{ streamLabel(row.log_name) }}
                             </span>
                         </td>
-                        <td class="px-4 py-2 text-gray-800">{{ row.description }}</td>
-                        <td class="px-4 py-2 text-gray-500">
-                            <span v-if="row.subject_type">
-                                {{ row.subject_type.split('\\').pop() }}
-                                <span v-if="row.subject_id">#{{ row.subject_id }}</span>
-                            </span>
-                            <span v-else class="text-gray-400">—</span>
-                        </td>
+                        <td class="px-4 py-2 text-gray-800">{{ row.summary }}</td>
                     </tr>
                     <tr v-if="!activities.data.length">
-                        <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">
+                        <td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500">
                             No activity yet.
                         </td>
                     </tr>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
-import { ref, watch } from 'vue'
+import { useTableFilters } from '@/Composables/useTableFilters'
 
 defineOptions({ layout: AdminLayout })
 
@@ -25,13 +25,9 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const search = ref<string>(props.filters?.search || '')
-
-const applyFilters = () => {
-    router.get('/admin/careers', { search: search.value }, { preserveState: true, replace: true })
-}
-
-watch(search, applyFilters)
+const { search } = useTableFilters({
+    search: props.filters?.search ?? '',
+}, { route: '/admin/careers' })
 
 const deleteCareer = (career: Career) => {
     if (confirm(`Delete "${career.title}"?`)) {
@@ -100,7 +96,19 @@ const typeLabel = (type: string) => {
         </div>
         <div v-if="careers.links && careers.links.length > 3" class="px-6 py-3 border-t flex justify-end">
             <nav class="flex space-x-1">
-                <Link v-for="link in careers.links" :key="link.label" :href="link.url || '#'" v-html="link.label" :class="['px-3 py-1 text-sm rounded', link.active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100', !link.url ? 'opacity-50 cursor-not-allowed' : '']" />
+                <template v-for="(link, i) in careers.links" :key="`${link.url ?? ''}-${i}`">
+                    <Link
+                        v-if="link.url"
+                        :href="link.url"
+                        v-html="link.label"
+                        :class="['px-3 py-1 text-sm rounded', link.active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100']"
+                    />
+                    <span
+                        v-else
+                        v-html="link.label"
+                        class="px-3 py-1 text-sm rounded opacity-50 cursor-not-allowed"
+                    />
+                </template>
             </nav>
         </div>
     </div>

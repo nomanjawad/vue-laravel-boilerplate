@@ -10,7 +10,7 @@ $__customCode = request()->is('admin*')
 // Favicon from site settings (PUBLIC_SETTINGS). Fall back to /favicon.ico.
 $__favicon = '';
 try {
-    if (\Illuminate\Support\Facades\Schema::hasTable('site_settings')) {
+    if (\App\Support\SchemaCache::hasTable('site_settings')) {
         $__favicon = (string) (\App\Models\Setting::get('site_favicon') ?: '');
     }
 } catch (\Throwable) {
@@ -43,6 +43,7 @@ $__themeFontHref = \App\Support\Theme::bunnyStylesheetHref();
             <meta name="robots" content="noindex, nofollow">
         @endunless
         <title inertia>{{ config('app.name') }}</title>
+        <meta name="csrf-token" content="{{ csrf_token() }}">
         @vite(['resources/css/app.css', 'resources/js/app.ts'])
         {{-- Override @theme defaults after Vite CSS so admin + public stay in sync. --}}
         @if($__themeFontHref)

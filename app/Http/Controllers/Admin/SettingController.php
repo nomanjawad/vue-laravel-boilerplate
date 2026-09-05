@@ -10,6 +10,7 @@ use App\Services\SettingService;
 use App\Support\BrandPalette;
 use App\Support\Theme;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class SettingController extends Controller
@@ -265,6 +266,22 @@ class SettingController extends Controller
             'settings' => ['required', 'array'],
             'settings.*' => ['nullable', 'string', 'max:5000'],
         ]);
+
+        // Format-gate analytics ids so a crafted setting cannot XSS public pages (F11 #17).
+        foreach ([
+            'ga_measurement_id' => ['/^G-[A-Z0-9]+$/i', 'Google Analytics Measurement ID (e.g. G-XXXXXXXXXX)'],
+            'gtm_container_id' => ['/^GTM-[A-Z0-9]+$/i', 'Google Tag Manager Container ID (e.g. GTM-XXXXXXX)'],
+        ] as $key => [$pattern, $label]) {
+            $val = trim((string) ($validated['settings'][$key] ?? ''));
+            if ($val === '') {
+                continue;
+            }
+            if (! preg_match($pattern, $val)) {
+                throw ValidationException::withMessages([
+                    "settings.{$key}" => "{$label} is invalid.",
+                ]);
+            }
+        }
 
         // Blank submission on a secret field means "keep the existing value".
         $secretKeys = Setting::query()->where('is_secret', true)->pluck('key')->all();

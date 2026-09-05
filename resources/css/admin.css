@@ -171,6 +171,15 @@
     color: var(--admin-fg);
 }
 
+/* Validation must win over the remapped border above (F11 #12). */
+.admin-dark [aria-invalid='true'],
+.admin-dark input[aria-invalid='true'],
+.admin-dark select[aria-invalid='true'],
+.admin-dark textarea[aria-invalid='true'] {
+    border-color: rgb(251 113 133) !important; /* rose-400 */
+    background-color: rgb(136 19 55 / 0.25);
+}
+
 .admin-dark input::placeholder,
 .admin-dark textarea::placeholder { color: var(--admin-fg-faint); }
 

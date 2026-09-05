@@ -17,14 +17,15 @@ router.on('httpException', (event) => {
 })
 
 type PageModule = { default: DefineComponent }
+type PageLoader = () => Promise<PageModule>
 
-// Core pages under resources/js/Pages and module pages under
-// app/Modules/*/Resources/js/Pages are both resolved here. Module pages
-// are addressed as `{Module}/{sub-path}`, e.g. Inertia::render(
-// 'Testimonials/Admin/Testimonials/Index') resolves to
-// app/Modules/Testimonials/Resources/js/Pages/Admin/Testimonials/Index.vue.
-const corePages = import.meta.glob<PageModule>('./Pages/**/*.vue', { eager: true })
-const modulePages = import.meta.glob<PageModule>('../../app/Modules/*/Resources/js/Pages/**/*.vue', { eager: true })
+// Lazy page graph — Vite emits per-page chunks so anonymous visitors do not
+// download TipTap / admin screens (F12 #1). Module pages are addressed as
+// `{Module}/{sub-path}`, e.g. Inertia::render('Testimonials/Admin/…').
+const corePages = import.meta.glob<PageModule>('./Pages/**/*.vue') as Record<string, PageLoader>
+const modulePages = import.meta.glob<PageModule>(
+    '../../app/Modules/*/Resources/js/Pages/**/*.vue',
+) as Record<string, PageLoader>
 
 // Silent brand-name fallbacks silently ship the wrong tab title to production
 // when VITE_APP_NAME isn't loaded at build time (e.g. CI that doesn't source
@@ -52,7 +53,9 @@ createInertiaApp({
     resolve: (name) => {
         const coreKey = `./Pages/${name}.vue`
         const core = corePages[coreKey]
-        if (core) return core
+        if (core) {
+            return core().then((m) => m.default)
+        }
 
         const [moduleName, ...rest] = name.split('/')
         if (!moduleName) {
@@ -63,7 +66,7 @@ createInertiaApp({
         if (!mod) {
             throw new Error(`Inertia page not found: "${name}" (tried ${coreKey} and ${moduleKey})`)
         }
-        return mod
+        return mod().then((m) => m.default)
     },
     setup({ el, App, props, plugin }) {
         createApp({ render: () => h(App, props) })

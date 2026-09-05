@@ -56,10 +56,6 @@ class PostController extends Controller
             'featured_image' => ['nullable', 'string', 'max:255'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
-            'og_image' => ['nullable', 'string', 'max:255'],
-            'canonical_url' => ['nullable', 'string', 'max:500'],
-            'og_title' => ['nullable', 'string', 'max:255'],
-            'og_description' => ['nullable', 'string', 'max:500'],
             'focus_keyword' => ['nullable', 'string', 'max:191'],
             'noindex' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'array'],
@@ -72,6 +68,8 @@ class PostController extends Controller
         $validated['noindex'] = $request->boolean('noindex');
         $validated['slug'] = $this->slugs->generate(new Post, $validated['slug'] ?: $validated['title']);
         $validated['user_id'] = auth()->id();
+
+        $this->authorizePublish($validated['status']);
 
         if ($validated['status'] === 'published') {
             $validated['published_at'] = now();
@@ -116,10 +114,6 @@ class PostController extends Controller
             'featured_image' => ['nullable', 'string', 'max:255'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
-            'og_image' => ['nullable', 'string', 'max:255'],
-            'canonical_url' => ['nullable', 'string', 'max:500'],
-            'og_title' => ['nullable', 'string', 'max:255'],
-            'og_description' => ['nullable', 'string', 'max:500'],
             'focus_keyword' => ['nullable', 'string', 'max:191'],
             'noindex' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'array'],
@@ -127,6 +121,8 @@ class PostController extends Controller
         ]);
 
         $validated['noindex'] = $request->boolean('noindex');
+
+        $this->authorizePublish($validated['status'], $post);
 
         if ($validated['status'] === 'published' && ! $post->published_at) {
             $validated['published_at'] = now();
@@ -168,6 +164,23 @@ class PostController extends Controller
             $ids = [Category::uncategorized()->id];
         }
         $post->categories()->sync($ids);
+    }
+
+    /** Require posts.publish when moving a post into the published status. */
+    private function authorizePublish(string $status, ?Post $existing = null): void
+    {
+        if ($status !== 'published') {
+            return;
+        }
+        if ($existing && $existing->status === 'published') {
+            return;
+        }
+
+        abort_unless(
+            auth()->user()?->can('posts.publish'),
+            403,
+            'You do not have permission to publish posts.',
+        );
     }
 
     /** @return \Illuminate\Support\Collection<int, CategorySummaryData> */

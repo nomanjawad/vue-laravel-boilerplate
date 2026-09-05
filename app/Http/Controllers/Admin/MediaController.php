@@ -74,6 +74,46 @@ class MediaController extends Controller
             ->with('media', MediaData::fromModel($media));
     }
 
+    /**
+     * Import an image from a data URL or remote URL (block-editor paste/import).
+     * Always returns JSON — TipTap ingest uses fetch, not Inertia.
+     */
+    public function import(Request $request)
+    {
+        $validated = $request->validate([
+            'data_url' => ['nullable', 'string', 'max:15000000'],
+            'url' => ['nullable', 'string', 'max:2048'],
+            'filename' => ['nullable', 'string', 'max:255'],
+            'alt_text' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (empty($validated['data_url']) && empty($validated['url'])) {
+            return response()->json(['message' => 'Provide data_url or url.'], 422);
+        }
+
+        try {
+            if (! empty($validated['data_url'])) {
+                $media = $this->mediaService->importFromDataUrl(
+                    $validated['data_url'],
+                    $validated['filename'] ?? null,
+                    auth()->id(),
+                    $validated['alt_text'] ?? null,
+                );
+            } else {
+                $media = $this->mediaService->importFromUrl(
+                    $validated['url'],
+                    $validated['filename'] ?? null,
+                    auth()->id(),
+                    $validated['alt_text'] ?? null,
+                );
+            }
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(MediaData::fromModel($media));
+    }
+
     // `media.update` was declared as a permission (config/modules.php) with no
     // route/controller/UI behind it — alt text could only ever be set at
     // upload time, with no way to fix a typo or add a description afterward.
@@ -104,10 +144,22 @@ class MediaController extends Controller
         ]);
 
         $count = 0;
-        Media::whereIn('id', $validated['ids'])->each(function (Media $media) use (&$count) {
-            $this->mediaService->delete($media);
-            $count++;
-        });
+        $ids = $validated['ids'];
+
+        activity()->disableLogging();
+        try {
+            Media::whereIn('id', $ids)->each(function (Media $media) use (&$count) {
+                $this->mediaService->delete($media);
+                $count++;
+            });
+        } finally {
+            activity()->enableLogging();
+        }
+
+        activity('media')
+            ->causedBy(auth()->user())
+            ->withProperties(['ids' => $ids, 'count' => $count])
+            ->log("bulk deleted {$count} media file(s)");
 
         return back()->with('success', "{$count} file(s) deleted.");
     }

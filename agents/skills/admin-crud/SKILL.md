@@ -63,7 +63,9 @@ const form = useForm({ settings: { site_name: '', … } })
 Atoms: `AppButton` (href→Link, variants primary/outline), `AppInput`,
 `AppTextarea`, `AppSelect` (options: primitives or {value,label}),
 `AppCheckbox`, `AppSwitch` (boolean toggle, no id prop), `AppFileInput`
-(emits `select(File[])`), `AppLink` (Link with prefetch=hover),
+(styled button + hidden native input; emits `select(File[])`; `label` /
+`variant` primary|secondary; `open()` via expose), `AppLink` (Link with
+prefetch=hover),
 `AppSpinner`, `Badge` (color: gray|green|amber|red|brand), `SectionHeading`,
 `AppIcon` (name from built-in maps in AppIcon.vue; unknown → cube fallback).
 
@@ -73,9 +75,9 @@ Molecules: `AppCard` (title/padded, header/footer slots), `AppEmptyState`,
 
 Organisms: `DataTable` (columns/rows/sort — sortable headers do
 `router.get` with preserveState; slots `cell:{key}`, `actions`, `empty`;
-paginates automatically), `FormShell`, `AppMediaPicker` (see settings-and-media
-skill), `AppBlockEditor` (TipTap slash-menu / drag handles / media image
-blocks — stores HTML; used on posts + page richtext widget fields),
+paginates automatically), `FormShell`, `AppMediaPicker` (stacked empty/filled
+drop zone — see settings-and-media skill), `AppBlockEditor` (TipTap slash-menu / tables / doc import / rich paste —
+see blog skill; used on posts + page richtext widget fields),
 `JsonContentEditor` (recursive JSON editor — still used for header/footer
 layout), `GlobalSearch`, `NotificationBell`, `BlogTabs`
 (Posts/Categories/Tags tab bar), `SeoSerpPreview`, `SeoContentChecklist`.

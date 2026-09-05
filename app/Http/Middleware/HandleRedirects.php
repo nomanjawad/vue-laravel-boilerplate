@@ -3,9 +3,9 @@
 namespace App\Http\Middleware;
 
 use App\Models\Redirect;
+use App\Support\SchemaCache;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -17,7 +17,7 @@ class HandleRedirects
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->isMethod('GET') || ! Schema::hasTable('redirects')) {
+        if (! $request->isMethod('GET') || ! SchemaCache::hasTable('redirects')) {
             return $next($request);
         }
 

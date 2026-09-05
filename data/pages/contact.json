@@ -4,7 +4,6 @@
     "seo": {
         "title": "Contact Us",
         "description": "Get in touch with us.",
-        "og_image": "",
         "noindex": false,
         "json_ld": ""
     },
@@ -35,5 +34,6 @@
                 "show_contact_info": true
             }
         }
-    ]
+    ],
+    "featured_image": ""
 }

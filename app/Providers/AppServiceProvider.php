@@ -28,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
             return $user?->hasRole('super-admin') ? true : null;
         });
 
+        // Older shared-hosting MySQL (utf8mb4) cannot index varchar(255) —
+        // early migrations would fail with error 1071 without this (F11 #18).
+        \Illuminate\Support\Facades\Schema::defaultStringLength(191);
+
         // Auth event → activity-log stream. Content CRUD is covered by the
         // LogsContentActivity trait on every content model; this closes the
         // "who logged in" half so /admin/audit-log tells the full story.

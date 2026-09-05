@@ -16,7 +16,7 @@ create-module skill for how the machinery works.
 | users | /admin/users, /admin/audit-log | users.*, roles.view/update, modules.manage, audit_log.view | Escalation guards: only super-admins grant super-admin; can't delete yourself; one role per user via UI |
 | settings | /admin/settings | settings.view/update | Tabbed editor; see settings-and-media skill |
 | media | /admin/media | media.view/create/update/delete | WebP pipeline; see settings-and-media skill |
-| menus | /admin/menus | menus.* | WP-style menus: locations (header/footer), nested tree, drag-drop reorder, add-from-content (pages/posts/…). Shared as nested `menus` prop → PublicLayout |
+| menus | /admin/menus | menus.* | WP-style menus: locations (header/footer), nested drag-drop (vuedraggable, max 2 levels) + arrow controls, Saving/Saved feedback, add-from-content (pages/posts/custom). Reorder uses query builder → `Menu::bustPublicCaches()`. Shared as nested `menus` prop → PublicLayout |
 | page_content | /admin/pages, /admin/page-content/layout | page_content.view/create/update/delete | JSON pages + widget editor; header/footer layout JSON; see page-content + widgets skills |
 | redirects | /admin/redirects | redirects.* | 301/302 map + 404 log (below) |
 | custom_code | /admin/custom-code | custom_code.* | HTML/JS snippets (below) |
@@ -69,9 +69,13 @@ SPA hydration. Toggle uses `$request->boolean('is_active')` defaulting FALSE
 deliberately (a missing key must never silently activate injected code).
 
 **Audit log.** `LogsContentActivity` (dirty-only) on Post, Career,
-CaseStudy, Team, CustomCode, Redirect, Menu, Setting, Event, Faq, Testimonial.
-NOT on Subscriber/User. Auth events (login/logout/failed) logged with
-passwords stripped. Viewer at /admin/audit-log (filter by log, causer, search).
+CaseStudy, Team, CustomCode, Redirect, Menu, Setting, Event, Faq,
+Testimonial, Media, User (excludes password/remember_token), Tag,
+Subscriber, Enquiry. Manual `activity()` streams: `pages`, `layout`,
+`modules`, `system` (cache clears), menu reorder, media/enquiry bulk ops,
+user role changes. Auth events (login/logout/failed) with passwords
+stripped. Viewer at /admin/audit-log (filter by stream, search; human
+`summary`). Retention: `activitylog:clean --days=180` daily.
 
 **Global admin search** (`/` key or topbar) covers models each enabled module
 lists under `searchable` in its manifest, permission-filtered.

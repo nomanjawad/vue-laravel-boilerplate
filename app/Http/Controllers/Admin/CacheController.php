@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Core\ModuleManager;
+use App\Services\SitemapService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
@@ -22,7 +23,7 @@ class CacheController extends Controller
         ],
         'sitemap' => [
             'label' => 'Sitemap',
-            'description' => 'Cached /sitemap.xml body (24h TTL).',
+            'description' => 'Sitemap index + child sitemaps (24h TTL). Clear forgets caches; Regenerate rebuilds immediately.',
         ],
         'settings' => [
             'label' => 'Settings',
@@ -42,16 +43,23 @@ class CacheController extends Controller
         ],
     ];
 
+    public function __construct(private SitemapService $sitemap) {}
+
     public function index()
     {
         $layers = [];
         foreach (self::LAYERS as $key => $meta) {
-            $layers[] = [
+            $row = [
                 'key' => $key,
                 'label' => $meta['label'],
                 'description' => $meta['description'],
                 'last_cleared_at' => Cache::get($this->timestampKey($key)),
             ];
+            if ($key === 'sitemap') {
+                $row['sitemap_meta'] = $this->sitemap->meta();
+                $row['sitemap_url'] = url('/sitemap.xml');
+            }
+            $layers[] = $row;
         }
 
         return Inertia::render('Admin/System/Cache', [
@@ -75,20 +83,50 @@ class CacheController extends Controller
             }
             Cache::forever($this->timestampKey('all'), now()->toIso8601String());
 
+            activity('system')
+                ->causedBy(auth()->user())
+                ->withProperties(['layer' => 'all'])
+                ->log('cleared all managed caches');
+
             return back()->with('success', 'All managed caches cleared.');
         }
 
         $this->clearLayer($layer);
         $label = self::LAYERS[$layer]['label'];
 
+        activity('system')
+            ->causedBy(auth()->user())
+            ->withProperties(['layer' => $layer])
+            ->log('cleared '.$label.' cache');
+
         return back()->with('success', "{$label} cleared.");
+    }
+
+    /** Forget + rebuild sitemap index and children immediately. */
+    public function regenerateSitemap()
+    {
+        $meta = $this->sitemap->regenerate();
+        Cache::forever($this->timestampKey('sitemap'), now()->toIso8601String());
+
+        activity('system')
+            ->causedBy(auth()->user())
+            ->withProperties([
+                'layer' => 'sitemap',
+                'url_count' => $meta['url_count'],
+            ])
+            ->log('regenerated sitemap ('.$meta['url_count'].' URLs)');
+
+        return back()->with(
+            'success',
+            "Sitemap regenerated — {$meta['url_count']} URL(s) across {$meta['child_count']} child file(s)."
+        );
     }
 
     protected function clearLayer(string $layer): void
     {
         match ($layer) {
             'pages' => ResponseCache::clear(),
-            'sitemap' => Cache::forget('sitemap.xml'),
+            'sitemap' => SitemapService::forgetStatic(),
             'settings' => Cache::forget('site_settings'),
             'modules' => app(ModuleManager::class)->forgetCache(),
             'redirects' => Cache::forget('redirects.map'),

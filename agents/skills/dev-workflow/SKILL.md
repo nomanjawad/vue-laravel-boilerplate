@@ -53,7 +53,7 @@ Dashboard "Clear page cache" only hits the pages layer.
 | Layer | Key / mechanism | Cleared by |
 |---|---|---|
 | Page cache | spatie/responsecache, **`RESPONSE_CACHE_DRIVER=database`** (7-day TTL on public GETs; never use `file` on shared hosting — burns inodes under `storage/framework/cache/data`) | Panel "Page cache", `ClearsResponseCache` model trait, `responsecache:clear` |
-| Sitemap | `sitemap.xml` (24h) | Panel, content writes, `ModuleManager::enable/disable` |
+| Sitemap | `sitemap.index` + `sitemap.{pages,posts,…}` + `sitemap.meta` (24h) | Panel Clear/Regenerate, `SitemapService::forgetStatic()`, content writes, module enable/disable |
 | Settings | `site_settings` (1h) | Panel, `SettingService` / `Setting` writes |
 | Modules registry | `modules.registry` (forever) | Panel, `ModuleManager::forgetCache()` |
 | Redirects | `redirects.map` (1h) | Panel, `Redirect` model writes |

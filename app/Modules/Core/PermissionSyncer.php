@@ -38,7 +38,9 @@ class PermissionSyncer
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $admin->syncPermissions($desired);
 
-        // Editor: view/create/update on content modules only — never core/admin resources.
+        // Editor: view/create/update on content modules. Core modules are
+        // excluded by default (users/settings/…), except media + page_content
+        // — editors need the media library and the page widget editor.
         $coreResources = [];
         foreach ($this->manager->manifests() as $manifest) {
             if (($manifest['core'] ?? false) !== true) {
@@ -49,13 +51,16 @@ class PermissionSyncer
             }
         }
 
+        $editorCoreAllowlist = ['media', 'page_content'];
+
         $editor = Role::firstOrCreate(['name' => 'editor', 'guard_name' => 'web']);
         $editorGrants = array_values(array_filter(
             $desired,
-            function ($name) use ($coreResources) {
+            function ($name) use ($coreResources, $editorCoreAllowlist) {
                 $resource = explode('.', $name, 2)[0];
 
-                if (in_array($resource, $coreResources, true)) {
+                if (in_array($resource, $coreResources, true)
+                    && ! in_array($resource, $editorCoreAllowlist, true)) {
                     return false;
                 }
 

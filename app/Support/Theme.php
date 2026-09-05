@@ -3,7 +3,7 @@
 namespace App\Support;
 
 use App\Models\Setting;
-use Illuminate\Support\Facades\Schema;
+use App\Support\SchemaCache;
 use Throwable;
 
 /**
@@ -55,7 +55,7 @@ final class Theme
         $radius = self::DEFAULT_RADIUS;
 
         try {
-            if (! Schema::hasTable('site_settings')) {
+            if (! SchemaCache::hasTable('site_settings')) {
                 return compact('primary', 'font', 'radius');
             }
             $primary = BrandPalette::normalizeHex((string) Setting::get('theme_primary_color', $primary))

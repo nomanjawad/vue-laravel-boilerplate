@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
-use App\Models\Media;
 use App\Services\JsonDataService;
 use App\Services\SeoService;
 use App\Services\WidgetDataResolver;
+use App\Support\LcpPreload;
 use Inertia\Inertia;
 
 class DynamicPageController extends Controller
@@ -72,15 +72,24 @@ class DynamicPageController extends Controller
     }
 
     /**
-     * When the first visible widget is an image-bearing hero (or image
-     * widget), return a URL suitable for <link rel="preload" as="image">.
-     * Prefer the md variant (1200w) when present — close to typical LCP size.
+     * Prefetch the first image-bearing widget so LCP matches AppImage's
+     * srcset selection (F12 #2). Scan the first few visible widgets — pages
+     * that open with rich_text/cta before a hero still get a preload.
+     *
+     * @return array{href: string, imagesrcset?: string, imagesizes?: string}|null
      */
-    private function resolveLcpPreload(array $widgets): ?string
+    private function resolveLcpPreload(array $widgets): ?array
     {
+        $scanned = 0;
+
         foreach ($widgets as $widget) {
             if (($widget['visible'] ?? true) === false) {
                 continue;
+            }
+
+            $scanned++;
+            if ($scanned > 3) {
+                break;
             }
 
             $type = $widget['type'] ?? '';
@@ -92,32 +101,13 @@ class DynamicPageController extends Controller
                 default => null,
             };
 
-            return $this->lcpUrlFromMedia($raw);
-        }
-
-        return null;
-    }
-
-    private function lcpUrlFromMedia(mixed $raw): ?string
-    {
-        if ($raw === null || $raw === '') {
-            return null;
-        }
-
-        // Media object from the page editor (Phase 10): prefer md variant.
-        if (is_array($raw)) {
-            $variants = is_array($raw['variants'] ?? null) ? $raw['variants'] : [];
-            $mdPath = Media::variantPath($variants['md'] ?? null);
-            if ($mdPath) {
-                return $this->imageUrl($mdPath);
+            $preload = LcpPreload::fromMedia(
+                $raw,
+                $type === 'hero' ? '100vw' : '(max-width: 768px) 100vw, (max-width: 1280px) 90vw, 1200px',
+            );
+            if ($preload !== null) {
+                return $preload;
             }
-            $url = $raw['url'] ?? null;
-
-            return is_string($url) && $url !== '' ? $this->imageUrl($url) : null;
-        }
-
-        if (is_string($raw)) {
-            return $this->imageUrl($raw);
         }
 
         return null;

@@ -88,11 +88,23 @@ Upload pipeline (`Admin\MediaController` → `App\Services\MediaService`):
 
 ## AppMediaPicker contract
 
-`v-model` holds a media row `{id, url, variants?, alt_text?}` (or bare id).
+`v-model` holds a media row `{id, url, variants?, alt_text?, filename?, width?,
+height?}` (or bare id).
+
+**Layout:** stacked vertical block (works in narrow sidebars and wide forms):
+- **Empty:** full-width dashed drop zone — label, “Drag & drop or”, **Upload**
+  (primary) + **Choose from library** (secondary). Alt-text input full-width
+  below the zone. Native `<input type="file">` is never visible (`AppFileInput`
+  = styled button + `sr-only` input).
+- **Filled:** full-width preview (`max-h-48 object-cover`), filename/dims
+  caption, Replace / Browse / Remove. No dashed border once filled.
+- Drag-over uses `border-brand-500` / `bg-brand-600/10`; uploading shows a
+  spinner overlay. Multi-file drops warn and upload the first only.
+
 **Upload path:** POSTs FormData to `/admin/media`; `MediaController::store`
 flashes a `MediaData` DTO which `HandleInertiaRequests` forwards as
 `flash.media`; the picker reads that and emits it as the new model value.
-**Browse path:** "Choose from library" opens an overlay that fetches
+**Browse path:** library overlay (`z-[220]`) fetches
 `GET /admin/media?format=json` (paginated, `?search=`, `?type=image|pdf`).
 Clicking a tile emits the same MediaData-shaped object. Grids render
 `variants.thumb` (via `useImageUrl`) — never the 2000px original.
@@ -100,6 +112,14 @@ Preview resolves `variants.thumb ?? variants.md ?? url`. In Settings / content
 forms the value is adapted to/from a plain URL string. If the picker
 "doesn't update after upload", check the flash → `FlashData` → shared-prop
 chain first.
+
+**Paste/import images:** `POST /admin/media/import` (JSON `{data_url}` or
+`{url}`) → `MediaService::importFromDataUrl` / `importFromUrl` (MIME
+whitelist, 10 MB, SSRF host/IP guard). Used by `AppBlockEditor` ingest.
+
+`AppFileInput` emits `select(File[])`; optional `label` / `variant`
+(`primary`|`secondary`); `defineExpose({ open })`. Media Library index upload
+uses the same atom + drop-zone pattern.
 
 ## Media admin
 

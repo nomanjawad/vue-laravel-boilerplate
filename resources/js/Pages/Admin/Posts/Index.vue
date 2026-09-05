@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
-import { ref, watch } from 'vue'
 import BlogTabs from '@/Components/Organisms/BlogTabs.vue'
+import { useTableFilters } from '@/Composables/useTableFilters'
 
 defineOptions({ layout: AdminLayout })
 
@@ -18,14 +18,10 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const search = ref<string>(props.filters?.search || '')
-const status = ref<string>(props.filters?.status || '')
-
-const applyFilters = () => {
-    router.get('/admin/posts', { search: search.value, status: status.value }, { preserveState: true, replace: true })
-}
-
-watch([search, status], applyFilters)
+const { search, status } = useTableFilters({
+    search: props.filters?.search ?? '',
+    status: props.filters?.status ?? '',
+}, { route: '/admin/posts' })
 
 const deletePost = (post: App.Data.PostData) => {
     if (confirm(`Delete "${post.title}"?`)) {
@@ -88,7 +84,19 @@ const deletePost = (post: App.Data.PostData) => {
         </div>
         <div v-if="posts.links && posts.links.length > 3" class="px-6 py-3 border-t flex justify-end">
             <nav class="flex space-x-1">
-                <Link v-for="link in posts.links" :key="link.label" :href="link.url || '#'" v-html="link.label" :class="['px-3 py-1 text-sm rounded', link.active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100', !link.url ? 'opacity-50 cursor-not-allowed' : '']" />
+                <template v-for="(link, i) in posts.links" :key="`${link.url ?? ''}-${i}`">
+                    <Link
+                        v-if="link.url"
+                        :href="link.url"
+                        v-html="link.label"
+                        :class="['px-3 py-1 text-sm rounded', link.active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100']"
+                    />
+                    <span
+                        v-else
+                        v-html="link.label"
+                        class="px-3 py-1 text-sm rounded opacity-50 cursor-not-allowed"
+                    />
+                </template>
             </nav>
         </div>
     </div>

@@ -10,3 +10,36 @@
    The page component should add a matching `class="page-blog"` to its
    root. See feedback.md §3 for a real case where an unscoped .hero-ctas
    rule from home.css re-centered service-page buttons. */
+
+/* TipTap / imported doc tables (F4) — prose plugin is not installed. */
+.cms-prose table,
+.page-blog .cms-prose table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1.25rem 0;
+    display: block;
+    overflow-x: auto;
+}
+
+.cms-prose th,
+.cms-prose td,
+.page-blog .cms-prose th,
+.page-blog .cms-prose td {
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+.cms-prose th,
+.page-blog .cms-prose th {
+    background: #f3f4f6;
+    font-weight: 600;
+}
+
+.cms-prose img,
+.page-blog .cms-prose img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+}

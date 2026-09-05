@@ -67,6 +67,50 @@ class RedirectController extends Controller
 
         abort_if($validated['from_path'] === $validated['to_path'], 422, 'A redirect cannot point to itself.');
 
+        abort_if(
+            $this->wouldCreateLoop($validated['from_path'], $validated['to_path'], $redirect?->id),
+            422,
+            'This redirect would create a loop.',
+        );
+
         return $validated;
+    }
+
+    /**
+     * Walk the active redirect map (including the proposed edge) and reject
+     * two-hop cycles like /a→/b + /b→/a (F11 #26).
+     */
+    private function wouldCreateLoop(string $from, string $to, ?int $excludeId = null): bool
+    {
+        if (str_starts_with($to, 'http://') || str_starts_with($to, 'https://')) {
+            return false;
+        }
+
+        $map = Redirect::query()
+            ->where('is_active', true)
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->pluck('to_path', 'from_path')
+            ->all();
+
+        $map[$from] = $to;
+
+        $seen = [];
+        $current = $to;
+        while (isset($map[$current])) {
+            if (isset($seen[$current]) || $current === $from) {
+                return true;
+            }
+            $seen[$current] = true;
+            $next = $map[$current];
+            if (str_starts_with($next, 'http://') || str_starts_with($next, 'https://')) {
+                return false;
+            }
+            $current = $next;
+            if (count($seen) > 50) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

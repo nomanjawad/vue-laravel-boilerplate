@@ -2,10 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsContentActivity;
 use Illuminate\Database\Eloquent\Model;
 
 class Enquiry extends Model
 {
+    use LogsContentActivity;
+
+    /** @var string */
+    protected string $activityLogName = 'default';
+
     protected $fillable = [
         'name',
         'email',

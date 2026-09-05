@@ -6,11 +6,20 @@ import AppIcon from '@/Components/Atoms/AppIcon.vue'
 
 defineOptions({ layout: AdminLayout })
 
+interface SitemapMeta {
+    generated_at: string | null
+    url_count: number
+    child_count: number
+    lastmod: string | null
+}
+
 interface CacheLayer {
     key: string
     label: string
     description: string
     last_cleared_at: string | null
+    sitemap_meta?: SitemapMeta
+    sitemap_url?: string
 }
 
 interface Props {
@@ -18,7 +27,7 @@ interface Props {
     last_cleared_all_at: string | null
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 
 const busy = ref<string | null>(null)
 
@@ -28,6 +37,14 @@ function clearLayer(key: string) {
     }
     busy.value = key
     router.post(`/admin/system/cache/${key}`, {}, {
+        preserveScroll: true,
+        onFinish: () => { busy.value = null },
+    })
+}
+
+function regenerateSitemap() {
+    busy.value = 'sitemap-regen'
+    router.post('/admin/system/cache/sitemap/regenerate', {}, {
         preserveScroll: true,
         onFinish: () => { busy.value = null },
     })
@@ -81,15 +98,44 @@ function formatCleared(iso: string | null): string {
                         <p class="mt-3 text-xs text-gray-400">
                             Last cleared: {{ formatCleared(layer.last_cleared_at) }}
                         </p>
+                        <template v-if="layer.key === 'sitemap' && layer.sitemap_meta">
+                            <p class="mt-1 text-xs text-gray-500">
+                                Last generated:
+                                {{ layer.sitemap_meta.generated_at ? formatCleared(layer.sitemap_meta.generated_at) : 'Never' }}
+                                <span v-if="layer.sitemap_meta.url_count">
+                                    · {{ layer.sitemap_meta.url_count }} URLs
+                                </span>
+                            </p>
+                            <a
+                                v-if="layer.sitemap_url"
+                                :href="layer.sitemap_url"
+                                target="_blank"
+                                rel="noopener"
+                                class="mt-1 inline-block text-xs font-medium text-brand-600 hover:underline"
+                            >
+                                View sitemap
+                            </a>
+                        </template>
                     </div>
-                    <button
-                        type="button"
-                        :disabled="busy !== null"
-                        class="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
-                        @click="clearLayer(layer.key)"
-                    >
-                        {{ busy === layer.key ? 'Clearing…' : 'Clear' }}
-                    </button>
+                    <div class="flex shrink-0 flex-col gap-2">
+                        <button
+                            type="button"
+                            :disabled="busy !== null"
+                            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                            @click="clearLayer(layer.key)"
+                        >
+                            {{ busy === layer.key ? 'Clearing…' : 'Clear' }}
+                        </button>
+                        <button
+                            v-if="layer.key === 'sitemap'"
+                            type="button"
+                            :disabled="busy !== null"
+                            class="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                            @click="regenerateSitemap"
+                        >
+                            {{ busy === 'sitemap-regen' ? 'Regenerating…' : 'Regenerate' }}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

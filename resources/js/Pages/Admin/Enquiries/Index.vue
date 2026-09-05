@@ -40,6 +40,11 @@ const selectedIds = ref<number[]>([])
 
 let timer: ReturnType<typeof setTimeout> | null = null
 
+function currentListPage(): number {
+    const raw = props.enquiries as { current_page?: number; meta?: { current_page?: number } }
+    return raw.current_page ?? raw.meta?.current_page ?? 1
+}
+
 function applyFilters(extra: Record<string, string | number | undefined> = {}) {
     const params: Record<string, string | number> = {}
     if (search.value) params.search = search.value
@@ -57,7 +62,10 @@ function applyFilters(extra: Record<string, string | number | undefined> = {}) {
 
 watch(search, () => {
     if (timer) clearTimeout(timer)
-    timer = setTimeout(() => applyFilters(props.selected ? { id: props.selected.id } : {}), 300)
+    timer = setTimeout(() => applyFilters({
+        ...(props.selected ? { id: props.selected.id } : {}),
+        page: currentListPage(),
+    }), 300)
 })
 
 watch(status, () => {
@@ -87,7 +95,7 @@ function toggleOne(id: number) {
 }
 
 function openEnquiry(id: number) {
-    applyFilters({ id })
+    applyFilters({ id, page: currentListPage() })
 }
 
 function closeDetail() {
