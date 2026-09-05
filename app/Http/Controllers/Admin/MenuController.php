@@ -53,7 +53,10 @@ class MenuController extends Controller
 
         return Inertia::render('Admin/Menus/Index', [
             'locations' => $locations,
-            'menus' => $trees,
+            // Named `trees` — shared Inertia prop `menus` is the public nav
+            // tree (MenusData). Reusing that key overwrote / collided and made
+            // the admin builder receive Proxies that structuredClone rejected.
+            'trees' => $trees,
             'pages' => $pages,
             'posts' => $posts,
         ]);

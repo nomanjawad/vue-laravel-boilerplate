@@ -42,7 +42,7 @@ interface ContentFile {
 }
 
 interface Props {
-    layout: ContentFile[]
+    files: ContentFile[]
 }
 
 const props = defineProps<Props>()
@@ -82,7 +82,7 @@ function asFooter(data: Record<string, unknown>): FooterContent {
 }
 
 const forms: Record<string, ReturnType<typeof useForm<{ content: Record<string, any> }>>> = {}
-props.layout.forEach((f) => {
+props.files.forEach((f) => {
     const content = f.file === 'header'
         ? asHeader(f.data)
         : f.file === 'footer'
@@ -91,7 +91,7 @@ props.layout.forEach((f) => {
     forms[f.file] = useForm<{ content: Record<string, any> }>({ content })
 })
 
-const activeFile = ref<string>(props.layout[0]?.file ?? '')
+const activeFile = ref<string>(props.files[0]?.file ?? '')
 const activeForm = computed(() => forms[activeFile.value] ?? null)
 
 const headerContent = computed(() => forms.header?.content as HeaderContent | undefined)
@@ -143,7 +143,7 @@ function save(file: string) {
     <div class="flex flex-col gap-6 md:flex-row">
         <nav class="flex shrink-0 gap-1 overflow-x-auto md:w-48 md:flex-col md:overflow-visible">
             <button
-                v-for="f in layout"
+                v-for="f in files"
                 :key="f.file"
                 type="button"
                 class="rounded px-3 py-2 text-left text-sm whitespace-nowrap"

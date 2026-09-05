@@ -24,7 +24,10 @@ class PageContentController extends Controller
     public function layout()
     {
         return Inertia::render('Admin/PageContent/Layout', [
-            'layout' => $this->filesPayload(self::LAYOUT_FILES),
+            // Named `files` — shared Inertia prop `layout` is header/footer
+            // JSON for the public site (null on admin). Same-key collision
+            // would make this screen receive null and crash on forEach.
+            'files' => $this->filesPayload(self::LAYOUT_FILES),
         ]);
     }
 

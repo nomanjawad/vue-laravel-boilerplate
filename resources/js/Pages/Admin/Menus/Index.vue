@@ -35,7 +35,9 @@ interface ContentPost {
 
 interface Props {
     locations: Record<string, string>
-    menus: Record<string, MenuTreeItem[]>
+    /** Admin trees keyed by location. Named `trees` (not `menus`) to avoid
+     *  colliding with the shared public `menus` Inertia prop. */
+    trees: Record<string, MenuTreeItem[]>
     pages: ContentPage[]
     posts: ContentPost[]
 }
@@ -48,10 +50,16 @@ const activeLocation = ref(locationKeys.value[0] ?? 'header')
 
 const tree = ref<MenuTreeItem[]>([])
 
+/** Deep-clone plain JSON trees. Avoid structuredClone — Inertia/Vue props are
+ *  Proxies and structuredClone throws "could not be cloned". */
+function cloneTree(items: MenuTreeItem[]): MenuTreeItem[] {
+    return JSON.parse(JSON.stringify(items)) as MenuTreeItem[]
+}
+
 watch(
-    () => [props.menus, activeLocation.value] as const,
+    () => [props.trees, activeLocation.value] as const,
     () => {
-        tree.value = structuredClone(props.menus[activeLocation.value] ?? [])
+        tree.value = cloneTree(props.trees[activeLocation.value] ?? [])
     },
     { immediate: true, deep: true },
 )

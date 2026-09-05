@@ -19,6 +19,9 @@ export default defineConfig({
         tailwindcss(),
     ],
     server: {
+        // Listen on IPv4+IPv6 so @vite URLs work whether the app is opened via
+        // 127.0.0.1 or localhost (::1). Default can bind IPv6-only on macOS.
+        host: true,
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },

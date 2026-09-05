@@ -4,11 +4,9 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Cleanup for existing installs after ecommerce removal: shop settings,
- * /shop menu link, shop page_meta, modules.shop row, and orphaned
- * products.*/orders.* permission rows (PermissionSyncer does not prune).
- */
+// Cleanup for existing installs after ecommerce removal: shop settings,
+// /shop menu link, shop page_meta, modules.shop row, and orphaned
+// products/orders permission rows (PermissionSyncer does not prune).
 return new class extends Migration
 {
     public function up(): void
