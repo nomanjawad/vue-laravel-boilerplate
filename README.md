@@ -86,10 +86,11 @@ Atoms       →  Molecules  →  Organisms  →  Pages
 ```
 
 - `resources/js/Components/Atoms/` — primitives (AppButton, AppInput, AppIcon…). No API calls, no `useForm()`.
-- `resources/js/Components/Molecules/` — one concern from Atoms (AppFormField, AppCard, AppPagination).
-- `resources/js/Components/Organisms/` — full features (DataTable, FormShell, AppMediaPicker, GlobalSearch, NotificationBell).
+- `resources/js/Components/Molecules/` — one concern from Atoms (AppFormField, AppFormSection, AppFloatingSave…).
+- `resources/js/Components/Organisms/` — full features (FormShell, AppMediaPicker, AppBlockEditor, GlobalSearch, NotificationBell).
 - `resources/js/Layouts/` — layout shells only (AdminLayout, PublicLayout, AuthLayout).
 - `app/Modules/{X}/Resources/js/Components/` — module-internal Vue. **Never imported by another module.**
+- Frontend override guide: [`docs/FRONTEND.md`](docs/FRONTEND.md).
 
 The `NoCrossModuleImportsTest` used to enforce that automatically — after
 removing `tests/` this contract is enforced by review only.
@@ -168,7 +169,7 @@ php artisan make:crud Subscriber --module=Newsletter --slug --public
 per-project if the default shape doesn't fit — they're plain files.
 
 **Icons in sidebar nav** come from `resources/js/Components/Atoms/AppIcon.vue`.
-The built-in set is small (~16 SVG paths); if you set a manifest icon that
+The built-in set is ~20 SVG paths in `AppIcon.vue`; if you set a manifest icon that
 isn't in the map it falls back to `cube`. Extend the `paths` map in
 `AppIcon.vue` to add more.
 
@@ -212,15 +213,26 @@ Public pages are **one JSON file each** under `data/pages/{slug}.json`
 {
   "title": "Home",
   "status": "published",
-  "seo": { "title": "", "description": "", "og_image": "", "canonical": "", "noindex": false },
+  "featured_image": "",
+  "seo": {
+    "title": "",
+    "description": "",
+    "noindex": false,
+    "json_ld": ""
+  },
   "widgets": [
     { "id": "w_…", "type": "hero", "visible": true, "data": { "title": "…" } }
   ]
 }
 ```
 
+Canonical / OG tags are **derived** in `resolveSeo()` (not stored as
+editable overrides). `featured_image` feeds `og:image`. See `agents/skills/seo`
+and `docs/FRONTEND.md` for the public render path.
+
 - Widget types live in `config/widgets.php` (must stay serializable for
   `php artisan optimize`). Public components: `resources/js/Components/Widgets/`.
+  Types regenerate via `php artisan widgets:types` → `resources/js/types/widgets.d.ts`.
 - Route `/` = slug `home`; other published slugs render at `/{slug}` via
   `DynamicPageController`. Drafts 404.
 - Collection widgets (testimonials, FAQs, team, latest posts) pull live
@@ -228,8 +240,11 @@ Public pages are **one JSON file each** under `data/pages/{slug}.json`
 - `data/header.json` / `data/footer.json` — Header & Footer admin screen
   (`/admin/page-content/layout`); shared as the `layout` Inertia prop.
 - Menus are DB-driven (locations, nesting, drag-drop) at `/admin/menus`.
+- Page widget reorder in the admin uses ↑/↓ buttons (block-editor drag
+  handles are not shipped).
 
-Agent guides: `agents/skills/page-content`, `widgets`, `seo`.
+Agent guides: `agents/skills/page-content`, `widgets`, `seo`; frontend
+override walkthrough: [`docs/FRONTEND.md`](docs/FRONTEND.md).
 
 ### 5.2 Blog
 
@@ -284,6 +299,15 @@ Admin and public share one brand palette. Edit **Settings → Theme**:
 
 Overrides are emitted as `:root{…}` **after** `@vite` in `resources/views/app.blade.php`. Saving theme settings busts the response cache via the `Setting` model. Defaults still live in `resources/css/app.css` `@theme` for builds without a DB.
 
+### Ops extras (shipped)
+
+- **Backups** — `spatie/laravel-backup` nightly DB dump (`backup:run --only-db` at 02:00, `backup:clean` at 03:00). Set `DB_DUMP_BINARY_PATH` on hosts where `mysqldump` is not on PATH (MAMP/cPanel).
+- **Sentry** — optional. Set `SENTRY_LARAVEL_DSN` (and optionally `VITE_SENTRY_DSN` + `@sentry/vue`). `bootstrap/app.php` only wires Sentry when the package class exists.
+- **CSP** — `ContentSecurityPolicy` middleware; off by default (`CSP_ENABLED=false`). Prefer `CSP_REPORT_ONLY=true` first.
+- **Cookie consent** — public banner gates GA/GTM via `useConsentScripts` (ids format-validated).
+- **Admin notifications** — `NotificationBell` in AdminLayout (CSRF meta required in `app.blade.php`).
+- **Recovery** — `public/debug.php?t={DEBUG_TOKEN}` when `DEBUG_TOKEN` is set.
+
 ---
 
 ## 9. Deployment
@@ -295,22 +319,29 @@ Tag a release or trigger manually:
 - **Automatic:** push a tag matching `v*.*.*` → `.github/workflows/deploy.yml` fires.
 - **Manual:** Actions → "Deploy to Production" → Run workflow (pick production/staging).
 
-Required repo secrets:
+Required repo secrets (names must match `.github/workflows/deploy.yml`):
 
 ```
-DEPLOY_HOST         # ssh host
-DEPLOY_USER         # ssh user
+SSH_HOST            # ssh hostname
+SSH_USERNAME        # ssh user
+SSH_PORT            # ssh port (usually 22)
+SSH_PRIVATE_KEY     # private key contents
 DEPLOY_PATH         # absolute path on server
-DEPLOY_SSH_KEY      # private key contents
 ```
 
-The workflow runs `composer install --no-dev`, `pnpm build`, rsyncs over
-SSH, then remotely runs `optimize:clear + migrate --force + optimize`.
+Also set Actions **variable** `VITE_APP_NAME` (inlined into the JS bundle at
+build time — required or the visitor-facing app throws).
 
-**`data/` ships with the deploy.** Page JSON (`data/pages/*.json`) plus
-`header.json` / `footer.json` are source-controlled and rsynced to the
-server. Live admin edits on production are overwritten on the next deploy
-unless those changes are committed back to the repo first.
+The workflow: checkout → `pnpm build` (with `VITE_APP_NAME`) →
+`composer install --no-dev` → rsync over SSH → remote
+`composer deploy` (migrate, RBAC seeders, storage:link, typescript +
+widget types, optimize, responsecache:clear, doctor).
+
+**rsync excludes** source-only trees such as `/resources/js/`,
+`/resources/css/`, `/node_modules/`, `/storage/`, and agent docs — the
+built `public/build/` assets ship instead. **`data/` is included** (page
+JSON + header/footer). Production admin edits to those files are
+overwritten on the next deploy unless committed back to the repo first.
 
 ### 9.2 Shared hosting (cPanel / SiteGround / Hostinger)
 
@@ -329,9 +360,11 @@ Requirements: PHP 8.3+, MySQL 5.7+/MariaDB 10.3+, extensions `mbstring bcmath pd
 
 ```bash
 composer deploy
-# = template:doctor --production
-#   storage:link, migrate --force, typescript:transform,
+# = migrate --force
+#   db:seed RoleAndPermissionSeeder + AdminUserSeeder
+#   storage:link, typescript:transform, widgets:types
 #   optimize, responsecache:clear
+#   template:doctor --production --exit-zero
 ```
 
 **Inode note:** the scheduler prunes expired `cache` table rows weekly. If

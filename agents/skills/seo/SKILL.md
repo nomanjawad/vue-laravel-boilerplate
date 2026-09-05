@@ -82,8 +82,8 @@ Per-page via `jsonLd` prop:
   posts also have `focus_keyword`. Featured image is a separate field and
   feeds `og:image`. Canonical / OG title / OG description are **not** editable.
 
-New page JSON `seo` keys: `canonical`, `og_title`, `og_description` (plus
-existing title/description/og_image/noindex/json_ld).
+Page JSON shape: top-level `featured_image` + `seo: { title, description,
+noindex, json_ld }` (canonical/OG derived in `resolveSeo()`).
 
 ## Sitemap (`SitemapService`)
 

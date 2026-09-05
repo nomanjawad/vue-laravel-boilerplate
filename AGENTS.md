@@ -24,7 +24,8 @@ built per client; the backend stays generic.
   (no `.github/workflows/ci.yml` in this repo) — always run it yourself before
   declaring frontend work done.
 - `php artisan typescript:transform` — regenerate TS types from `#[TypeScript]` DTOs
-- `composer ide` — regenerate IDE helpers + TS types
+- `php artisan widgets:types` — regenerate `resources/js/types/widgets.d.ts` from `config/widgets.php`
+- `composer ide` — regenerate IDE helpers + TS types + widget types
 - `php artisan optimize` must stay clean — run it yourself; nothing gates this automatically
 - `php artisan template:init` — first-run setup (site name, admin user, migrate+seed)
 
@@ -94,7 +95,9 @@ third-party script, and before telling anyone a site is ready to launch.**
 
 ## TODO
 
-_(none — Phase 0–11 of the 2026-09-04 CMS roadmap are complete.)_
+Post-roadmap feedback (`feedback.md`): F1–F12 largely landed; **F13 docs**
+and remaining polish tracked there. Block-editor drag handles are still
+out of scope (page widgets use ↑/↓).
 
 ---
 

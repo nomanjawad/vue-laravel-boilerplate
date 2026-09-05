@@ -15,8 +15,8 @@ description: Commands, build gates, caching layers, and repo-wide guardrails for
 - `php artisan optimize` must stay clean (duplicate route names / view
   compile errors fail it) — also unenforced by any CI, run it yourself.
 - `composer ide` — ide-helpers + `php artisan typescript:transform` (DTO →
-  `resources/js/types/types.d.ts`). Run after changing any `#[TypeScript]`
-  DTO in `app/Data` or a module's `Data/`.
+  `resources/js/types/types.d.ts`) + `php artisan widgets:types`
+  (`widgets.d.ts` from `config/widgets.php`).
 - `composer module:enable {key}` / `module:disable {key}` — module lifecycle
   from CLI (same as /admin/modules).
 - `php artisan template:init` — interactive first-run (site name, feature
@@ -61,9 +61,9 @@ Dashboard "Clear page cache" only hits the pages layer.
 | JSON page data | `json_data_*` (mtime-keyed) | File mtime / page editor writes |
 | Laravel optimize | config/route/view | `optimize:clear` in dev after route/config edits |
 
-Expired DB cache rows are pruned weekly (`routes/console.php` →
-`DB::table('cache')->where('expiration', '<', …)->delete()`). Laravel's
-database cache store does not self-prune.
+Expired DB cache rows are pruned **daily** (`routes/console.php` →
+`DB::table('cache')->where('expiration', '<', …)->delete()` and the
+`cache_responses` table). Laravel's database cache store does not self-prune.
 
 NEVER cache routes rendering session data (auth, form errors) — use
 `doNotCacheResponse`.

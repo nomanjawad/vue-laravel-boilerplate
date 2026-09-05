@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import AppButton from '@/Components/Atoms/AppButton.vue'
-import AppImage, { type AppImageMedia } from '@/Components/Atoms/AppImage.vue'
+import AppImage from '@/Components/Atoms/AppImage.vue'
+import type { WidgetHeroData } from '@/types/widgets'
 
 interface Props {
-    data?: {
-        title?: string | null
-        subtitle?: string | null
-        image?: string | AppImageMedia | null
-        cta_text?: string | null
-        cta_url?: string | null
-        secondary_cta_text?: string | null
-        secondary_cta_url?: string | null
-    }
+    data?: WidgetHeroData
 }
 
 withDefaults(defineProps<Props>(), {

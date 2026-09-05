@@ -50,9 +50,7 @@ return [
     'description'  => '…',              // shown on /admin/modules
     'version'      => '1.0.0',
     'dependencies' => ['media'],        // must be enabled first; blocks disable of deps
-    'nav_group'    => 'content',        // content | collections | inbox | appearance | system
-    // Optional: 'badge' => \App\Support\NavBadges\UnseenSubscribers::class
-    // (class-string invokable; must stay serializable — no closures)
+    'nav_group'    => 'collections',    // content | collections | inbox | appearance | system
     'permissions'  => ['testimonials' => ['view','create','update','delete']],
     'nav'          => [[
         'label' => 'Testimonials',
@@ -60,6 +58,9 @@ return [
         // href server-side in ModuleManager::navFor(); frontend never calls route()
         'icon' => 'chat-bubble-left-right',     // must exist in AppIcon.vue's maps
         'permission' => 'testimonials.view',
+        // Optional badge on THIS nav entry (not top-level):
+        // 'badge' => \App\Support\NavBadges\UnseenSubscribers::class
+        // (class-string invokable; must stay serializable — no closures)
     ]],
     'searchable'   => [Models\Testimonial::class => ['title','body']], // global admin search
 ];

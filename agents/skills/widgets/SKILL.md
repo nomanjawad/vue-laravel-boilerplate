@@ -90,11 +90,15 @@ When adding a collection source: match on `$type`, read
 
 ## AppBlockEditor
 
-Organism on TipTap (`@tiptap/vue-3`): slash-command block menu, drag
-handles, media-library image blocks. Stores **HTML** (posts `body` and
-widget `richtext` fields) so `v-html` + the WP importer keep working.
-Used on `Admin/Pages/Edit.vue` (richtext fields) and
-`Admin/Posts/{Create,Edit}.vue`.
+Organism on TipTap (`@tiptap/vue-3`): slash-command block menu (empty-block
+gated), tables, doc import, rich paste, media-library image blocks. Stores
+**HTML** (posts `body` and widget `richtext` fields) so `v-html` + the WP
+importer keep working. **Per-block drag handles are not shipped** — page
+widget cards reorder with ↑/↓ in `Admin/Pages/Edit.vue`. Used on
+`Admin/Pages/Edit.vue` (richtext fields) and `Admin/Posts/{Create,Edit}.vue`.
+
+Typed public widget props: `resources/js/types/widgets.d.ts` (from
+`php artisan widgets:types`). Frontend override guide: `docs/FRONTEND.md`.
 
 ## AppFloatingSave
 

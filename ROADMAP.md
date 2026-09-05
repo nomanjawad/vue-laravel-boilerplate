@@ -2,6 +2,8 @@
 
 > Status: **complete** · Plan of 2026-09-04 · Based on a four-part codebase audit (main @ cade35c) · Phases 0–11 landed
 >
+> Notes vs original scope: Phase 4 page-widget **drag-handle reorder** shipped as ↑/↓ buttons; Phase 5 menus **do** use `vuedraggable`. TipTap **per-block drag handles** were planned but not shipped (slash menu / tables / doc import did land). RSS was listed under SEO “what exists” historically — **no feed route is registered**. `.env.example` uses `SESSION_DRIVER`/`CACHE_STORE`/`RESPONSE_CACHE_DRIVER` database (or dedicated `responsecache` store).
+>
 > Phase checklist: mark each phase done here as it lands.
 > - [x] Phase 0 — Bug fixes
 > - [x] Phase 1 — Remove ecommerce
@@ -29,7 +31,7 @@ webTemplate is being repositioned as the organization's **universal backend for 
 - **Settings stay in tabs** (organized, driven from one registry).
 - **FAQs are page-wise** — each FAQ belongs to a page (nullable = global), and the FAQ widget shows the current page's FAQs.
 - **Phone fields validated by a real package** (`propaganistas/laravel-phone`), and **every form field gets a placeholder**.
-- **Blog gets a Gutenberg-like block editor** (built on the already-installed TipTap — slash-command block menu, drag handles, media-library image blocks — storing HTML so existing `v-html` rendering and the WP importer keep working).
+- **Blog gets a Gutenberg-like block editor** (built on the already-installed TipTap — slash-command block menu, media-library image blocks, tables/doc import — storing HTML so existing `v-html` rendering and the WP importer keep working). Per-block drag handles deferred; page widgets reorder with ↑/↓.
 - **No legacy Blade** (audited: only the Inertia root, email templates, and error fallbacks exist — all required; anything unreferenced gets deleted), **inode-frugal on shared hosting** (response cache moves to the database store — the one unbounded file consumer), **WP-Rocket-style performance features** targeting green PageSpeed/Lighthouse (gzip, srcset + width/height via one `AppImage` component, LCP preload).
 
 **Verification gate for every phase** (no test suite exists): `pnpm build` (runs vue-tsc) + `php artisan optimize` + exercise the feature in the browser (`composer dev`, MySQL via XAMPP on :3306).
@@ -205,7 +207,7 @@ Current state (verified): `posts.category_id` single nullable FK; post editor ha
 
 ## Phase 7.5 — SEO pack (RankMath-parity, Ahrefs-audit clean)
 
-What exists: per-page/post title, description, noindex; raw JSON-LD textarea; Organization + JobPosting schema; sitemap; dynamic robots.txt; redirects UI + 404 log + auto-301s; RSS; GA4/GTM. Gaps vs RankMath features and Ahrefs site-audit standards, in order:
+What exists: per-page/post title, description, noindex; raw JSON-LD textarea; Organization + JobPosting schema; sitemap; dynamic robots.txt; redirects UI + 404 log + auto-301s; GA4/GTM. (RSS was considered; **not shipped** — no feed route.) Gaps vs RankMath features and Ahrefs site-audit standards, in order:
 
 1. **Canonical tags (missing entirely — core Ahrefs check):** self-referencing `<link rel="canonical">` on every public page via `resolveSeo()`/`PublicLayout` `<Head>`, absolute via `url()`; optional per-post/per-page canonical override field in the SEO sections.
 2. **Complete social meta:** og:title/og:description override fields (fall back to meta title/description), `twitter:card=summary_large_image`, `article:published_time`/`modified_time` on posts. Audit `PublicLayout`'s existing og/twitter block for completeness.
@@ -236,7 +238,10 @@ Deferred within SEO: keyword rank tracking, internal-link suggestions, hreflang 
 **Blade audit (user asked to remove legacy Blade; verified 2026-09-04 there are no legacy page views):** `resources/views/` holds exactly 11 files — `app.blade.php` (the Inertia root shell, required), `emails/*` + `emails/layouts/branded` + `components/mail/message-branded` (mail must render server-side HTML for email clients — cannot be Vue), and `errors/{500,503,database}.blade.php` (shown when the app/DB is down, before Vue can boot — cannot be Vue). Action: keep all of these, delete nothing blindly; verify each email template is actually sent from somewhere (`Mail::` / Mailable `content()` references) and delete any unreferenced ones; ensure all emails use the shared `branded` layout.
 
 **Inode optimization** (shared-hosting inode limits):
-- **Response cache → database store**: `CACHE_STORE`/`SESSION_DRIVER` are already `database`, but `config/responsecache.php:20` defaults to `'file'` — the one unbounded inode consumer (7-day TTL, spatie file entries only reclaimed on read/clear). Set `RESPONSE_CACHE_DRIVER=database` in `.env` + `.env.example` and change the config default to `env('RESPONSE_CACHE_DRIVER', 'database')`. Cached pages become DB rows (0 inodes); MySQL handles it fine at this scale.
+- **Response cache → database store**: set `RESPONSE_CACHE_DRIVER=responsecache`
+  (dedicated `cache_responses` table) with `CACHE_STORE`/`SESSION_DRIVER`
+  as `database` in `.env` + `.env.example`. Cached pages become DB rows
+  (0 inodes); `ResponseCache::clear()` must not wipe the app `cache` table.
 - One-time cleanup: schedule (in `routes/console.php`) a weekly `cache:prune-stale-tags`-equivalent — for the DB store, a simple scheduled `DB::table('cache')->where('expiration', '<', now()->timestamp)->delete()` command (Laravel's DB cache doesn't self-prune expired rows).
 - **Logs**: switch `.env` `LOG_STACK` to `daily,console` (daily channel already configured with 14-day retention in `config/logging.php:93-97`) so the log can't grow into one giant file.
 - **Deploy**: verify `.github/workflows/deploy.yml` rsync excludes `node_modules/`, `.git/`, `storage/framework/cache/data/` (it already excludes agent/dev paths); `media:prune` (Phase 2) handles orphaned media files.

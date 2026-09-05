@@ -65,10 +65,10 @@ Reserved slugs (blog, careers, admin, …) are blocked in `PageController`.
 - Old `Admin/PageContent/Index.vue` pages half + recursive
   `JsonContentEditor` for page bodies — replaced by the widget editor.
   Header/Footer layout screen remains (still JSON, not widgets).
-- DB `pages` table / Eloquent page routes — not used; content is files.
+- DB `pages` table / Eloquent `Page` model — removed; content is JSON files.
 - `page_metas` module / `PageMetaController` / `SeoService::getMetaForRoute()`
-  — removed. The `page_metas` table/model/seeder may still exist unused
-  (non-destructive). SEO lives in each page JSON's `seo` block + settings.
+  — fully removed. SEO lives in each page JSON's `seo` block + settings +
+  derived canonical/OG in `resolveSeo()`.
 
 ## Gotchas
 

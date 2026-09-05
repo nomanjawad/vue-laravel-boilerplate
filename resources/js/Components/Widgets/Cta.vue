@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import AppButton from '@/Components/Atoms/AppButton.vue'
+import type { WidgetCtaData } from '@/types/widgets'
 
 interface Props {
-    data?: {
-        title?: string
-        description?: string
-        button_text?: string
-        button_url?: string | null
-    } | null
+    data?: WidgetCtaData | null
 }
 
 withDefaults(defineProps<Props>(), {

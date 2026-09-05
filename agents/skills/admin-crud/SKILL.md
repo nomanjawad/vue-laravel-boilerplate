@@ -55,8 +55,9 @@ const form = useForm({ settings: { site_name: '', … } })
 - Gotcha: Inertia's `useForm()` reserves the key `data` — never name a form
   field `data` (use `content` or similar). Deeply recursive generic types blow
   up `vue-tsc`; keep `useForm`'s generic simple and cast at point of use.
-- Note: Posts Create/Edit use an older raw-`<form>` style — prefer the
-  FormShell pattern for new screens.
+- Note: Posts **Create** uses a raw `<form>` + `AppFloatingSave`; Posts
+  **Edit** and Pages **Edit** follow the same floating-save pattern.
+  Prefer `FormShell` for new CRUD screens.
 
 ## Component quick reference
 
@@ -64,22 +65,19 @@ Atoms: `AppButton` (href→Link, variants primary/outline), `AppInput`,
 `AppTextarea`, `AppSelect` (options: primitives or {value,label}),
 `AppCheckbox`, `AppSwitch` (boolean toggle, no id prop), `AppFileInput`
 (styled button + hidden native input; emits `select(File[])`; `label` /
-`variant` primary|secondary; `open()` via expose), `AppLink` (Link with
-prefetch=hover),
+`variant` primary|secondary; `open()` via expose),
 `AppSpinner`, `Badge` (color: gray|green|amber|red|brand), `SectionHeading`,
-`AppIcon` (name from built-in maps in AppIcon.vue; unknown → cube fallback).
+`AppIcon` (name from built-in maps in AppIcon.vue; unknown → cube fallback),
+`AppImage` (public srcset image).
 
-Molecules: `AppCard` (title/padded, header/footer slots), `AppEmptyState`,
-`AppFormField`, `AppFormSection`, `AppPagination` (Laravel paginator),
-`AppSearchInput` (debounced, 250ms).
+Molecules: `AppEmptyState`, `AppFormField`, `AppFormSection`,
+`AppFloatingSave`.
 
-Organisms: `DataTable` (columns/rows/sort — sortable headers do
-`router.get` with preserveState; slots `cell:{key}`, `actions`, `empty`;
-paginates automatically), `FormShell`, `AppMediaPicker` (stacked empty/filled
-drop zone — see settings-and-media skill), `AppBlockEditor` (TipTap slash-menu / tables / doc import / rich paste —
-see blog skill; used on posts + page richtext widget fields),
-`JsonContentEditor` (recursive JSON editor — still used for header/footer
-layout), `GlobalSearch`, `NotificationBell`, `BlogTabs`
+Organisms: `FormShell`, `AppMediaPicker` (stacked empty/filled
+drop zone — see settings-and-media skill), `AppBlockEditor` (TipTap slash-menu /
+tables / doc import / rich paste — see blog skill; used on posts + page
+richtext widget fields; **no per-block drag handles** — page widgets reorder
+with ↑/↓), `GlobalSearch`, `NotificationBell`, `BlogTabs`
 (Posts/Categories/Tags tab bar), `SeoSerpPreview`, `SeoContentChecklist`.
 
 Molecules (notable): `AppFloatingSave` — fixed bottom-right Save with dirty
