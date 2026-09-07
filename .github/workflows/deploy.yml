@@ -1,9 +1,12 @@
 name: Deploy to Production
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  # Deploys trigger from a published GitHub Release (Releases → Draft a new
+  # release → publish), not from a bare tag push — publishing the release is
+  # the deliberate "ship it" action. The release's tag is what gets checked
+  # out and deployed. Pre-releases are skipped (see the job-level `if`).
+  release:
+    types: [published]
   # Manual deploys: Actions → "Deploy to Production" → "Run workflow".
   workflow_dispatch:
     inputs:
@@ -19,6 +22,9 @@ on:
 jobs:
   deploy:
     name: Build & Deploy
+    # Releases marked "pre-release" don't auto-deploy — use workflow_dispatch
+    # if a pre-release build genuinely needs to go out.
+    if: github.event_name == 'workflow_dispatch' || github.event.release.prerelease == false
     runs-on: ubuntu-latest
 
     steps:

@@ -314,9 +314,9 @@ Overrides are emitted as `:root{…}` **after** `@vite` in `resources/views/app.
 
 ### 9.1 GitHub Actions (recommended)
 
-Tag a release or trigger manually:
+Publish a release or trigger manually:
 
-- **Automatic:** push a tag matching `v*.*.*` → `.github/workflows/deploy.yml` fires.
+- **Automatic:** publish a GitHub Release (Releases → "Draft a new release", tag `v*.*.*`) → `.github/workflows/deploy.yml` fires and deploys the release's tag. A bare `git tag` push does **not** deploy; releases marked *pre-release* are skipped.
 - **Manual:** Actions → "Deploy to Production" → Run workflow (pick production/staging).
 
 Required repo secrets (names must match `.github/workflows/deploy.yml`):
