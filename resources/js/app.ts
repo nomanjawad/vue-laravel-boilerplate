@@ -69,8 +69,17 @@ createInertiaApp({
         return mod().then((m) => m.default)
     },
     setup({ el, App, props, plugin }) {
-        createApp({ render: () => h(App, props) })
-            .use(plugin)
-            .mount(el)
+        const app = createApp({ render: () => h(App, props) })
+
+        // Last-resort logging for render/lifecycle errors nothing else caught
+        // (widget errors are contained by WidgetBoundary and never reach here).
+        // Without a handler Vue only warns in dev; in production a silent
+        // throw can blank the page with no trace. Sentry's Vue integration
+        // wraps this handler when installed, so reporting stays wired too.
+        app.config.errorHandler = (err, _instance, info) => {
+            console.error(`[app] unhandled error (${info})`, err)
+        }
+
+        app.use(plugin).mount(el)
     },
 })

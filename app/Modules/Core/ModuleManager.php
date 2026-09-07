@@ -502,10 +502,12 @@ class ModuleManager
                 // Badge is a class-string of an invokable (must stay
                 // serializable — no closures in config/modules.php). Resolve
                 // via the container; each resolver should be cheap (COUNT +
-                // short Cache::remember).
+                // short Cache::remember). Rescued: this runs on every admin
+                // request, so a throwing resolver from a broken module must
+                // drop its badge, not 500 the whole panel.
                 $badge = $entry['badge'] ?? null;
                 if (is_string($badge) && class_exists($badge)) {
-                    $count = (int) app($badge)();
+                    $count = (int) rescue(fn () => app($badge)(), 0);
                     $entry['badge'] = $count > 0 ? $count : null;
                 } else {
                     $entry['badge'] = null;

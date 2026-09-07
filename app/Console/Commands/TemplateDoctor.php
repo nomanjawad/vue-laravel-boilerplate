@@ -39,6 +39,7 @@ class TemplateDoctor extends Command
         $this->checkPhp($isProd);
         $this->checkExtensions();
         $this->checkEnv();
+        $this->checkDebugMode($isProd);
         $this->checkIndexability($isProd);
         $this->checkDatabase();
         $this->checkStorage();
@@ -108,6 +109,39 @@ class TemplateDoctor extends Command
         if (! config('app.key')) {
             $this->failed('APP_KEY not set', 'Run `php artisan key:generate` and `php artisan config:clear`.');
         }
+    }
+
+    /**
+     * The entire friendly-error layer in bootstrap/app.php (database hint
+     * page, branded Error.vue) only activates outside local/testing with
+     * debug off. APP_DEBUG=true on a production host renders Laravel's debug
+     * page instead — full stack traces plus env/secret dumps — to visitors.
+     * Hard failure, never an advisory. See feedback.md F14 #3.
+     */
+    protected function checkDebugMode(bool $isProd): void
+    {
+        $env = (string) config('app.env');
+        $debug = (bool) config('app.debug');
+
+        if ($debug && ($env === 'production' || $isProd)) {
+            $this->failed(
+                "APP_DEBUG=true with APP_ENV={$env} — visitors would see stack traces and env secrets on any error",
+                'Set APP_DEBUG=false in .env, then run `php artisan config:cache`.',
+            );
+
+            return;
+        }
+
+        if ($isProd && $env !== 'production') {
+            $this->advisory(
+                "APP_ENV={$env} on a production doctor run",
+                'Friendly error pages and other prod-only behavior key off APP_ENV — set APP_ENV=production in .env and run `php artisan config:cache`.',
+            );
+
+            return;
+        }
+
+        $this->ok("APP_ENV={$env}, APP_DEBUG=".($debug ? 'true' : 'false'));
     }
 
     /**

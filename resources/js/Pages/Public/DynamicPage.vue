@@ -12,6 +12,7 @@ import { computed, type Component } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import PublicLayout from '@/Layouts/PublicLayout.vue'
 import PublicBreadcrumbs from '@/Components/Molecules/PublicBreadcrumbs.vue'
+import WidgetBoundary from '@/Components/Molecules/WidgetBoundary.vue'
 import Hero from '@/Components/Widgets/Hero.vue'
 import RichText from '@/Components/Widgets/RichText.vue'
 import FeatureGrid from '@/Components/Widgets/FeatureGrid.vue'
@@ -108,12 +109,16 @@ const visibleWidgets = computed(() =>
 
     <PublicBreadcrumbs :items="breadcrumbs" />
 
-    <component
-        :is="widgetMap[widget.type]"
+    <WidgetBoundary
         v-for="widget in visibleWidgets"
         :key="widget.id"
-        :data="widget.data || {}"
-        :items="collectionData[widget.id] || []"
-        :page-slug="page.slug"
-    />
+        :widget-type="widget.type"
+    >
+        <component
+            :is="widgetMap[widget.type]"
+            :data="widget.data || {}"
+            :items="collectionData[widget.id] || []"
+            :page-slug="page.slug"
+        />
+    </WidgetBoundary>
 </template>
