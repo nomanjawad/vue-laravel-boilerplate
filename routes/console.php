@@ -50,3 +50,15 @@ Schedule::call(static function (): void {
 
 // Prune activity_log rows older than 180 days (spatie/laravel-activitylog).
 Schedule::command('activitylog:clean --days=180')->daily()->at('05:00');
+
+// not_found_logs is the one growth table with no sweep of its own. Bots probing
+// /wp-admin, /.env and friends fill it steadily on any public site, and nothing
+// in the app ever deletes a row. Drop entries not seen in 90 days — a 404 that
+// has not recurred in three months is not a redirect worth creating.
+Schedule::call(static function (): void {
+    if (Schema::hasTable('not_found_logs')) {
+        DB::table('not_found_logs')
+            ->where('last_seen_at', '<', now()->subDays(90))
+            ->delete();
+    }
+})->weekly()->sundays()->at('05:30')->name('not-found-logs-prune');
